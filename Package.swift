@@ -17,7 +17,7 @@ let package = Package(
             name: "Soil"
         ),
         .testTarget(
-            name: "CoreTests",
+            name: "SoilTests",
             dependencies: ["Soil"]
         ),
     ]
