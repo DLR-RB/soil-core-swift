@@ -14,7 +14,7 @@ public struct Sample {
      - Parameter value: The contained value
      - Parameter date: The timestamp associated with the value.
      */
-    public init(value: Value, timestamp: Date) {
+    public init(value: Value, timestamp: Date = Date()) {
         self.value = value
         self.timestamp = timestamp
     }
