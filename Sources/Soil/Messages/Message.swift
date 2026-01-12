@@ -119,13 +119,12 @@ extension Message {
             samples: samples)
     }
 
-    public static func history(path: Path, start: Date?, end: Date?, limit: Int? = nil, subscribe: Bool = false) -> Self {
+    public static func history(path: Path, start: Date? = nil, end: Date? = nil, limit: Int? = nil) -> Self {
         .init(
             type: .history,
             path: path,
             time: start,
             count: limit,
-            subscribe: subscribe ? true : nil,
             end: end)
     }
 
@@ -162,4 +161,8 @@ extension Message: Codable {
         case time = 6
         case end = 7
     }
+}
+
+extension Message: Equatable {
+
 }
