@@ -37,7 +37,7 @@ public struct Message {
      A generic count used as a limit or depth.
 
      Usage:
-     - Value message: Indicate the number of remaining messages for the request
+     - Value message: Indicate the total number of messages for the request
      - Request: Indicate the maximum depth (Negative values are treated as no limit)
      - History: Limit the number of returned samples (negative values are treated as no limit)
      */
@@ -117,22 +117,22 @@ extension Message {
     /**
      Create a push message to transmit a value
      */
-    public static func value(path: Path, value: Value, timestamp: Date? = nil, request: Int? = nil, remainingMessages: Int? = nil) -> Self {
+    public static func value(path: Path, value: Value, timestamp: Date? = nil, request: Int? = nil, totalMessages: Int? = nil) -> Self {
         .init(
             type: .value,
             path: path,
             value: value,
             time: timestamp,
-            count: remainingMessages,
+            count: totalMessages,
             request: request)
     }
 
-    public static func values(path: Path, samples: [Sample], request: Int? = nil, remainingMessages: Int? = nil) -> Self {
+    public static func values(path: Path, samples: [Sample], request: Int? = nil, totalMessages: Int? = nil) -> Self {
         .init(
             type: .value,
             path: path,
             samples: samples,
-            count: remainingMessages,
+            count: totalMessages,
             request: request)
     }
 
