@@ -32,7 +32,7 @@ public protocol Storage {
      - Parameter start: The start of the requested interval (exclusive, defaults to `nil`, meaning from end of time)
      - Parameter end: The end of the requested interval (inclusive, defaults to `nil`, meaning to beginning of time)
      - Parameter limit: The maximum number of values to return (defaults to `nil`, e.g. no limit)
-     - Returns: The values in the range, sorted by most recent first. If a limit is set, then the `limit` newest values in the interval are returned.
+     - Returns: The values in the range, sorted from `start` to `end`, or by oldest first, if either is `nil`. If a limit is set, then the `limit` values counted from `start` (or oldest) are returned.
      */
     func samples(for path: Path, from start: Timestamp?, to end: Timestamp?, limit: Int?) -> [Sample]
 

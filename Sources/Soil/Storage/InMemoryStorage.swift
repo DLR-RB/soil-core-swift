@@ -69,16 +69,10 @@ extension InMemoryStorage: Storage {
      - Parameter start: The start of the requested interval (exclusive, defaults to `nil`, meaning from end of time)
      - Parameter end: The end of the requested interval (inclusive, defaults to `nil`, meaning to beginning of time)
      - Parameter limit: The maximum number of values to return (defaults to `nil`, e.g. no limit)
-     - Returns: The values in the range, sorted by most recent first. If a limit is set, then the `limit` newest values in the interval are returned.
+     - Returns: The values in the range, sorted from `start` to `end`, or by oldest first, if either is `nil`. If a limit is set, then the `limit` values counted from `start` (or oldest) are returned.
      */
     public func samples(for path: Path, from start: Timestamp? = nil, to end: Timestamp? = nil, limit: Int? = nil) -> [Sample] {
-        guard let node = existingNode(for: path) else {
-            return []
-        }
-        if let start, let end, start < end {
-            return node.samples(from: end, to: start, limit: limit)
-        }
-        return node.samples(from: start, to: end, limit: limit)
+        existingNode(for: path)?.samples(from: start, to: end, limit: limit) ?? []
     }
 }
 
@@ -109,20 +103,20 @@ private class Node {
     }
 
     func save(sample: Sample) {
-        update(current: sample)
-        insert(sample: sample)
+        updateCurrentSampleInTreeIfNeeded(sample)
+        insertSampleIntoHistory(sample)
     }
 
-    private func update(current: Sample) {
-        if let sample, sample.timestamp <= current.timestamp {
+    private func updateCurrentSampleInTreeIfNeeded(_ current: Sample) {
+        if let sample, sample.timestamp > current.timestamp {
             return
         }
         sample = current
     }
 
-    private func insert(sample: Sample) {
+    private func insertSampleIntoHistory(_ sample: Sample) {
         // We assume that most new values will be recent, so check the last value first
-        if history.last.isNilOrNotGreater(than: sample) {
+        if let last = history.last, last.timestamp <= sample.timestamp {
             history.append(sample)
         } else {
             // Do a binary search in the sorted array and insert in the right place
@@ -159,42 +153,76 @@ private class Node {
     }
 
     /**
-     Provides the samples in a given date range.
+     Provides the values in a given date range for a path, regardless of the value type.
 
      The start value is assumed to be later than the end value (backwards search).
      - Parameter start: The start of the requested interval (exclusive, defaults to `nil`, meaning from end of time)
      - Parameter end: The end of the requested interval (inclusive, defaults to `nil`, meaning to beginning of time)
      - Parameter limit: The maximum number of values to return (defaults to `nil`, e.g. no limit)
-     - Returns: The samples in the range, sorted by most recent first. If a limit is set, then the `limit` newest values in the interval are returned.
+     - Returns: The values in the range, sorted from `start` to `end`, or by oldest first, if either is `nil`. If a limit is set, then the `limit` values counted from `start` (or oldest) are returned.
      */
     func samples(from start: Timestamp?, to end: Timestamp?, limit: Int?) -> [Sample] {
+        guard let start else {
+            // No start provided, so use beginning of time, and sort ascending
+            guard let end else {
+                guard let limit else {
+                    // No start, end, or limit, so return the full history
+                    return history
+                }
+                // Limit the full history, return in ascending order (already sorted correctly)
+                return Array(history.prefix(limit))
+            }
+            // No start, but end provided, return in ascending order
+            return selectAscending(start: 0, end: findIndex(end: end), limit: limit)
+        }
+
+        guard let end else {
+            // Start, but no end, so return in ascending order
+            let startIndex = findIndex(start: start)
+            return selectAscending(start: startIndex, end: history.endIndex, limit: limit)
+        }
+        guard start < end else {
+            // Reverse order requested
+            // This case needs to be treated differently, due to start being exclusive and end inclusive
+            return selectDescending(start: start, end: end, limit: limit)
+        }
+        // Both start and end given in "correct" order, so return ascending
         let startIndex = findIndex(start: start)
         let endIndex = findIndex(end: end)
-        // Move the start index if the range needs to be limited
-        let limitedEndIndex = limit.map { max(endIndex, startIndex - $0) } ?? endIndex
-        return Array(history[limitedEndIndex..<startIndex].reversed())
+        return selectAscending(start: startIndex, end: endIndex, limit: limit)
     }
 
-    /// Return the history index after the last desired element
-    private func findIndex(start: Timestamp?) -> Int {
-        guard let start else {
-            // All values requested until end of time,
-            // so the subsequence will reach to the end of the array
-            return history.endIndex
-        }
-        // Find the first index in the array where the sample date is not before the start date
-        // This will be one past the end of the desired subsequence
-        // If all values are smaller than the start date, then the end index is returned,
-        // which is also one past the end of the subsequence
-        return history.partitioningIndex { $0.timestamp >= start }
+    private func selectAscending(start startIndex: Int, end endIndex: Int, limit: Int?) -> [Sample] {
+        // Move the end index if the range needs to be limited
+        let limitedEndIndex = limit.map { min(endIndex, startIndex + $0) } ?? endIndex
+        return Array(history[startIndex..<limitedEndIndex])
     }
 
-    /// Return the history index of the first desired element
-    private func findIndex(end: Timestamp?) -> Int {
-        guard let end else {
-            return history.startIndex
-        }
-        // Find the first index that should be included, i.e. where the date is larger/equal to `end`
-        return history.partitioningIndex { $0.timestamp >= end }
+    private func selectDescending(start: Timestamp, end: Timestamp, limit: Int?) -> [Sample] {
+        // The starting index of the subsequence is given by `end`, since end < start
+        // End is inclusive, so we find the first index larger than or equal to `end`
+        let startIndex = history.partitioningIndex { $0.timestamp >= end }
+
+        // The end index is given by `start`, but exclusive.
+        // Since we need the index after the last included element, we select the first index larger than or equal to `start`
+        let endIndex = history.partitioningIndex { $0.timestamp >= start }
+        // Move the end index if the range needs to be limited
+        let limitedEndIndex = limit.map { min(endIndex, startIndex + $0) } ?? endIndex
+        // Reverse the subsequence, because the order is expected to be descending (start > end)
+        return Array(history[startIndex..<limitedEndIndex].reversed())
+    }
+
+    /// Return the history index of the first desired element for searches in ascending order
+    private func findIndex(start: Timestamp) -> Int {
+        // Find the first index in the array where the sample date is after the start date (start is exclusive)
+        // If all values are smaller than or equal to the start date, then the end index is returned
+        return history.partitioningIndex { $0.timestamp > start }
+    }
+
+    /// Return the history index past the last desired element for searches in ascending order
+    private func findIndex(end: Timestamp) -> Int {
+        // End is inclusive, so we find the first index that is greater than end
+        // If all elements are smaller equal end, then the end index is returned
+        return history.partitioningIndex { $0.timestamp > end }
     }
 }
