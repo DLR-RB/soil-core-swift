@@ -60,7 +60,7 @@ public struct Message {
      - Request message: The point in time for which values are requested (`nil` represents the most recent values).
      - History request: Used as the `start` date of history requests.
      */
-    public let time: Date?
+    public let time: Timestamp?
 
     /**
      The end date using in history requests.
@@ -68,7 +68,7 @@ public struct Message {
      Usage:
      - History request: Used to indicate the end of a request interval.
      */
-    public let end: Date?
+    public let end: Timestamp?
 
     /**
      The id of the request.
@@ -91,11 +91,11 @@ public struct Message {
         type: MessageType,
         path: Path,
         value: Value? = nil,
-        time: Date? = nil,
+        time: Timestamp? = nil,
         samples: [Sample]? = nil,
         count: Int? = nil,
         subscribe: Bool? = nil,
-        end: Date? = nil,
+        end: Timestamp? = nil,
         request: Int? = nil
         //children: [TransportLayerMessage]? = nil
     ) {
@@ -117,7 +117,7 @@ extension Message {
     /**
      Create a push message to transmit a value
      */
-    public static func value(path: Path, value: Value, timestamp: Date? = nil, request: Int? = nil, totalMessages: Int? = nil) -> Self {
+    public static func value(path: Path, value: Value, timestamp: Timestamp? = nil, request: Int? = nil, totalMessages: Int? = nil) -> Self {
         .init(
             type: .value,
             path: path,
@@ -136,7 +136,7 @@ extension Message {
             request: request)
     }
 
-    public static func history(path: Path, start: Date? = nil, end: Date? = nil, limit: Int? = nil, request: Int? = nil) -> Self {
+    public static func history(path: Path, start: Timestamp? = nil, end: Timestamp? = nil, limit: Int? = nil, request: Int? = nil) -> Self {
         .init(
             type: .history,
             path: path,
@@ -146,7 +146,7 @@ extension Message {
             request: request)
     }
 
-    public static func request(path: Path, beforeOrAt time: Date? = nil, depth: Int? = nil, request: Int? = nil) -> Self {
+    public static func request(path: Path, beforeOrAt time: Timestamp? = nil, depth: Int? = nil, request: Int? = nil) -> Self {
         .init(
             type: .request,
             path: path,

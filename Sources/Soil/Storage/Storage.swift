@@ -1,4 +1,4 @@
-import Foundation
+
 
 /**
  The interface to a storage type providing presistence for values with a path tree structure.
@@ -11,7 +11,7 @@ public protocol Storage {
      - Parameter path: The path of the value.
      - Parameter timestamp: The timestamp associated with the value
      */
-    func save(_ value: Value, for path: Path, at timestamp: Date?)
+    func save(_ value: Value, for path: Path, at timestamp: Timestamp?)
 
     /**
      Get the values of a path at a specific point in time, including sub-paths
@@ -22,7 +22,7 @@ public protocol Storage {
      - Parameter depth: The number of levels in the sub-tree to include
      - Returns: The sample containing the current values of the requested sub-tree.
      */
-    func tree(for path: Path, beforeOrAt date: Date?, depth: Int?) -> Tree
+    func tree(for path: Path, beforeOrAt date: Timestamp?, depth: Int?) -> Tree
 
     /**
      Provides the values in a given date range for a path, regardless of the value type.
@@ -34,7 +34,7 @@ public protocol Storage {
      - Parameter limit: The maximum number of values to return (defaults to `nil`, e.g. no limit)
      - Returns: The values in the range, sorted by most recent first. If a limit is set, then the `limit` newest values in the interval are returned.
      */
-    func samples(for path: Path, from start: Date?, to end: Date?, limit: Int?) -> [Sample]
+    func samples(for path: Path, from start: Timestamp?, to end: Timestamp?, limit: Int?) -> [Sample]
 
 }
 
@@ -64,12 +64,12 @@ extension Storage {
      - Parameter date: The point in time for which the value is requested (`nil` indicates the most recent sample)
      - Returns: If present: The most recent value for the path where the timestamp is before the provided date.
      */
-    public func sample(for path: Path, beforeOrAt date: Date?) -> Sample? {
+    public func sample(for path: Path, beforeOrAt date: Timestamp?) -> Sample? {
         let sample = tree(for: path, beforeOrAt: date, depth: 0)
         guard let value = sample.value else {
             return nil
         }
-        return .init(value: value, timestamp: sample.timestamp ?? Date())
+        return .init(value: value, timestamp: sample.timestamp ?? .current())
     }
 
     /**

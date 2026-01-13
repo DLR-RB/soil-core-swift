@@ -1,4 +1,3 @@
-import Foundation
 import Testing
 import Soil
 
@@ -10,7 +9,7 @@ struct StorageTests {
         let storage = InMemoryStorage()
 
         let pathA = ["a", "b", "c"]
-        let now = Date()
+        let now = Timestamp.current()
 
         storage.save(.integer(123), for: pathA, at: now)
 
@@ -27,7 +26,7 @@ struct StorageTests {
     func getSubTree() throws {
         let storage = InMemoryStorage()
 
-        let now = Date()
+        let now = Timestamp.current()
 
         storage.save(.integer(123), for: ["a", "b", "c"], at: now)
         storage.save(.double(3.14), for: ["a", "b", "d"], at: now)
@@ -61,7 +60,7 @@ struct StorageTests {
     func subTreeWithDepth() throws {
         let storage = InMemoryStorage()
 
-        let now = Date()
+        let now = Timestamp.current()
 
         storage.save(.integer(123), for: ["a", "b", "c"], at: now)
         storage.save(.double(3.14), for: ["a", "b", "d"], at: now)
@@ -115,7 +114,7 @@ struct StorageTests {
 
     @Test("Partioning")
     func testPartitioning() {
-        let now = Date()
+        let now = Timestamp.current()
         let later = now.addingTimeInterval(1)
         let all = [now, later]
         let index = all.partitioningIndex { $0 >= later }
@@ -136,15 +135,15 @@ struct StorageTests {
             #expect(empty.isEmpty)
         }
         do {
-            let empty = storage.samples(for: [], from: Date(), to: nil, limit: nil)
+            let empty = storage.samples(for: [], from: .current(), to: nil, limit: nil)
             #expect(empty.isEmpty)
         }
         do {
-            let empty = storage.samples(for: [], from:nil, to: Date(), limit: nil)
+            let empty = storage.samples(for: [], from: nil, to: .current(), limit: nil)
             #expect(empty.isEmpty)
         }
 
-        let first = Date()
+        let first = Timestamp.current()
         storage.save(.integer(123), for: [], at: first)
         do {
             let one = storage.samples(for: [], from: nil, to: nil, limit: nil)
@@ -206,7 +205,7 @@ struct StorageTests {
     func testHistoryOrder() throws {
         let storage = InMemoryStorage()
 
-        let now = Date()
+        let now = Timestamp.current()
         let samples = (0..<10).map {
             Sample(value: .integer(123 + $0), timestamp: now.addingTimeInterval(Double($0)))
         }

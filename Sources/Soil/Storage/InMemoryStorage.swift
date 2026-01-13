@@ -1,4 +1,4 @@
-import Foundation
+
 
 /**
  A simple storage implementation that keeps all values in memory.
@@ -42,9 +42,9 @@ extension InMemoryStorage: Storage {
      - Parameter path: The path of the value.
      - Parameter timestamp: The timestamp associated with the value
      */
-    public func save(_ value: Value, for path: Path, at timestamp: Date? = nil) {
+    public func save(_ value: Value, for path: Path, at timestamp: Timestamp? = nil) {
         let node = getOrCreateNode(for: path)
-        let sample = Sample(value: value, timestamp: timestamp ?? Date())
+        let sample = Sample(value: value, timestamp: timestamp ?? .current())
         node.save(sample: sample)
     }
 
@@ -57,7 +57,7 @@ extension InMemoryStorage: Storage {
      - Parameter depth: The number of levels in the sub-tree to include
      - Returns: The sample containing the current values of the requested sub-tree.
      */
-    public func tree(for path: Path, beforeOrAt date: Date? = nil, depth: Int? = nil) -> Tree {
+    public func tree(for path: Path, beforeOrAt date: Timestamp? = nil, depth: Int? = nil) -> Tree {
         existingNode(for: path)?.tree(beforeOrAt: date, depth: depth) ?? Tree()
     }
 
@@ -71,7 +71,7 @@ extension InMemoryStorage: Storage {
      - Parameter limit: The maximum number of values to return (defaults to `nil`, e.g. no limit)
      - Returns: The values in the range, sorted by most recent first. If a limit is set, then the `limit` newest values in the interval are returned.
      */
-    public func samples(for path: Path, from start: Date? = nil, to end: Date? = nil, limit: Int? = nil) -> [Sample] {
+    public func samples(for path: Path, from start: Timestamp? = nil, to end: Timestamp? = nil, limit: Int? = nil) -> [Sample] {
         guard let node = existingNode(for: path) else {
             return []
         }
@@ -130,7 +130,7 @@ private class Node {
         }
     }
 
-    private func sample(beforeOrAt date: Date?) -> Sample? {
+    private func sample(beforeOrAt date: Timestamp?) -> Sample? {
         guard let date else {
             return sample
         }
@@ -143,7 +143,7 @@ private class Node {
         return history[index]
     }
 
-    func tree(beforeOrAt date: Date?, depth: Int?) -> Tree {
+    func tree(beforeOrAt date: Timestamp?, depth: Int?) -> Tree {
         let sample = sample(beforeOrAt: date)
 
         // Only return the value, if depth is reached
@@ -167,7 +167,7 @@ private class Node {
      - Parameter limit: The maximum number of values to return (defaults to `nil`, e.g. no limit)
      - Returns: The samples in the range, sorted by most recent first. If a limit is set, then the `limit` newest values in the interval are returned.
      */
-    func samples(from start: Date?, to end: Date?, limit: Int?) -> [Sample] {
+    func samples(from start: Timestamp?, to end: Timestamp?, limit: Int?) -> [Sample] {
         let startIndex = findIndex(start: start)
         let endIndex = findIndex(end: end)
         // Move the start index if the range needs to be limited
@@ -176,7 +176,7 @@ private class Node {
     }
 
     /// Return the history index after the last desired element
-    private func findIndex(start: Date?) -> Int {
+    private func findIndex(start: Timestamp?) -> Int {
         guard let start else {
             // All values requested until end of time,
             // so the subsequence will reach to the end of the array
@@ -190,7 +190,7 @@ private class Node {
     }
 
     /// Return the history index of the first desired element
-    private func findIndex(end: Date?) -> Int {
+    private func findIndex(end: Timestamp?) -> Int {
         guard let end else {
             return history.startIndex
         }

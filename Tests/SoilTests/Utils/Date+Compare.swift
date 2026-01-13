@@ -1,9 +1,9 @@
-import Foundation
+import Soil
 
 
-extension Date {
+extension Timestamp {
 
-    func isVeryClose(to other: Date) -> Bool {
+    func isVeryClose(to other: Timestamp) -> Bool {
         distance(to: other) < 0.001
     }
 }

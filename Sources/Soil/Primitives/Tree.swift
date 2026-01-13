@@ -1,4 +1,4 @@
-import Foundation
+
 
 /**
  A path tree containing samples
@@ -11,7 +11,7 @@ public final class Tree {
     /**
      The timestamp associated with `value`, if it is set.
      */
-    public let timestamp: Date?
+    public let timestamp: Timestamp?
 
     /**
      The child nodes of the tree, indexed by their path component.
@@ -24,7 +24,7 @@ public final class Tree {
      - Parameter timestamp: The optional timestamp associated with the value.
      - Parameter children: The child nodes of the tree, indexed by their path component.
      */
-    public init(value: Value, timestamp: Date? = nil, children: [PathComponent : Tree] = [:]) {
+    public init(value: Value, timestamp: Timestamp? = nil, children: [PathComponent : Tree] = [:]) {
         self.value = value
         self.timestamp = timestamp
         self.children = children

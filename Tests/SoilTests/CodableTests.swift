@@ -56,17 +56,17 @@ struct CodableTests {
     @Test("Message")
     func testMessage() throws {
         try encodeAndDecode(Message.self) { [
-            .value(path: ["a", "b", "c"], value: .integer(123), timestamp: Date()),
+            .value(path: ["a", "b", "c"], value: .integer(123), timestamp: .current()),
             .value(path: [], value: .integer(234)),
             .values(path: ["zzz"], samples: [
-                .init(value: .integer(123), timestamp: Date().addingTimeInterval(-10000)),
-                .init(value: .double(3.14), timestamp: Date().addingTimeInterval(-9000))
+                .init(value: .integer(123), timestamp: .current().addingTimeInterval(-10000)),
+                .init(value: .double(3.14), timestamp: .current().addingTimeInterval(-9000))
             ]),
             .subscribe(path: ["abc"], depth: 123),
             .subscribe(path: ["", "some"]),
-            .request(path: ["Path"], beforeOrAt: Date(), depth: 0),
+            .request(path: ["Path"], beforeOrAt: .current(), depth: 0),
             .request(path: ["Path"]),
-            .history(path: ["123"], start: Date().addingTimeInterval(-1000), end: Date(), limit: 100),
+            .history(path: ["123"], start: .current().addingTimeInterval(-1000), end: .current(), limit: 100),
             .history(path: ["123", "456"]),
             .exclude(path: ["a", "a"], depth: 10),
             .exclude(path: ["a", "a", "a"])

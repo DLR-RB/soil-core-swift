@@ -1,4 +1,4 @@
-import Foundation
+
 
 /// A value with a timestamp
 public struct Sample {
@@ -7,14 +7,14 @@ public struct Sample {
     public let value: Value
 
     /// The timestamp of the value
-    public let timestamp: Date
+    public let timestamp: Timestamp
 
     /**
      Create a sample.
      - Parameter value: The contained value
      - Parameter date: The timestamp associated with the value.
      */
-    public init(value: Value, timestamp: Date = Date()) {
+    public init(value: Value, timestamp: Timestamp = .current()) {
         self.value = value
         self.timestamp = timestamp
     }
@@ -24,7 +24,7 @@ public struct Sample {
      - Parameter value: The contained value
      - Parameter timestamp: The unix timestamp associated with the value.
      */
-    public init(value: Value, timeIntervalSince1970: TimeInterval) {
+    public init(value: Value, timeIntervalSince1970: Double) {
         self.init(value: value, timestamp: .init(timeIntervalSince1970: timeIntervalSince1970))
     }
 }
