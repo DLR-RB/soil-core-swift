@@ -37,6 +37,7 @@ public struct Message {
      A generic count used as a limit or depth.
 
      Usage:
+     - Value message: Indicate the number of remaining messages for the request
      - Request: Indicate the maximum depth (Negative values are treated as no limit)
      - History: Limit the number of returned samples (negative values are treated as no limit)
      */
@@ -70,6 +71,16 @@ public struct Message {
     public let end: Date?
 
     /**
+     The id of the request.
+
+     Usage:
+     - Value message: Identifies the request that this value corresponds to.
+     - Request message: An identifier to include in responses to the request.
+     - History request: An identifier to include in responses to the request.
+     */
+    public let request: Int?
+
+    /**
      Additional messages relative to this message.
 
      These are used to send tree structures more efficiently.
@@ -84,7 +95,8 @@ public struct Message {
         samples: [Sample]? = nil,
         count: Int? = nil,
         subscribe: Bool? = nil,
-        end: Date? = nil
+        end: Date? = nil,
+        request: Int? = nil
         //children: [TransportLayerMessage]? = nil
     ) {
         self.type = type
@@ -95,6 +107,7 @@ public struct Message {
         self.subscribe = subscribe
         self.time = time
         self.end = end
+        self.request = request
         //self.children = children
     }
 }
@@ -104,40 +117,51 @@ extension Message {
     /**
      Create a push message to transmit a value
      */
-    public static func value(path: Path, value: Value, timestamp: Date? = nil) -> Self {
+    public static func value(path: Path, value: Value, timestamp: Date? = nil, request: Int? = nil, remainingMessages: Int? = nil) -> Self {
         .init(
             type: .value,
             path: path,
             value: value,
-            time: timestamp)
+            time: timestamp,
+            count: remainingMessages,
+            request: request)
     }
 
-    public static func values(path: Path, samples: [Sample]) -> Self {
+    public static func values(path: Path, samples: [Sample], request: Int? = nil, remainingMessages: Int? = nil) -> Self {
         .init(
             type: .value,
             path: path,
-            samples: samples)
+            samples: samples,
+            count: remainingMessages,
+            request: request)
     }
 
-    public static func history(path: Path, start: Date? = nil, end: Date? = nil, limit: Int? = nil) -> Self {
+    public static func history(path: Path, start: Date? = nil, end: Date? = nil, limit: Int? = nil, request: Int? = nil) -> Self {
         .init(
             type: .history,
             path: path,
             time: start,
             count: limit,
-            end: end)
+            end: end,
+            request: request)
     }
 
-    public static func request(path: Path, beforeOrAt time: Date? = nil, depth: Int? = nil) -> Self {
-        .init(type: .request, path: path, time: time, count: depth)
+    public static func request(path: Path, beforeOrAt time: Date? = nil, depth: Int? = nil, request: Int? = nil) -> Self {
+        .init(
+            type: .request,
+            path: path,
+            time: time,
+            count: depth,
+            request: request)
     }
 
-    public static func subscribe(path: Path, depth: Int? = nil) -> Self {
+    public static func subscribe(path: Path, depth: Int? = nil, request: Int? = nil) -> Self {
         .init(
             type: .request,
             path: path,
             count: depth,
-            subscribe: true)
+            subscribe: true,
+            request: request)
     }
 
     public static func exclude(path: Path, depth: Int? = nil) -> Self {
@@ -160,6 +184,7 @@ extension Message: Codable {
         case subscribe = 5
         case time = 6
         case end = 7
+        case request = 8
     }
 }
 
