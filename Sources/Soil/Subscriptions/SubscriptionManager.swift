@@ -1,4 +1,5 @@
 
+/// The depth of a subscription (may be nil)
 private typealias Depth = Int?
 
 
@@ -12,8 +13,9 @@ final class SubscriptionManager<SubscriberId: Hashable> {
 
         /// The maximum level up to which a subscriber ignores a path
         var exclusion: Depth?
-
     }
+
+    // MARK: Node
 
     /// An internal class to store the subscriptions for a node in the path tree.
     private final class SubscriptionNode {
@@ -23,8 +25,80 @@ final class SubscriptionManager<SubscriberId: Hashable> {
         /// The child nodes of this path
         var nodes: [PathComponent : SubscriptionNode] = [:]
 
+        /// Indicate if the node does not contain a subscription or children
+        ///
+        /// - Note: This function does not check if child nodes are empty
         var isEmpty: Bool {
             subscriptions.isEmpty && nodes.isEmpty
+        }
+
+        /**
+         Check if subscriptions exist for a subscriber in the tree of this node.
+         - Returns: `true`, if one or more subscriptions exist.
+         */
+        func hasSubscriptions(for subscriber: SubscriberId) -> Bool {
+            if let subscription = subscriptions[subscriber], subscription.subscription != nil {
+                return true
+            }
+            for node in nodes.values {
+                if node.hasSubscriptions(for: subscriber) {
+                    return true
+                }
+            }
+            return false
+        }
+
+        func subscribe(_ subscriber: SubscriberId, depth: Depth) {
+            guard var subscription = subscriptions[subscriber] else {
+                subscriptions[subscriber] = .init(subscription: depth)
+                return
+            }
+
+            // 2. Set the new subscription
+            subscription.subscription = depth
+
+            // 3. Remove an exlusion if it is redundant
+            if let exclusionDepth = subscription.exclusion, exclusionDepth == depth {
+                subscription.exclusion = nil
+            }
+            subscriptions[subscriber] = subscription
+        }
+
+        /**
+         Exclude a subscriber.
+
+         If a subscription exists with the same depth, then the subscription is removed without adding an exclusion.
+         - Parameter subscriber: The id of the subscriber
+         - Parameter depth: The optional depth of the exclusion
+         - Returns: `true`, if the exclusion was added, `false`, if an existing subscription was removed instead.
+        */
+        func exclude(_ subscriber: SubscriberId, depth: Int?) -> Bool {
+            guard var subscription = subscriptions[subscriber] else {
+                subscriptions[subscriber] = .init(exclusion: depth)
+                return true
+            }
+
+            if let subscriptionDepth = subscription.subscription, subscriptionDepth == depth {
+                subscriptions[subscriber] = nil
+                return false
+            }
+
+            subscription.exclusion = depth
+            subscriptions[subscriber] = subscription
+            return true
+        }
+
+        func remove(subscriber: SubscriberId) {
+            subscriptions[subscriber] = nil
+            for child in nodes.values {
+                child.remove(subscriber: subscriber)
+            }
+            // Remove unused child nodes
+            // Since remove() is called recursively on the tree,
+            // this will clear all empty paths in the tree from the leaves to the root
+            for (component, child) in nodes where child.isEmpty {
+                nodes[component] = nil
+            }
         }
     }
 
@@ -50,22 +124,8 @@ final class SubscriptionManager<SubscriberId: Hashable> {
      A component may exclude a specific sub-tree before subscribing, or add additional exclusions and subscriptions on other levels.
      */
     func subscribe(_ subscriber: SubscriberId, to path: Path, depth: Int?) {
-        // 1. Find the correct node in the tree
         let node = findOrCreateNode(at: path)
-
-        guard var subscription = node.subscriptions[subscriber] else {
-            node.subscriptions[subscriber] = .init(subscription: depth)
-            return
-        }
-
-        // 2. Set the new subscription
-        subscription.subscription = depth
-
-        // 3. Remove an exlusion if it is redundant
-        if let exclusionDepth = subscription.exclusion, exclusionDepth == depth {
-            subscription.exclusion = nil
-        }
-        node.subscriptions[subscriber] = subscription
+        node.subscribe(subscriber, depth: depth)
     }
 
     /**
@@ -75,25 +135,15 @@ final class SubscriptionManager<SubscriberId: Hashable> {
 
      If a subscription exists with the same depth for the same path, then the subscription is removed without adding an exclusion.
      Call ``subscribe(_:to:depth:)`` with the same `depth` to remove the exclusion and add a subscription.
+     - Parameter subscriber: The id of the subscriber
+     - Parameter path: The path to exclude for the subscriber
+     - Parameter depth: The optional depth of the exclusion
+     - Returns: `true`, if the exclusion was added, `false`, if an existing subscription was removed instead.
      */
-    func exclude(_ subscriber: SubscriberId, from path: Path, depth: Int?) {
-        // 1. Find the correct node in the tree
+    @discardableResult
+    func exclude(_ subscriber: SubscriberId, from path: Path, depth: Int?) -> Bool {
         let node = findOrCreateNode(at: path)
-
-        guard var subscription = node.subscriptions[subscriber] else {
-            node.subscriptions[subscriber] = .init(exclusion: depth)
-            return
-        }
-
-        // 2. Remove the subscription if needed
-        if let subscriptionDepth = subscription.subscription, subscriptionDepth == depth {
-            node.subscriptions[subscriber] = nil
-            return
-        }
-
-        // 3. Set the exclusion
-        subscription.exclusion = depth
-        node.subscriptions[subscriber] = subscription
+        return node.exclude(subscriber, depth: depth)
     }
 
     // MARK: Notifications
@@ -160,18 +210,17 @@ final class SubscriptionManager<SubscriberId: Hashable> {
      Remove all subscriptions and exclusions of a subscriber
      */
     func remove(subscriber: SubscriberId) {
-        remove(subscriber: subscriber, from: root)
+        // Note: The root node is always present
+        // even if all child nodes may be removed
+        root.remove(subscriber: subscriber)
     }
 
-    private func remove(subscriber: SubscriberId, from node: SubscriptionNode) {
-        node.subscriptions[subscriber] = nil
-        for child in node.nodes.values {
-            remove(subscriber: subscriber, from: child)
-        }
-        // Remove unused nodes
-        for (component, child) in node.nodes where child.isEmpty {
-            node.nodes[component] = nil
-        }
+    /**
+     Check if there is any subscription registered for the subscriber.
+     - Returns: `true`, if one or more subscriptions exist for the id
+     */
+    func hasSubscriptions(for subscriber: SubscriberId) -> Bool {
+        root.hasSubscriptions(for: subscriber)
     }
 
     // MARK: Helper
@@ -192,11 +241,13 @@ final class SubscriptionManager<SubscriberId: Hashable> {
 
     private func existingNodes(for path: Path) -> [SubscriptionNode] {
         var result = [root]
+        var last = root
         for component in path {
-            guard let child = result.last!.nodes[component] else {
+            guard let child = last.nodes[component] else {
                 break
             }
             result.append(child)
+            last = child
         }
         return result
     }
