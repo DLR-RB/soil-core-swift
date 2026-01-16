@@ -19,7 +19,7 @@ extension Path {
     }
 
     func removing(prefix: Path) -> Path {
-        // A prefix can only match if the path is at least as the prefix
+        // A prefix can only match if the path is at least as long as the prefix
         guard hasPrefix(prefix) else {
             return self
         }

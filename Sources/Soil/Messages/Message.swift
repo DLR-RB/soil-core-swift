@@ -48,7 +48,7 @@ public struct Message {
 
      Usage:
      - Subscription message: Indicate a subscription (`true`) or exclusion (`false`).
-     - History message: Indicate a subscription to the path (depth `0`)
+     // TODO: Move this into the message type (request, subscribe, exclude) to simplify
      */
     public let subscribe: Bool?
 
@@ -115,7 +115,28 @@ public struct Message {
 extension Message {
 
     /**
-     Create a push message to transmit a value
+     Create an empty message to acknowledge a subscription/exclusion or history request.
+     - Parameter path: The path of the original request.
+     - Parameter request: The id of the original request.
+     - Parameter timestamp: An optional timestamp to signal the processing time of the request.
+     - Note: The message type will be set to `value`
+     */
+    public static func acknowledge(path: Path, request: Int, timestamp: Timestamp? = nil) -> Self {
+        .init(
+            type: .value,
+            path: path,
+            time: timestamp,
+            request: request)
+    }
+
+    /**
+     Create a push message to transmit a value.
+     - Parameter path: The path of the value to transmit.
+     - Parameter value: The value associated with the path.
+     - Parameter timestamp: The timestamp associated with the value. `nil` indicates current time.
+     - Parameter request: The optional request id, if this is a response, or if an acknowledgement is expected.
+     - Parameter totalMessages: The total number of messages in response to the request
+     - Note: The message type will be set to `value`
      */
     public static func value(path: Path, value: Value, timestamp: Timestamp? = nil, request: Int? = nil, totalMessages: Int? = nil) -> Self {
         .init(
@@ -127,6 +148,14 @@ extension Message {
             request: request)
     }
 
+    /**
+     Create a message with several samples.
+     - Parameter path: The path of the value to transmit.
+     - Parameter samples: The samples associated with the path.
+     - Parameter request: The optional id of the request that prompted the message.
+     - Parameter totalMessages: The total number of messages in response to the request
+     - Note: The message type will be set to `value`
+     */
     public static func values(path: Path, samples: [Sample], request: Int? = nil, totalMessages: Int? = nil) -> Self {
         .init(
             type: .value,
@@ -136,6 +165,15 @@ extension Message {
             request: request)
     }
 
+    /**
+     Create a message for a history request.
+     - Parameter path: The path for which history is requested.
+     - Parameter start: The start date of the requested interval. `nil` indicates beginning of time.
+     - Parameter end: The end date of the requested interval. `nil` indicates end of time.
+     - Parameter limit: The maximum number of samples to send, counting from `start`
+     - Parameter request: The optional request id to include in responses.
+     - Note: The message type will be set to `history`
+     */
     public static func history(path: Path, start: Timestamp? = nil, end: Timestamp? = nil, limit: Int? = nil, request: Int? = nil) -> Self {
         .init(
             type: .history,
@@ -146,6 +184,14 @@ extension Message {
             request: request)
     }
 
+    /**
+     Create a message that requests values.
+     - Parameter path: The path for which values are requested.
+     - Parameter time: The point in time for which values are requested. `nil` indicates current time. The last value before or at the given time is returned.
+     - Parameter depth: The number of levels below the path that should be included in the responses.
+     - Parameter request: An optional request id to identify the responses.
+     - Note: The message type will be set to `request`
+     */
     public static func request(path: Path, beforeOrAt time: Timestamp? = nil, depth: Int? = nil, request: Int? = nil) -> Self {
         .init(
             type: .request,
@@ -155,21 +201,43 @@ extension Message {
             request: request)
     }
 
+    /**
+     Create a subscription request.
+     - Parameter path: The path to subscribe to.
+     - Parameter depth: The number of levels below the path to subscribe to.
+     - Parameter request: An optional request id, with which the component can respond.
+     - Note: The message type will be set to `request`
+     */
     public static func subscribe(path: Path, depth: Int? = nil, request: Int? = nil) -> Self {
-        .init(
-            type: .request,
-            path: path,
-            count: depth,
-            subscribe: true,
-            request: request)
+        subscribeOrExclude(path: path, subscribe: true, depth: depth, request: request)
     }
 
-    public static func exclude(path: Path, depth: Int? = nil) -> Self {
+    /**
+     Create a request for an exclusion from a subscription.
+     - Parameter path: The path to exclude.
+     - Parameter depth: The number of levels below the path to exclude.
+     - Parameter request: An optional request id, with which the component can respond.
+     - Note: The message type will be set to `request`
+     */
+    public static func exclude(path: Path, depth: Int? = nil, request: Int? = nil) -> Self {
+        subscribeOrExclude(path: path, subscribe: false, depth: depth, request: request)
+    }
+
+    /**
+     Create a request for a subscription or exclusion.
+     - Parameter path: The path to subscribte to or exclude.
+     - Parameter subscribe: Indicate if this is a subscription or exclusion
+     - Parameter depth: The number of levels below the path to sucbribe/exclude.
+     - Parameter request: An optional request id, with which the component can respond.
+     - Note: The message type will be set to `request`
+     */
+    public static func subscribeOrExclude(path: Path, subscribe: Bool, depth: Int? = nil, request: Int? = nil) -> Self {
         .init(
             type: .request,
             path: path,
             count: depth,
-            subscribe: false)
+            subscribe: subscribe,
+            request: request)
     }
 }
 

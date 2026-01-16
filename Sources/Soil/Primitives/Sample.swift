@@ -20,6 +20,16 @@ public struct Sample {
     }
 
     /**
+     Create a sample.
+     - Parameter value: The contained value
+     - Parameter date: The timestamp associated with the value. `nil` indicates current time
+     */
+    public init(value: Value, timestamp: Timestamp?) {
+        self.value = value
+        self.timestamp = timestamp ?? .current()
+    }
+
+    /**
      Create a timestamped value with a unix timestamp (seconds since 1970).
      - Parameter value: The contained value
      - Parameter timestamp: The unix timestamp associated with the value.
