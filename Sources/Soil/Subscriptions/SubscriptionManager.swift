@@ -2,7 +2,14 @@
 /// The depth of a subscription (may be nil)
 private typealias Depth = Int?
 
+/**
+ A subscription manager is used to track subscription and exclusion requests from other components.
 
+ It internally creates a tree that tracks the subscriptions for all components,
+ and provides functions to check which components are interested in given paths.
+
+ The manager is also used to track subscriptions in code, not just for external subscriptions.
+ */
 final class SubscriptionManager<SubscriberId: Hashable> {
 
     /// An internal struct to store subscription and exclusion information for a node
@@ -17,9 +24,18 @@ final class SubscriptionManager<SubscriberId: Hashable> {
 
     // MARK: Node
 
-    /// An internal class to store the subscriptions for a node in the path tree.
+    /**
+     An internal class to store the subscriptions for a node in the path tree.
+
+     The data is organized in a single tree of nodes, where each node stores information
+     about its subscribers, instead of a separate subscription tree for each subscriber id.
+     This approach was chosen because it's then easier to check for subscriptions for a particular path,
+     instead of iterating over all subscribers and checking them.
+     The downside is that removing all subscriptions for an id requires traversing the full tree once.
+     */
     private final class SubscriptionNode {
 
+        /// The subscriptions for this node, indexed by component id
         var subscriptions: [SubscriberId : Subscription] = [:]
 
         /// The child nodes of this path
@@ -48,16 +64,22 @@ final class SubscriptionManager<SubscriberId: Hashable> {
             return false
         }
 
+        /**
+         Add a subscription for this node.
+         - Parameter subscriber: The id of the subcribing component
+         - Parameter depth: The depth of the subscription.
+         - Note: If an exclusion of the same depth is found, then it is removed
+         */
         func subscribe(_ subscriber: SubscriberId, depth: Depth) {
             guard var subscription = subscriptions[subscriber] else {
                 subscriptions[subscriber] = .init(subscription: depth)
                 return
             }
 
-            // 2. Set the new subscription
+            // Set the new subscription
             subscription.subscription = depth
 
-            // 3. Remove an exlusion if it is redundant
+            // Remove an exlusion if it is redundant
             if let exclusionDepth = subscription.exclusion, exclusionDepth == depth {
                 subscription.exclusion = nil
             }
@@ -88,26 +110,30 @@ final class SubscriptionManager<SubscriberId: Hashable> {
             return true
         }
 
+        /**
+         Completely remove a subscriber from the node, including all child nodes.
+         - Parameter subscriber: The id of the subscriber to remove from the subtree.
+         - Note: Child nodes that are empty after removing the subscriber will be removed.
+           This prunes the tree of empty nodes.
+         */
         func remove(subscriber: SubscriberId) {
             subscriptions[subscriber] = nil
-            for child in nodes.values {
+
+            // Remove all child nodes that are empty after removing the subscriber from them
+            nodes = nodes.filter { _ , child in
                 child.remove(subscriber: subscriber)
-            }
-            // Remove unused child nodes
-            // Since remove() is called recursively on the tree,
-            // this will clear all empty paths in the tree from the leaves to the root
-            for (component, child) in nodes where child.isEmpty {
-                nodes[component] = nil
+                return !child.isEmpty
             }
         }
     }
 
     /// The root node of the path tree to store subscriptions
-    private let root: SubscriptionNode
+    private let root = SubscriptionNode()
 
-    init() {
-        root = SubscriptionNode()
-    }
+    /**
+     Create a subscription manager to track subscriptions of components.
+     */
+    init() { }
 
     // MARK: Subscriptions
 
@@ -225,6 +251,13 @@ final class SubscriptionManager<SubscriberId: Hashable> {
 
     // MARK: Helper
 
+    /**
+     Find an existing node, or create it in the tree.
+
+     Used when inserting a subscription or exclusion.
+     - Parameter path: The path to the node.
+     - Returns: The final node corresponding to the path
+     */
     private func findOrCreateNode(at path: Path) -> SubscriptionNode {
         var node = root
         for component in path {
@@ -239,6 +272,11 @@ final class SubscriptionManager<SubscriberId: Hashable> {
         return node
     }
 
+    /**
+     Get all existing nodes in the tree on the way to a node corresponding to a path.
+     - Parameter path: The path to the node.
+     - Returns: All existing nodes along the path.
+     */
     private func existingNodes(for path: Path) -> [SubscriptionNode] {
         var result = [root]
         var last = root
