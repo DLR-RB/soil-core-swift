@@ -23,6 +23,11 @@ final class ActiveRequest<ComponentId> {
     /// The closure to call when a message for the request is received
     let callback: (Response<ComponentId>) -> Void
 
+    /**
+     Create an active request with a callback
+     - Parameter request: The information about the transmitted request
+     - Parameter callback: The closure to call when the request receives responses
+     */
     init(request: Request<ComponentId>, callback: @escaping (Response<ComponentId>) -> Void) {
         self.request = request
         self.callback = callback

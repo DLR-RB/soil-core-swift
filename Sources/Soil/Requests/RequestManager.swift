@@ -5,6 +5,8 @@
  - History requests: Track missing messages
  - Value requests: Track missing messages
  - Subscriptions/exclusions: Track acknowledgement
+
+ Request managers are generic over the component id, which is determined by the transport layer.
  */
 final class RequestManager<ComponentId: Hashable> {
 

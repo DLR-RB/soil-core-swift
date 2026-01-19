@@ -1,4 +1,3 @@
-import Foundation
 
 /**
  A message to transmit between components.

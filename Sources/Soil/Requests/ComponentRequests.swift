@@ -8,11 +8,19 @@ final class ComponentRequests<ComponentId> {
     /// The active requests for the component, indexed by the request id
     private var requests: [Int : ActiveRequest<ComponentId>] = [:]
 
+    /*
+     The id used for the most recent request
+
+     This id is always incremented for the next request,
+     so that the first request of the component has id `1`.
+     The request id resets if the component is disconnected.
+     */
     private var lastId = 0
 
-    init() {
-
-    }
+    /**
+     Create a structure to track requests to a component.
+     */
+    init() { }
 
     /**
      Get the request id for the component.
