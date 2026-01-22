@@ -11,9 +11,9 @@ struct StorageTests {
         let pathA = ["a", "b", "c"]
         let now = Timestamp.current()
 
-        storage.save(.integer(123), for: pathA, at: now)
+        storage.receive(.integer(123), for: pathA, at: now)
 
-        let storedPathA = storage.sample(for: pathA)
+        let storedPathA = storage.currentSample(for: pathA)
         #expect(storedPathA != nil)
         #expect(storedPathA?.value == .integer(123))
         #expect(storedPathA?.timestamp == now)
@@ -28,30 +28,31 @@ struct StorageTests {
 
         let now = Timestamp.current()
 
-        storage.save(.integer(123), for: ["a", "b", "c"], at: now)
-        storage.save(.double(3.14), for: ["a", "b", "d"], at: now)
-        storage.save(.string("some"), for: ["a", "e"], at: now)
+        storage.receive(.integer(123), for: ["a", "b", "c"], at: now)
+        storage.receive(.double(3.14), for: ["a", "b", "d"], at: now)
+        storage.receive(.string("some"), for: ["a", "e"], at: now)
 
         do {
             let tree = storage.tree(for: ["a"], depth: nil)
-            #expect(tree.value == nil)
-            #expect(tree.timestamp == nil)
+            #expect(tree.current == nil)
             #expect(tree.children.count == 2)
             let b = try #require(tree.children["b"])
-            #expect(b.value == nil)
-            #expect(b.timestamp == nil)
+            #expect(b.current == nil)
             #expect(b.children.count == 2)
             let c = try #require(b.children["c"])
-            #expect(c.value == .integer(123))
-            #expect(c.timestamp?.isVeryClose(to: now) ?? false)
+            let cSample = try #require(c.current)
+            #expect(cSample.value == .integer(123))
+            #expect(cSample.timestamp.isVeryClose(to: now))
             #expect(c.children.count == 0)
             let d = try #require(b.children["d"])
-            #expect(d.value == .double(3.14))
-            #expect(d.timestamp?.isVeryClose(to: now) ?? false)
+            let dSample = try #require(d.current)
+            #expect(dSample.value == .double(3.14))
+            #expect(dSample.timestamp.isVeryClose(to: now))
             #expect(d.children.count == 0)
             let e = try #require(tree.children["e"])
-            #expect(e.value == .string("some"))
-            #expect(e.timestamp?.isVeryClose(to: now) ?? false)
+            let eSample = try #require(e.current)
+            #expect(eSample.value == .string("some"))
+            #expect(eSample.timestamp.isVeryClose(to: now))
             #expect(e.children.count == 0)
         }
     }
@@ -62,52 +63,55 @@ struct StorageTests {
 
         let now = Timestamp.current()
 
-        storage.save(.integer(123), for: ["a", "b", "c"], at: now)
-        storage.save(.double(3.14), for: ["a", "b", "d"], at: now)
-        storage.save(.string("some"), for: ["a", "e"], at: now)
+        storage.receive(.integer(123), for: ["a", "b", "c"], at: now)
+        storage.receive(.double(3.14), for: ["a", "b", "d"], at: now)
+        storage.receive(.string("some"), for: ["a", "e"], at: now)
 
         do {
             let tree = storage.tree(for: ["a"], depth: 2)
-            #expect(tree.value == nil)
-            #expect(tree.timestamp == nil)
+            #expect(tree.current == nil)
             #expect(tree.children.count == 2)
             let b = try #require(tree.children["b"])
-            #expect(b.value == nil)
-            #expect(b.timestamp == nil)
+            #expect(b.current == nil)
             #expect(b.children.count == 2)
             let c = try #require(b.children["c"])
-            #expect(c.value == .integer(123))
-            #expect(c.timestamp?.isVeryClose(to: now) ?? false)
+            let cSample = try #require(c.current)
+            #expect(c.samples.count == 1)
+            #expect(cSample.value == .integer(123))
+            #expect(cSample.timestamp.isVeryClose(to: now))
             #expect(c.children.count == 0)
             let d = try #require(b.children["d"])
-            #expect(d.value == .double(3.14))
-            #expect(d.timestamp?.isVeryClose(to: now) ?? false)
+            let dSample = try #require(d.current)
+            #expect(d.samples.count == 1)
+            #expect(dSample.value == .double(3.14))
+            #expect(dSample.timestamp.isVeryClose(to: now))
             #expect(d.children.count == 0)
             let e = try #require(tree.children["e"])
-            #expect(e.value == .string("some"))
-            #expect(e.timestamp?.isVeryClose(to: now) ?? false)
+            let eSample = try #require(e.current)
+            #expect(e.samples.count == 1)
+            #expect(eSample.value == .string("some"))
+            #expect(eSample.timestamp.isVeryClose(to: now))
             #expect(e.children.count == 0)
         }
 
         do {
             let tree = storage.tree(for: ["a"], depth: 1)
-            #expect(tree.value == nil)
-            #expect(tree.timestamp == nil)
+            #expect(tree.current == nil)
             #expect(tree.children.count == 2)
             let b = try #require(tree.children["b"])
-            #expect(b.value == nil)
-            #expect(b.timestamp == nil)
+            #expect(b.current == nil)
             #expect(b.children.count == 0)
             let e = try #require(tree.children["e"])
-            #expect(e.value == .string("some"))
-            #expect(e.timestamp?.isVeryClose(to: now) ?? false)
+            #expect(e.samples.count == 1)
+            let eSample = try #require(e.current)
+            #expect(eSample.value == .string("some"))
+            #expect(eSample.timestamp.isVeryClose(to: now))
             #expect(e.children.count == 0)
         }
 
         do {
             let tree = storage.tree(for: ["a"], depth: 0)
-            #expect(tree.value == nil)
-            #expect(tree.timestamp == nil)
+            #expect(tree.current == nil)
             #expect(tree.children.count == 0)
         }
     }
@@ -144,7 +148,7 @@ struct StorageTests {
         }
 
         let first = Timestamp.current()
-        storage.save(.integer(123), for: [], at: first)
+        storage.receive(.integer(123), for: [], at: first)
         do {
             let one = storage.samples(for: [], from: nil, to: nil, limit: nil)
             try #require(one.count == 1)
@@ -165,39 +169,39 @@ struct StorageTests {
         }
 
         let second = first.addingTimeInterval(1.0)
-        storage.save(.integer(234), for: [], at: second)
+        storage.receive(.integer(234), for: [], at: second)
         do {
             let two = storage.samples(for: [], from: nil, to: nil, limit: nil)
             try #require(two.count == 2)
-            // Values are returned newest first
-            #expect(two[0].value == .integer(234))
-            #expect(two[0].timestamp == second)
-            #expect(two[1].value == .integer(123))
-            #expect(two[1].timestamp == first)
+            // Values are returned oldest first
+            #expect(two[0].value == .integer(123))
+            #expect(two[0].timestamp == first)
+            #expect(two[1].value == .integer(234))
+            #expect(two[1].timestamp == second)
         }
         do {
-            // start date is exclusive, so expect only first value
-            let one = storage.samples(for: [], from: second, to: nil, limit: nil)
-            try #require(one.count == 1)
-            #expect(one[0].value == .integer(123))
-            #expect(one[0].timestamp == first)
-        }
-        do {
-            // end date is inclusive, so expect both values
-            let two = storage.samples(for: [], from: nil, to: first, limit: nil)
-            try #require(two.count == 2)
-            // Values are returned newest first
-            #expect(two[0].value == .integer(234))
-            #expect(two[0].timestamp == second)
-            #expect(two[1].value == .integer(123))
-            #expect(two[1].timestamp == first)
-        }
-        do {
-            // limit to 1, so only expect second value
-            let one = storage.samples(for: [], from: nil, to: nil, limit: 1)
+            // start date is exclusive, so expect only second value
+            let one = storage.samples(for: [], from: first, to: nil, limit: nil)
             try #require(one.count == 1)
             #expect(one[0].value == .integer(234))
             #expect(one[0].timestamp == second)
+        }
+        do {
+            // end date is inclusive, so expect both values
+            let two = storage.samples(for: [], from: nil, to: second, limit: nil)
+            try #require(two.count == 2)
+            // Values are returned oldest first
+            #expect(two[0].value == .integer(234))
+            #expect(two[0].timestamp == second)
+            #expect(two[1].value == .integer(123))
+            #expect(two[1].timestamp == first)
+        }
+        do {
+            // limit to 1, so only expect first value
+            let one = storage.samples(for: [], from: nil, to: nil, limit: 1)
+            try #require(one.count == 1)
+            #expect(one[0].value == .integer(123))
+            #expect(one[0].timestamp == first)
         }
     }
 
@@ -210,16 +214,17 @@ struct StorageTests {
             Sample(value: .integer(123 + $0), timestamp: now.addingTimeInterval(Double($0)))
         }
         for sample in samples {
-            storage.save(sample.value, for: [], at: sample.timestamp)
+            storage.receive(sample.value, for: [], at: sample.timestamp)
         }
 
         let history = storage.samples(for: [])
         try #require(history.count == samples.count)
-        #expect(history.first!.timestamp > history.last!.timestamp, "History should be sorted newest first")
-        let reversedSamples = Array(samples.reversed())
+        #expect(history.first! < history.last!, "History should be sorted oldest first")
         for index in history.indices {
-            #expect(history[index].value == reversedSamples[index].value)
-            #expect(history[index].timestamp.isVeryClose(to: reversedSamples[index].timestamp))
+            let retrieved = history[index]
+            let original = samples[index]
+            #expect(retrieved.value == original.value)
+            #expect(retrieved.timestamp.isVeryClose(to: original.timestamp))
         }
     }
 }

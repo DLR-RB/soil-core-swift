@@ -183,8 +183,8 @@ final class RequestManager<ComponentId: Hashable> {
      Create and track a request for a value of a component.
      - Parameter path: The path for which to request the value
      - Parameter component: The id of the component to which the request is made
-     - Parameter time: The point in time for which the values are requested.
-     - Parameter depth: The number of levels below the requested node for which to return samples.
+     - Parameter time: The point in time for which the values are requested, defaults to `nil`
+     - Parameter depth: The number of levels below the requested node for which to return samples, defaults to no limit
      - Parameter receivedSample: The closure to call with the received values. May be called multiple times.
      - Returns: The id of the performed request.
      */
@@ -201,7 +201,7 @@ final class RequestManager<ComponentId: Hashable> {
             to: path,
             of: component) { response in
                 if let value = response.value {
-                    let sample = Sample(value: value, timestamp: response.timestamp)
+                    let sample = Sample(value: value, timestamp: response.timestamp ?? .current())
                     receivedSample(response.request.path, sample)
                 }
                 for sample in response.samples {
@@ -234,7 +234,7 @@ final class RequestManager<ComponentId: Hashable> {
             to: path,
             of: component) { response in
                 if let value = response.value {
-                    let sample = Sample(value: value, timestamp: response.timestamp)
+                    let sample = Sample(value: value, timestamp: response.timestamp ?? .current())
                     receivedSample(sample)
                 }
                 for sample in response.samples {
