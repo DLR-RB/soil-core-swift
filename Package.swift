@@ -8,7 +8,7 @@ let package = Package(
     ],
     products: [
         .library(
-            name: "soil-swift",
+            name: "Soil",
             targets: ["Soil"]
         ),
     ],
