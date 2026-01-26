@@ -73,7 +73,7 @@ final class ComponentRequests<ComponentId> {
         - the component id matches the sender of the message
      */
     func findRequestAndUpdate(with message: Message) -> Bool {
-        guard let id = message.request else {
+        guard let id = message.id else {
             // If the request does not contain a request id,
             // either the component doesn't add it, or the message is not relevant
             return findRequest(for: message)

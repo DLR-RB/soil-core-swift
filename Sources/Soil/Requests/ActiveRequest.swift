@@ -37,12 +37,12 @@ final class ActiveRequest<ComponentId> {
     /**
      Update the active request, run the callback, and check if the request is completed.
      - Note: This function expects that:
-       - the message is a value message
+       - the message is a data message
        - the component id matches the sender of the message
        - the request id matches this request.
      */
     func update(with message: Message) {
-        guard requestPath(matches: message.path) else {
+        guard let path = message.path, requestPath(matches: path) else {
             // TODO: Propagate warning instead of quietly ignoring the error
 
             // TODO: Should we still update the expected message count if the path is incorrect?
@@ -54,7 +54,7 @@ final class ActiveRequest<ComponentId> {
         receivedMessages += 1
         let response = Response(
             request: request,
-            path: message.path,
+            path: path,
             value: message.value,
             timestamp: message.time,
             samples: message.samples ?? [],
@@ -66,13 +66,12 @@ final class ActiveRequest<ComponentId> {
      Check that the path in the response matches the request.
 
      For all requests the response must either:
-     - Match perfectly for subscriptions, exclusions and history requests
+     - Match perfectly for inclusions, exclusions and history requests
      - Be a sub-path of the request for value requests within the requested depth
      */
     private func requestPath(matches path: Path) -> Bool {
-
         switch request.type {
-        case .value(_, let depth):
+        case .data(_, _, let depth, _):
             // All responses for a value request must be in the requested sub-tree
             guard path.hasPrefix(request.path) else {
                 return false
@@ -84,9 +83,12 @@ final class ActiveRequest<ComponentId> {
             // With a depth, the remaining path must not be too long
             let remainingDepth = path.count - request.path.count
             return remainingDepth <= depth
-        case .subscriptionOrExclusion, .history:
+        case .include, .exclude:
             // For subscriptions, exclusions, and history requests, we expect the exact path
             return path == request.path
+        case .deleteSubscription:
+            // Response matches if id matches
+            return true
         }
     }
 

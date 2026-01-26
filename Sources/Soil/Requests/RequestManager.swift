@@ -66,7 +66,7 @@ final class RequestManager<ComponentId: Hashable> {
      */
     @discardableResult
     func didReceive(message: Message, from component: ComponentId) -> Bool {
-        guard message.type == .value else {
+        guard message.type == .data else {
             // We only care about value messages, which can be responses to requests
             return false
         }
@@ -110,27 +110,38 @@ final class RequestManager<ComponentId: Hashable> {
         of component: ComponentId,
         responses: @escaping (Response<ComponentId>) -> Void
     ) -> Int {
-        let requestId = nextRequestId(for: component)
+        let id = nextRequestId(for: component)
+        executeRequest(type, to: path, of: component, id: id, responses: responses)
+        return id
+    }
 
+    private func executeRequest(
+        _ type: RequestType,
+        to path: Path,
+        of component: ComponentId,
+        id: Int,
+        responses: @escaping (Response<ComponentId>) -> Void
+    ) {
         let message = switch type {
-            case .subscriptionOrExclusion(let subscribe, let depth):
-                Message.subscribeOrExclude(path: path, subscribe: subscribe, depth: depth, request: requestId)
-            case .history(let start, let end, let limit):
-                Message.history(path: path, start: start, end: end, limit: limit, request: requestId)
-            case .value(let time, let depth):
-                Message.request(path: path, beforeOrAt: time, depth: depth, request: requestId)
+            case .exclude(let depth):
+                Message.exclude(path, with: depth, from: id)
+            case .include(let depth):
+                Message.include(path, with: depth, in: id)
+            case .deleteSubscription:
+                Message.delete(subscription: id)
+            case .data(let start, let end, let depth, let limit):
+                Message.request(path, from: start, to: end, limit: limit, depth: depth, id: id)
         }
 
         defer { send(message: message, to: component) }
 
         let request =  Request(
             component: component,
-            id: requestId,
+            id: id,
             path: path,
             type: type)
 
         store(request, callback: responses)
-        return requestId
     }
 
     /**
@@ -142,14 +153,14 @@ final class RequestManager<ComponentId: Hashable> {
      - Returns: The id of the performed request.
      */
     @discardableResult
-    func subscribe(
+    func include(
         to path: Path,
         of component: ComponentId,
         depth: Int? = nil,
         confirmationReceived: @escaping () -> Void
     ) -> Int {
         makeAndTrackRequest(
-            .subscriptionOrExclusion(subscribe: true, depth: depth),
+            .include(depth: depth),
             to: path,
             of: component) { _ in
                 confirmationReceived()
@@ -165,16 +176,36 @@ final class RequestManager<ComponentId: Hashable> {
      - Returns: The id of the performed request.
      */
     @discardableResult
-    func excludeOrUnsubscribe(
+    func exclude(
         from path: Path,
         of component: ComponentId,
         depth: Int? = nil,
         confirmationReceived: @escaping () -> Void
     ) -> Int {
         makeAndTrackRequest(
-            .subscriptionOrExclusion(subscribe: false, depth: depth),
+            .exclude(depth: depth),
             to: path,
             of: component) { _ in
+            confirmationReceived()
+        }
+    }
+
+    /**
+     Create and track a request to delete a subscription.
+     - Parameter component: The id of the component which is targeted.
+     - Parameter depth: The depth of the original subscription or the depth to exclude
+     - Parameter confirmationReceived: A closure to call when the response is received.
+     */
+    func delete(
+        subscription: Int,
+        for component: ComponentId,
+        confirmationReceived: @escaping () -> Void
+    ) {
+        executeRequest(
+            .deleteSubscription,
+            to: [],
+            of: component,
+            id: subscription) { _ in
             confirmationReceived()
         }
     }
@@ -183,21 +214,25 @@ final class RequestManager<ComponentId: Hashable> {
      Create and track a request for a value of a component.
      - Parameter path: The path for which to request the value
      - Parameter component: The id of the component to which the request is made
-     - Parameter time: The point in time for which the values are requested, defaults to `nil`
+     - Parameter start: The start date of the requested interval (exclusive)
+     - Parameter end: The end date of the requested interval (inclusive)
+     - Parameter limit: The maximum number of samples to return (counted from `start`)
      - Parameter depth: The number of levels below the requested node for which to return samples, defaults to no limit
      - Parameter receivedSample: The closure to call with the received values. May be called multiple times.
      - Returns: The id of the performed request.
      */
     @discardableResult
-    func requestValue(
+    func requestData(
         at path: Path,
-        from component: ComponentId,
-        beforeOrAt time: Timestamp? = nil,
+        of component: ComponentId,
+        from start: Timestamp? = nil,
+        to end: Timestamp? = nil,
+        limit: Int? = nil,
         depth: Int? = nil,
         receivedSample: @escaping (_ path: Path, _ sample: Sample) -> Void
     ) -> Int {
         makeAndTrackRequest(
-            .value(time: time, depth: depth),
+            .data(start: start, end: end, depth: depth, limit: limit),
             to: path,
             of: component) { response in
                 if let value = response.value {
@@ -206,39 +241,6 @@ final class RequestManager<ComponentId: Hashable> {
                 }
                 for sample in response.samples {
                     receivedSample(response.path, sample)
-                }
-            }
-    }
-
-    /**
-     Create and track a request for history of a component
-     - Parameter path: The path for which to request the historic samples
-     - Parameter component: The id of the component to which the request is made
-     - Parameter start: The start date of the requested interval (exclusive)
-     - Parameter end: The end date of the requested interval (inclusive)
-     - Parameter limit: The maximum number of samples to return (counted from `start`)
-     - Parameter receivedSample: The closure to call with the received samples. May be called multiple times
-     - Returns: The id of the performed request.
-     */
-    @discardableResult
-    func requestHistory(
-        for path: Path,
-        of component: ComponentId,
-        from start: Timestamp? = nil,
-        to end: Timestamp? = nil,
-        limit: Int? = nil,
-        receivedSample: @escaping (Sample) -> Void
-    ) -> Int {
-        makeAndTrackRequest(
-            .history(start: start, end: end, limit: limit),
-            to: path,
-            of: component) { response in
-                if let value = response.value {
-                    let sample = Sample(value: value, timestamp: response.timestamp ?? .current())
-                    receivedSample(sample)
-                }
-                for sample in response.samples {
-                    receivedSample(sample)
                 }
             }
     }

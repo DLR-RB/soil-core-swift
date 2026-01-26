@@ -6,108 +6,117 @@
  */
 public struct Message {
 
-    /// Indicate the message type (may be ommited for a value message)
+    /// Indicate the message type (may be ommited for a data message)
     public let type: MessageType
 
-    /// The identifying path of the data contained at the top level of this message
-    public let path: Path
+    /**
+     The identifying path of the data contained at the top level of this message
+
+     Usage:
+     - Data message: The path associated with the sample(s)
+     - Request message: The requested path
+     - Subscription inclusion: The path to include
+     - Subscription exclusion: The path to exclude
+     */
+    public let path: Path?
 
     /**
      A value associated with the `path`.
 
      Usage:
-     - Value message: The value for a path
-     - Note: If `time` is set, then it represents the timestamp of the value,
-     otherwise the value is treated as a current time value.
+     - Data message: The single value transmitted for a path
 
-     A future use may be for subscriptions to indicate the default value of a path.
+     - Note: If `time` is set, then it represents the timestamp of the value,
+       otherwise the value is treated as a current time value.
      */
     public let value: Value?
 
     /**
-     A sample associated with the `path`.
+     The samples associated with the `path`.
 
      Usage:
-     - Value message: Used in responses to history data requests
+     - Data message: Used to transmit multiple samples for a path
      */
     public let samples: [Sample]?
 
     /**
-     A generic count used as a limit or depth.
+     A generic count or limit
 
      Usage:
-     - Value message: Indicate the total number of messages for the request
-     - Request: Indicate the maximum depth (Negative values are treated as no limit)
-     - History: Limit the number of returned samples (negative values are treated as no limit)
+     - Data message: Indicate the total number of messages for the request (if request id is set)
+     - Request message: The maximum number of samples to return
      */
     public let count: Int?
 
     /**
-     A subscription indicator
+     The depth of a tree.
 
      Usage:
-     - Subscription message: Indicate a subscription (`true`) or exclusion (`false`).
-     // TODO: Move this into the message type (request, subscribe, exclude) to simplify
+     - Request message: Indicate the maximum depth (Negative values are treated as 0)
+     - Subscription inclusion: The depth of the inclusion at the path
+     - Subscription exclusion: The depth of the exclusion at the path
      */
-    public let subscribe: Bool?
+    public let depth: Int?
 
     /**
-     A date.
+     A (start) date.
 
      Usage:
-     - Value message: Used together with `value` to indicate the timestamp (`nil` represents the current time).
-     - Request message: The point in time for which values are requested (`nil` represents the most recent values).
-     - History request: Used as the `start` date of history requests.
+     - Data message: Used together with `value` to indicate the timestamp (`nil` represents the current time).
+     - Request message: Used as the `start` date for the requested path.
      */
     public let time: Timestamp?
 
     /**
-     The end date using in history requests.
+     The end date used in requests.
 
      Usage:
-     - History request: Used to indicate the end of a request interval.
+     - Request message: Used to indicate the end of a request interval.
      */
     public let end: Timestamp?
 
     /**
-     The id of the request.
+     The id of the request or subscription.
 
      Usage:
-     - Value message: Identifies the request that this value corresponds to.
+     - Data message: Identifies the request that this value corresponds to.
      - Request message: An identifier to include in responses to the request.
-     - History request: An identifier to include in responses to the request.
+     - Subscription message: The unique id of the subscription.
      */
-    public let request: Int?
+    public let id: Int?
 
     /**
-     Additional messages relative to this message.
-
-     These are used to send tree structures more efficiently.
+     Create a message.
+     - Parameter type: The message type
+     - Parameter path: The path associated with the data or request
+     - Parameter value: The single value in a data message
+     - Parameter time: The value timestamp or start date
+     - Parameter samples: The samples in a data message
+     - Parameter count: The limit in requests or message count in responses
+     - Parameter depth: The subscription depth
+     - Parameter end: The end date in history requests
+     - Parameter id: The request or subscription id
      */
-    //let children: [TransportLayerMessage]?
-
-    public init(
+    init(
         type: MessageType,
-        path: Path,
+        path: Path? = nil,
         value: Value? = nil,
         time: Timestamp? = nil,
         samples: [Sample]? = nil,
         count: Int? = nil,
-        subscribe: Bool? = nil,
+        depth: Int? = nil,
         end: Timestamp? = nil,
-        request: Int? = nil
-        //children: [TransportLayerMessage]? = nil
+        id: Int? = nil
     ) {
         self.type = type
         self.path = path
         self.value = value
         self.samples = samples
         self.count = count
-        self.subscribe = subscribe
+        self.depth = depth
         self.time = time
         self.end = end
-        self.request = request
-        //self.children = children
+        self.id = id
     }
 }
 
@@ -118,14 +127,14 @@ extension Message {
      - Parameter path: The path of the original request.
      - Parameter request: The id of the original request.
      - Parameter timestamp: An optional timestamp to signal the processing time of the request.
-     - Note: The message type will be set to `value`
+     - Note: The message type will be set to `data`
      */
-    public static func acknowledge(path: Path, request: Int, timestamp: Timestamp? = nil) -> Self {
+    public static func acknowledge(_ request: Int, to path: Path, timestamp: Timestamp? = nil) -> Self {
         .init(
-            type: .value,
+            type: .data,
             path: path,
             time: timestamp,
-            request: request)
+            id: request)
     }
 
     /**
@@ -135,16 +144,16 @@ extension Message {
      - Parameter timestamp: The timestamp associated with the value. `nil` indicates current time.
      - Parameter request: The optional request id, if this is a response, or if an acknowledgement is expected.
      - Parameter totalMessages: The total number of messages in response to the request
-     - Note: The message type will be set to `value`
+     - Note: The message type will be set to `data`
      */
-    public static func value(path: Path, value: Value, timestamp: Timestamp? = nil, request: Int? = nil, totalMessages: Int? = nil) -> Self {
+    public static func value(_ value: Value, for path: Path, at timestamp: Timestamp? = nil, inResponseTo request: Int? = nil, withCount totalMessages: Int? = nil) -> Self {
         .init(
-            type: .value,
+            type: .data,
             path: path,
             value: value,
             time: timestamp,
             count: totalMessages,
-            request: request)
+            id: request)
     }
 
     /**
@@ -153,15 +162,15 @@ extension Message {
      - Parameter samples: The samples associated with the path.
      - Parameter request: The optional id of the request that prompted the message.
      - Parameter totalMessages: The total number of messages in response to the request
-     - Note: The message type will be set to `value`
+     - Note: The message type will be set to `data`
      */
-    public static func values(path: Path, samples: [Sample], request: Int? = nil, totalMessages: Int? = nil) -> Self {
+    public static func samples(_ samples: [Sample], for path: Path, inResponseTo request: Int? = nil, totalMessages: Int? = nil) -> Self {
         .init(
-            type: .value,
+            type: .data,
             path: path,
             samples: samples,
             count: totalMessages,
-            request: request)
+            id: request)
     }
 
     /**
@@ -170,73 +179,66 @@ extension Message {
      - Parameter start: The start date of the requested interval. `nil` indicates beginning of time.
      - Parameter end: The end date of the requested interval. `nil` indicates end of time.
      - Parameter limit: The maximum number of samples to send, counting from `start`
-     - Parameter request: The optional request id to include in responses.
-     - Note: The message type will be set to `history`
-     */
-    public static func history(path: Path, start: Timestamp? = nil, end: Timestamp? = nil, limit: Int? = nil, request: Int? = nil) -> Self {
-        .init(
-            type: .history,
-            path: path,
-            time: start,
-            count: limit,
-            end: end,
-            request: request)
-    }
-
-    /**
-     Create a message that requests values.
-     - Parameter path: The path for which values are requested.
-     - Parameter time: The point in time for which values are requested. `nil` indicates current time. The last value before or at the given time is returned.
-     - Parameter depth: The number of levels below the path that should be included in the responses.
-     - Parameter request: An optional request id to identify the responses.
+     - Parameter depth: The number of levels below the path to include.
+     - Parameter id: The optional request id to include in responses.
      - Note: The message type will be set to `request`
      */
-    public static func request(path: Path, beforeOrAt time: Timestamp? = nil, depth: Int? = nil, request: Int? = nil) -> Self {
+    public static func request(_ path: Path, from start: Timestamp? = nil, to end: Timestamp? = nil, limit: Int? = nil, depth: Int? = nil, id: Int? = nil) -> Self {
         .init(
             type: .request,
             path: path,
-            time: time,
-            count: depth,
-            request: request)
+            time: start,
+            count: limit,
+            depth: depth,
+            end: end,
+            id: id)
     }
 
     /**
      Create a subscription request.
      - Parameter path: The path to subscribe to.
      - Parameter depth: The number of levels below the path to subscribe to.
-     - Parameter request: An optional request id, with which the component can respond.
-     - Note: The message type will be set to `request`
+     - Parameter subscription: The id of the subscription.
+     - Note: The message type will be set to `subscriptionInclusion`
      */
-    public static func subscribe(path: Path, depth: Int? = nil, request: Int? = nil) -> Self {
-        subscribeOrExclude(path: path, subscribe: true, depth: depth, request: request)
+    public static func include(_ path: Path, with depth: Int? = nil, in subscription: Int) -> Self {
+        perform(.subscriptionInclusion, on: subscription, for: path, with: depth)
     }
 
     /**
      Create a request for an exclusion from a subscription.
      - Parameter path: The path to exclude.
      - Parameter depth: The number of levels below the path to exclude.
-     - Parameter request: An optional request id, with which the component can respond.
-     - Note: The message type will be set to `request`
+     - Parameter subscription: The id of the subscription.
+     - Note: The message type will be set to `subscriptionExclusion`
      */
-    public static func exclude(path: Path, depth: Int? = nil, request: Int? = nil) -> Self {
-        subscribeOrExclude(path: path, subscribe: false, depth: depth, request: request)
+    public static func exclude(_ path: Path, with depth: Int? = nil, from subscription: Int) -> Self {
+        perform(.subscriptionExclusion, on: subscription, for: path, with: depth)
+    }
+
+    /**
+     Create a request to delete a subscription.
+     - Parameter subscription: The id of the subscription to delete
+     - Note: The message type will be set to `subscriptionDeletion`
+     */
+    public static func delete(subscription: Int) -> Self {
+        .init(type: .subscriptionDeletion, id: subscription)
     }
 
     /**
      Create a request for a subscription or exclusion.
+     - Parameter type: The message type to set
      - Parameter path: The path to subscribte to or exclude.
      - Parameter subscribe: Indicate if this is a subscription or exclusion
      - Parameter depth: The number of levels below the path to sucbribe/exclude.
      - Parameter request: An optional request id, with which the component can respond.
-     - Note: The message type will be set to `request`
      */
-    public static func subscribeOrExclude(path: Path, subscribe: Bool, depth: Int? = nil, request: Int? = nil) -> Self {
+    public static func perform(_ type: MessageType, on subscription: Int, for path: Path, with depth: Int? = nil) -> Self {
         .init(
-            type: .request,
+            type: type,
             path: path,
-            count: depth,
-            subscribe: subscribe,
-            request: request)
+            depth: depth,
+            id: subscription)
     }
 }
 
@@ -248,10 +250,10 @@ extension Message: Codable {
         case value = 2
         case samples = 3
         case count = 4
-        case subscribe = 5
+        case depth = 5
         case time = 6
         case end = 7
-        case request = 8
+        case id = 8
     }
 }
 
