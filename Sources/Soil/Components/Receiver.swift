@@ -1,7 +1,15 @@
 
 /**
  A component that can receive values.
- - Note: In other contexts a receiver may also be called a sink, consumer, client, subscriber, or listener.
+
+ The name `Receiver` was chosen to indicate that data from other components can be received, without necessarily being requested.
+
+ Similar, but rejected terms include:
+ - Sink: Vaguely implies that data is consumed, but it may also be retransmitted or stored.
+ - Consumer: Implies that data is processed, but it may just be stored or forwarded
+ - Client: Ambiguous, a client may have much functionality, including sending data
+ - Subscriber: Implies that the component chooses which data to receive
+ - Listener: Also suggests that the component is actively looking for data
  */
 public protocol Receiver {
 
