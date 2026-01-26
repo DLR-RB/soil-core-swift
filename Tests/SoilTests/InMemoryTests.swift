@@ -100,6 +100,63 @@ struct InMemoryDatabase {
         #expect(stored.children.isEmpty)
     }
 
+    @Test("Store tree")
+    func storeTree() throws {
+        let storage = InMemoryStorage()
+
+        let now = Timestamp.current()
+        do {
+            let cTree = Tree(value: .string("hello"), timestamp: now)
+            let fTree = Tree(value: .double(3.14), timestamp: now)
+            let bTree = Tree(children: ["c" : cTree, "f" : fTree])
+            let eTree = Tree(value: .path(["z", "x"]), timestamp: now)
+            let dTree = Tree(children: ["e" : eTree])
+            let aTree = Tree(value: .integer(123), timestamp: now, children: [
+                "d" : dTree
+            ])
+            let tree = Tree(children: ["a" : aTree, "b" : bTree])
+            storage.receive(tree, for: [])
+        }
+
+        do {
+            let tree = storage.tree(for: [])
+            #expect(tree.children.count == 2)
+            #expect(tree.samples.isEmpty)
+
+            let a = try #require(tree.children["a"])
+            let aSample = try #require(a.current)
+            #expect(aSample.value == .integer(123))
+            #expect(aSample.timestamp.isVeryClose(to: now))
+            #expect(a.children.count == 1)
+
+            let d = try #require(a.children["d"])
+            #expect(d.samples.isEmpty)
+            #expect(d.children.count == 1)
+
+            let e = try #require(d.children["e"])
+            let eSample = try #require(e.current)
+            #expect(eSample.value == .path(["z", "x"]))
+            #expect(eSample.timestamp.isVeryClose(to: now))
+            #expect(e.children.isEmpty)
+
+            let b = try #require(tree.children["b"])
+            #expect(b.samples.isEmpty)
+            #expect(b.children.count == 2)
+
+            let c = try #require(b.children["c"])
+            let cSample = try #require(c.current)
+            #expect(cSample.value == .string("hello"))
+            #expect(cSample.timestamp.isVeryClose(to: now))
+            #expect(c.children.isEmpty)
+
+            let f = try #require(b.children["f"])
+            let fSample = try #require(f.current)
+            #expect(fSample.value == .double(3.14))
+            #expect(fSample.timestamp.isVeryClose(to: now))
+            #expect(f.children.isEmpty)
+        }
+    }
+
     @Test("Full tree")
     func getFullTree() throws {
         let storage = InMemoryStorage()
