@@ -24,7 +24,7 @@ extension RequestType {
         switch self {
         case .data(_, _, let depth, let limit):
             // If the request targets a single path, then we expect only one message in return
-            (depth.isNilOrNotSmaller(than: 1) || limit.isNilOrNotSmaller(than: 1)) ? nil : 1
+            (depth >= 1) || (limit >= 1) ? nil : 1
         case .deleteSubscription, .include, .exclude:
             1 // Subscriptions/exclusions always have a single response, if a request id is provided
         }

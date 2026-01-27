@@ -2,44 +2,53 @@
 extension Optional where Wrapped: Comparable {
 
     /**
-     Check if an optional is either `nil` or greater/equal than the given value.
+     Compare two optional values.
 
-     This function is useful in conditional tests with optionals:
-
-     ```
-     let value: Int?
-     if value.isNilOrNotSmaller(than: 42) {
-
-     }
-     ```
-     - Parameter threshold: The value to compare to
-     - Returns: `true`, if the value is either `nil` or greater/equal to `value`.
+     `nil` is considered an infinite value.
+     - Returns: `true`, if `lhs` is smaller than `rhs`
      */
-    func isNilOrNotSmaller(than threshold: Wrapped) -> Bool {
-        guard let self else {
-            return true
+    static func < (lhs: Wrapped?, rhs: Wrapped?) -> Bool {
+        guard let lhs else {
+            return false // `nil` represents infinity, so lhs can't be smaller than rhs
         }
-        return self >= threshold
+        guard let rhs else {
+            return true // rhs is infinite, so lhs must be smaller
+        }
+        // Compare finite values
+        return lhs < rhs
     }
 
     /**
-     Check if an optional is either `nil` or less/equal to the given value.
+     Compare two optional values.
 
-     This function is useful in conditional tests with optionals:
-
-     ```
-     let value: Int?
-     if value.isNilOrNotGreater(than: 42) {
-
-     }
-     ```
-     - Parameter threshold: The value to compare to
-     - Returns: `true`, if the value is either `nil` or not greater than `value`.
+     `nil` is considered an infinite value.
+     - Returns: `true`, if `lhs` is bigger than or equalt to `rhs`
      */
-    func isNilOrNotGreater(than threshold: Wrapped) -> Bool {
-        guard let self else {
-            return true
+    static func >= (lhs: Wrapped?, rhs: Wrapped?) -> Bool {
+        guard let lhs else {
+            return true // `nil` represents infinity, so lhs can't be smaller than rhs
         }
-        return self <= threshold
+        guard let rhs else {
+            return false // rhs is infinite, so lhs must be smaller
+        }
+        // Compare finite values
+        return lhs >= rhs
+    }
+
+    /**
+     Compare two optional values.
+
+     `nil` is considered an infinite value.
+     - Returns: `true`, if `lhs` is larger than `rhs`
+     */
+    static func > (lhs: Wrapped?, rhs: Wrapped?) -> Bool {
+        guard let rhs else {
+            return false // `nil` represents infinity, so rhs can't be smaller than lhs
+        }
+        guard let lhs else {
+            return true // lhs is infinite, so rhs must be smaller
+        }
+        // Compare finite values
+        return lhs > rhs
     }
 }
