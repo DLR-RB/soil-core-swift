@@ -11,7 +11,7 @@ enum RequestType {
     case exclude(depth: Int?)
 
     /// A subscription deletion request
-    case deleteSubscription
+    case deleteSubscriptionRules(depth: Int?)
 
     /// A request for values at a path
     case data(start: Timestamp?, end: Timestamp?, depth: Int?, limit: Int?)
@@ -25,7 +25,7 @@ extension RequestType {
         case .data(_, _, let depth, let limit):
             // If the request targets a single path, then we expect only one message in return
             (depth >= 1) || (limit >= 1) ? nil : 1
-        case .deleteSubscription, .include, .exclude:
+        case .deleteSubscriptionRules, .include, .exclude:
             1 // Subscriptions/exclusions always have a single response, if a request id is provided
         }
     }

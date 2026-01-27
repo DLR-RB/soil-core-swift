@@ -42,7 +42,7 @@ final class ActiveRequest<ComponentId> {
        - the request id matches this request.
      */
     func update(with message: Message) {
-        guard let path = message.path, requestPath(matches: path) else {
+        guard requestPath(matches: message.path) else {
             // TODO: Propagate warning instead of quietly ignoring the error
 
             // TODO: Should we still update the expected message count if the path is incorrect?
@@ -54,7 +54,7 @@ final class ActiveRequest<ComponentId> {
         receivedMessages += 1
         let response = Response(
             request: request,
-            path: path,
+            path: message.path,
             value: message.value,
             timestamp: message.time,
             samples: message.samples ?? [],
@@ -86,7 +86,7 @@ final class ActiveRequest<ComponentId> {
         case .include, .exclude:
             // For subscriptions, exclusions, and history requests, we expect the exact path
             return path == request.path
-        case .deleteSubscription:
+        case .deleteSubscriptionRules:
             // Response matches if id matches
             return true
         }

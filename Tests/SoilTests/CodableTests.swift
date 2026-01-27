@@ -62,13 +62,13 @@ struct CodableTests {
                 .init(value: .integer(123), timestamp: .current().addingTimeInterval(-10000)),
                 .init(value: .double(3.14), timestamp: .current().addingTimeInterval(-9000))
             ], for: ["zzz"]),
-            .include(["abc"], with: 123, in: 234),
+            .include(["abc"], depth: 123, in: 234),
             .include(["", "some"], in: 123),
             .request(["Path"], to: .current(), depth: 0),
             .request(["Path"]),
             .request(["123"], from: .current().addingTimeInterval(-1000), to: .current(), limit: 100),
             .request(["123", "456"]),
-            .exclude(["a", "a"], with: 10, from: 234),
+            .exclude(["a", "a"], depth: 10, from: 234),
             .exclude(["a", "a", "a"], from: 123)
         ] }
     }

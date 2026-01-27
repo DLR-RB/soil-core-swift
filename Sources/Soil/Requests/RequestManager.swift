@@ -124,11 +124,11 @@ final class RequestManager<ComponentId: Hashable> {
     ) {
         let message = switch type {
             case .exclude(let depth):
-                Message.exclude(path, with: depth, from: id)
+                Message.exclude(path, depth: depth, from: id)
             case .include(let depth):
-                Message.include(path, with: depth, in: id)
-            case .deleteSubscription:
-                Message.delete(subscription: id)
+                Message.include(path, depth: depth, in: id)
+            case .deleteSubscriptionRules(let depth):
+                Message.deleteRules(at: path, depth: depth, for: id)
             case .data(let start, let end, let depth, let limit):
                 Message.request(path, from: start, to: end, limit: limit, depth: depth, id: id)
         }
@@ -150,19 +150,20 @@ final class RequestManager<ComponentId: Hashable> {
      - Parameter component: The id of the component which is targeted.
      - Parameter depth: The number of levels below the path to include in the subscription
      - Parameter confirmationReceived: A closure to call when the response is received.
-     - Returns: The id of the performed request.
+     - Parameter subscription: The id of the subscription to update
      */
-    @discardableResult
     func include(
-        to path: Path,
-        of component: ComponentId,
+        _ path: Path,
         depth: Int? = nil,
+        of component: ComponentId,
+        in subscription: Int,
         confirmationReceived: @escaping () -> Void
-    ) -> Int {
-        makeAndTrackRequest(
+    ) {
+        executeRequest(
             .include(depth: depth),
             to: path,
-            of: component) { _ in
+            of: component,
+            id: subscription) { _ in
                 confirmationReceived()
             }
     }
@@ -173,19 +174,20 @@ final class RequestManager<ComponentId: Hashable> {
      - Parameter component: The id of the component which is targeted.
      - Parameter depth: The depth of the original subscription or the depth to exclude
      - Parameter confirmationReceived: A closure to call when the response is received.
-     - Returns: The id of the performed request.
+     - Parameter subscription: The id of the subscription to update
      */
-    @discardableResult
     func exclude(
         from path: Path,
         of component: ComponentId,
         depth: Int? = nil,
+        in subscription: Int,
         confirmationReceived: @escaping () -> Void
-    ) -> Int {
-        makeAndTrackRequest(
+    ) {
+        executeRequest(
             .exclude(depth: depth),
             to: path,
-            of: component) { _ in
+            of: component,
+            id: subscription) { _ in
             confirmationReceived()
         }
     }
@@ -195,15 +197,18 @@ final class RequestManager<ComponentId: Hashable> {
      - Parameter component: The id of the component which is targeted.
      - Parameter depth: The depth of the original subscription or the depth to exclude
      - Parameter confirmationReceived: A closure to call when the response is received.
+     - Parameter subscription: The id of the subscription to update
      */
-    func delete(
-        subscription: Int,
+    func deleteRules(
+        at path: Path,
+        depth: Int? = nil,
         for component: ComponentId,
+        in subscription: Int,
         confirmationReceived: @escaping () -> Void
     ) {
         executeRequest(
-            .deleteSubscription,
-            to: [],
+            .deleteSubscriptionRules(depth: depth),
+            to: path,
             of: component,
             id: subscription) { _ in
             confirmationReceived()

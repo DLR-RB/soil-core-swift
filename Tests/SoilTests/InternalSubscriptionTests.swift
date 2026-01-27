@@ -19,7 +19,6 @@ struct InternalSubscriptionTests {
             #expect($2 == sample)
         }
 
-        print(manager)
         let subscribers = manager.subscriptions(to: path)
         #expect(subscribers == [id])
 
