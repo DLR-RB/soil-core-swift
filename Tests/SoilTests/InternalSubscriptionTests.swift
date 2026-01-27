@@ -7,7 +7,7 @@ struct InternalSubscriptionTests {
 
     @Test("Exact path")
     func subscribeToExactPath() throws {
-        let manager = InternalSubscriptionsManager()
+        let manager = ComponentSubscriptions()
 
         let sample = Sample(value: .integer(42))
         let id = 123
@@ -18,11 +18,13 @@ struct InternalSubscriptionTests {
             #expect($1 == path)
             #expect($2 == sample)
         }
-        let subscribers = manager.subscribers(to: path)
+
+        print(manager)
+        let subscribers = manager.subscriptions(to: path)
         #expect(subscribers == [id])
 
-        #expect(manager.hasCallback(for: id))
-        #expect(manager.hasSubscriptions(for: id))
+        #expect(manager.hasSubscription(id))
+        #expect(manager.hasSubscriptionRules(for: id))
 
         let notified = manager.notifySubscribers(about: sample, at: path)
         #expect(notified == 1)
@@ -30,7 +32,7 @@ struct InternalSubscriptionTests {
 
     @Test("Ancestor path")
     func subscribeToAncestorPath() throws {
-        let manager = InternalSubscriptionsManager()
+        let manager = ComponentSubscriptions()
 
         let sample = Sample(value: .integer(42))
         let id = 123
@@ -41,11 +43,11 @@ struct InternalSubscriptionTests {
             #expect($1 == path)
             #expect($2 == sample)
         }
-        let subscribers = manager.subscribers(to: path)
+        let subscribers = manager.subscriptions(to: path)
         #expect(subscribers == [id])
 
-        #expect(manager.hasCallback(for: id))
-        #expect(manager.hasSubscriptions(for: id))
+        #expect(manager.hasSubscription(id))
+        #expect(manager.hasSubscriptionRules(for: id))
 
         let notified = manager.notifySubscribers(about: sample, at: path)
         #expect(notified == 1)
@@ -53,7 +55,7 @@ struct InternalSubscriptionTests {
 
     @Test("Ancestor path (no depth)")
     func subscribeToAncestorPathNoDepth() throws {
-        let manager = InternalSubscriptionsManager()
+        let manager = ComponentSubscriptions()
 
         let sample = Sample(value: .integer(42))
         let id = 123
@@ -64,11 +66,11 @@ struct InternalSubscriptionTests {
             #expect($1 == path)
             #expect($2 == sample)
         }
-        let subscribers = manager.subscribers(to: path)
+        let subscribers = manager.subscriptions(to: path)
         #expect(subscribers == [id])
 
-        #expect(manager.hasCallback(for: id))
-        #expect(manager.hasSubscriptions(for: id))
+        #expect(manager.hasSubscription(id))
+        #expect(manager.hasSubscriptionRules(for: id))
 
         let notified = manager.notifySubscribers(about: sample, at: path)
         #expect(notified == 1)
@@ -76,7 +78,7 @@ struct InternalSubscriptionTests {
 
     @Test("Exclude exact path")
     func excludeExactPath() throws {
-        let manager = InternalSubscriptionsManager()
+        let manager = ComponentSubscriptions()
 
         let sample = Sample(value: .integer(42))
         let id = 123
@@ -85,12 +87,13 @@ struct InternalSubscriptionTests {
         manager.subscribe(id, to: ["a"], depth: nil) { _, _, _ in
             #expect(Bool(false))
         }
-        manager.exclude(id, from: path, depth: 0)
-        let subscribers = manager.subscribers(to: path)
+        manager.exclude(path, depth: 0, from: id)
+
+        let subscribers = manager.subscriptions(to: path)
         #expect(subscribers == [])
 
-        #expect(manager.hasCallback(for: id))
-        #expect(manager.hasSubscriptions(for: id))
+        #expect(manager.hasSubscription(id))
+        #expect(manager.hasSubscriptionRules(for: id))
 
         let notified = manager.notifySubscribers(about: sample, at: path)
         #expect(notified == 0)
@@ -98,7 +101,7 @@ struct InternalSubscriptionTests {
 
     @Test("Exclude ancestor path")
     func excludeAncestorPath() throws {
-        let manager = InternalSubscriptionsManager()
+        let manager = ComponentSubscriptions()
 
         let sample = Sample(value: .integer(42))
         let id = 123
@@ -107,12 +110,12 @@ struct InternalSubscriptionTests {
         manager.subscribe(id, to: ["a"], depth: nil) { _, _, _ in
             #expect(Bool(false))
         }
-        manager.exclude(id, from: ["a", "b"], depth: 1)
-        let subscribers = manager.subscribers(to: path)
+        manager.exclude(["a", "b"], depth: 1, from: id)
+        let subscribers = manager.subscriptions(to: path)
         #expect(subscribers == [])
 
-        #expect(manager.hasCallback(for: id))
-        #expect(manager.hasSubscriptions(for: id))
+        #expect(manager.hasSubscription(id))
+        #expect(manager.hasSubscriptionRules(for: id))
 
         let notified = manager.notifySubscribers(about: sample, at: path)
         #expect(notified == 0)
@@ -120,7 +123,7 @@ struct InternalSubscriptionTests {
 
     @Test("Exclude irrelevant ancestor path")
     func excludeIrrelevantAncestorPath() throws {
-        let manager = InternalSubscriptionsManager()
+        let manager = ComponentSubscriptions()
 
         let sample = Sample(value: .integer(42))
         let id = 123
@@ -131,12 +134,12 @@ struct InternalSubscriptionTests {
             #expect($1 == path)
             #expect($2 == sample)
         }
-        manager.exclude(id, from: ["a"], depth: 1)
-        let subscribers = manager.subscribers(to: path)
+        manager.exclude(["a"], depth: 1, from: id)
+        let subscribers = manager.subscriptions(to: path)
         #expect(subscribers == [id])
 
-        #expect(manager.hasCallback(for: id))
-        #expect(manager.hasSubscriptions(for: id))
+        #expect(manager.hasSubscription(id))
+        #expect(manager.hasSubscriptionRules(for: id))
 
         let notified = manager.notifySubscribers(about: sample, at: path)
         #expect(notified == 1)
@@ -144,7 +147,7 @@ struct InternalSubscriptionTests {
 
     @Test("Override exclusion")
     func testOverrideExclusion() throws {
-        let manager = InternalSubscriptionsManager()
+        let manager = ComponentSubscriptions()
 
         let sample = Sample(value: .integer(42))
         let id = 123
@@ -153,17 +156,17 @@ struct InternalSubscriptionTests {
         manager.subscribe(id, to: [], depth: nil) { id, path, sample in
             #expect(Bool(false))
         }
-        manager.exclude(id, from: ["a"], depth: 2)
+        manager.exclude(["a"], depth: 2, from: id)
         manager.subscribe(id, to: path, depth: nil) {
             #expect($0 == id)
             #expect($1 == path)
             #expect($2 == sample)
         }
-        let subscribers = manager.subscribers(to: path)
+        let subscribers = manager.subscriptions(to: path)
         #expect(subscribers == [id])
 
-        #expect(manager.hasCallback(for: id))
-        #expect(manager.hasSubscriptions(for: id))
+        #expect(manager.hasSubscription(id))
+        #expect(manager.hasSubscriptionRules(for: id))
 
         let notified = manager.notifySubscribers(about: sample, at: path)
         #expect(notified == 1)
@@ -171,7 +174,7 @@ struct InternalSubscriptionTests {
 
     @Test("Multiple subscribers")
     func testMultipleSubscribers() throws {
-        let manager = InternalSubscriptionsManager()
+        let manager = ComponentSubscriptions()
 
         let sample = Sample(value: .integer(42))
         let alice = 42
@@ -190,14 +193,14 @@ struct InternalSubscriptionTests {
             #expect($2 == sample)
         }
 
-        #expect(manager.hasCallback(for: alice))
-        #expect(manager.hasSubscriptions(for: alice))
-        #expect(manager.hasCallback(for: bob))
-        #expect(manager.hasSubscriptions(for: bob))
+        #expect(manager.hasSubscription(alice))
+        #expect(manager.hasSubscriptionRules(for: alice))
+        #expect(manager.hasSubscription(bob))
+        #expect(manager.hasSubscriptionRules(for: bob))
 
         do {
             expectedPath = ["a"]
-            let subscribers = manager.subscribers(to: expectedPath)
+            let subscribers = manager.subscriptions(to: expectedPath)
             #expect(subscribers == [bob])
 
             let notified = manager.notifySubscribers(about: sample, at: expectedPath)
@@ -206,7 +209,7 @@ struct InternalSubscriptionTests {
 
         do {
             expectedPath = ["a", "b"]
-            let subscribers = manager.subscribers(to: expectedPath)
+            let subscribers = manager.subscriptions(to: expectedPath)
             #expect(subscribers == [alice, bob])
 
             let notified = manager.notifySubscribers(about: sample, at: expectedPath)
@@ -215,7 +218,7 @@ struct InternalSubscriptionTests {
 
         do {
             expectedPath = ["a", "c"]
-            let subscribers = manager.subscribers(to: expectedPath)
+            let subscribers = manager.subscriptions(to: expectedPath)
             #expect(subscribers == [bob])
 
             let notified = manager.notifySubscribers(about: sample, at: expectedPath)
@@ -225,7 +228,7 @@ struct InternalSubscriptionTests {
 
     @Test("Remove subscriber")
     func testRemoveSubscribers() throws {
-        let manager = InternalSubscriptionsManager()
+        let manager = ComponentSubscriptions()
 
         let alice = 42
         let sample = Sample(value: .integer(42))
@@ -236,24 +239,24 @@ struct InternalSubscriptionTests {
             #expect(Bool(false))
         }
 
-        #expect(manager.hasCallback(for: alice))
-        #expect(manager.hasSubscriptions(for: alice))
+        #expect(manager.hasSubscription(alice))
+        #expect(manager.hasSubscriptionRules(for: alice))
 
-        manager.remove(subscriber: alice)
+        manager.delete(subscription: alice)
 
-        #expect(!manager.hasCallback(for: alice))
-        #expect(!manager.hasSubscriptions(for: alice))
+        #expect(!manager.hasSubscription(alice))
+        #expect(!manager.hasSubscriptionRules(for: alice))
 
-        let subscribers = manager.subscribers(to: path)
+        let subscribers = manager.subscriptions(to: path)
         #expect(subscribers.count == 0)
 
         let notified = manager.notifySubscribers(about: sample, at: path)
         #expect(notified == 0)
     }
 
-    @Test("Remove subscription")
+    @Test("Delete subscription rules")
     func testRemoveSubscription() throws {
-        let manager = InternalSubscriptionsManager()
+        let manager = ComponentSubscriptions()
 
         let alice = 42
         let sample = Sample(value: .integer(42))
@@ -263,16 +266,43 @@ struct InternalSubscriptionTests {
             #expect(Bool(false))
         }
 
-        #expect(manager.hasCallback(for: alice))
-        #expect(manager.hasSubscriptions(for: alice))
+        #expect(manager.hasSubscription(alice))
+        #expect(manager.hasSubscriptionRules(for: alice))
 
-        manager.exclude(alice, from: path, depth: nil)
+        manager.deleteRules(at: path, depth: nil, for: alice)
 
-        let subscribers = manager.subscribers(to: path)
+        let subscribers = manager.subscriptions(to: path)
         #expect(subscribers == [])
 
-        #expect(!manager.hasCallback(for: alice))
-        #expect(!manager.hasSubscriptions(for: alice))
+        #expect(manager.hasSubscription(alice))
+        #expect(!manager.hasSubscriptionRules(for: alice))
+
+        let notified = manager.notifySubscribers(about: sample, at: path)
+        #expect(notified == 0)
+    }
+
+    @Test("Delete subscription")
+    func testDeleteSubscription() {
+        let manager = ComponentSubscriptions()
+
+        let alice = 42
+        let sample = Sample(value: .integer(42))
+        let path = ["a", "b"]
+
+        manager.subscribe(alice, to: path, depth: nil) { id, path, sample in
+            #expect(Bool(false))
+        }
+
+        #expect(manager.hasSubscription(alice))
+        #expect(manager.hasSubscriptionRules(for: alice))
+
+        manager.delete(subscription: alice)
+
+        let subscribers = manager.subscriptions(to: path)
+        #expect(subscribers == [])
+
+        #expect(!manager.hasSubscription(alice))
+        #expect(!manager.hasSubscriptionRules(for: alice))
 
         let notified = manager.notifySubscribers(about: sample, at: path)
         #expect(notified == 0)
@@ -280,16 +310,16 @@ struct InternalSubscriptionTests {
 
     @Test("Remove exclusion")
     func testRemoveExclusion() throws {
-        let manager = InternalSubscriptionsManager()
+        let manager = ComponentSubscriptions()
 
         let id = 42
         let sample = Sample(value: .integer(42))
         let path = ["a", "b"]
 
-        manager.exclude(id, from: path, depth: nil)
+        manager.exclude(path, depth: nil, from: id)
 
-        #expect(!manager.hasCallback(for: id))
-        #expect(!manager.hasSubscriptions(for: id))
+        #expect(!manager.hasSubscription(id))
+        #expect(!manager.hasSubscriptionRules(for: id))
 
         manager.subscribe(id, to: path, depth: nil) {
             #expect($0 == id)
@@ -297,13 +327,74 @@ struct InternalSubscriptionTests {
             #expect($2 == sample)
         }
 
-        let subscribers = manager.subscribers(to: path)
+        let subscribers = manager.subscriptions(to: path)
         #expect(subscribers == [id])
 
-        #expect(manager.hasCallback(for: id))
-        #expect(manager.hasSubscriptions(for: id))
+        #expect(manager.hasSubscription(id))
+        #expect(manager.hasSubscriptionRules(for: id))
 
         let notified = manager.notifySubscribers(about: sample, at: path)
         #expect(notified == 1)
+    }
+
+    @Test("Multiple rules for path")
+    func multipleRulesForPath() {
+        let manager = ComponentSubscriptions()
+
+        let subscription = 42
+        let sample = Sample(value: .integer(42))
+        let subPath = ["a"]
+        let path = ["a", "b"]
+
+        manager.create(subscription) {
+            #expect($0 == subscription)
+            #expect($1 == path)
+            #expect($2 == sample)
+        }
+
+        // Create multiple rules for path "a"
+        manager.include(subPath, depth: nil, in: subscription)
+        #expect(manager.subscriptions(to: path) == [subscription])
+
+        manager.exclude(subPath, depth: 3, from: subscription)
+        #expect(manager.subscriptions(to: path) == [])
+
+        manager.include(subPath, depth: 2, in: subscription)
+        #expect(manager.subscriptions(to: path) == [subscription])
+
+        manager.exclude(subPath, depth: 2, from: subscription)
+        #expect(manager.subscriptions(to: path) == [])
+
+        manager.include(subPath, depth: 1, in: subscription)
+        #expect(manager.subscriptions(to: path) == [subscription])
+
+        manager.exclude(subPath, depth: 1, from: subscription)
+        #expect(manager.subscriptions(to: path) == [])
+
+        // Does not match the path
+        manager.include(subPath, depth: 0, in: subscription)
+        #expect(manager.subscriptions(to: path) == [])
+
+        // Add rules for the exact path, which should override previous ones
+        manager.include(path, depth: nil, in: subscription)
+        #expect(manager.subscriptions(to: path) == [subscription])
+
+        manager.exclude(path, depth: nil, from: subscription)
+        #expect(manager.subscriptions(to: path) == [])
+
+        manager.include(path, depth: 2, in: subscription)
+        #expect(manager.subscriptions(to: path) == [subscription])
+
+        manager.exclude(path, depth: 2, from: subscription)
+        #expect(manager.subscriptions(to: path) == [])
+
+        manager.include(path, depth: 1, in: subscription)
+        #expect(manager.subscriptions(to: path) == [subscription])
+
+        manager.exclude(path, depth: 1, from: subscription)
+        #expect(manager.subscriptions(to: path) == [])
+
+        manager.exclude(path, depth: 0, from: subscription)
+        #expect(manager.subscriptions(to: path) == [])
     }
 }
