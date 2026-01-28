@@ -63,4 +63,10 @@ public final class Tree {
     public var current: Sample? {
         samples.last
     }
+
+    /// Count the number of nodes in this tree that contain samples
+    public var numberOfNodesWithSamples: Int {
+        // Count this node if it has samples, and sum up the trees of all children
+        children.values.reduce(samples.isEmpty ? 0 : 1) { $0 + $1.numberOfNodesWithSamples }
+    }
 }

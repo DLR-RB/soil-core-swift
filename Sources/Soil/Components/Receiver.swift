@@ -48,4 +48,13 @@ extension Receiver {
     public func receive(_ sample: Sample, for path: Path) {
         receive(.init(samples: [sample]), for: path)
     }
+
+    /**
+     Save timestamped values for a path
+     - Parameter samples: The timestamped values to store.
+     - Parameter path: The path of the value.
+     */
+    public func receive(_ samples: [Sample], for path: Path) {
+        receive(.init(samples: samples), for: path)
+    }
 }

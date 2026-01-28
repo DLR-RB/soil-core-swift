@@ -119,6 +119,13 @@ public struct Message {
         self.end = end
         self.id = id
     }
+
+    var sample: Sample? {
+        guard let value else {
+            return nil
+        }
+        return .init(value: value, timestamp: time ?? .current())
+    }
 }
 
 extension Message {
@@ -177,8 +184,8 @@ extension Message {
     /**
      Create a message for a history request.
      - Parameter path: The path for which history is requested.
-     - Parameter start: The start date of the requested interval. `nil` indicates beginning of time.
-     - Parameter end: The end date of the requested interval. `nil` indicates end of time.
+     - Parameter start: The start date of the requested interval (exclusive). `nil` indicates beginning of time.
+     - Parameter end: The end date of the requested interval (inclusive). `nil` indicates end of time.
      - Parameter limit: The maximum number of samples to send, counting from `start`
      - Parameter depth: The number of levels below the path to include.
      - Parameter id: The optional request id to include in responses.
