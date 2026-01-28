@@ -82,6 +82,20 @@ final class RequestManager<ComponentId: Hashable> {
     }
 
     /**
+     Get the request handler for a component, or create it if needed
+     - Parameter component: The id of the component
+     - Returns: The request handler
+     */
+    private func getOrCreateHandler(for component: ComponentId) -> ComponentRequests<ComponentId> {
+        if let existing = activeRequests[component] {
+            return existing
+        }
+        let created = ComponentRequests<ComponentId>()
+        activeRequests[component] = created
+        return created
+    }
+
+    /**
      Get the request id for a component.
 
      The request id is incremented from 1 (independently for each component),
@@ -89,14 +103,14 @@ final class RequestManager<ComponentId: Hashable> {
      - Note: This function already creates the request handler for the component
      */
     private func nextRequestId(for component: ComponentId) -> Int {
-        activeRequests[component, default: .init()].nextRequestId()
+        getOrCreateHandler(for: component).nextRequestId()
     }
 
     /// Store a performed request with a callback for response processing
     private func store(_ request: Request<ComponentId>, callback: @escaping (Response<ComponentId>) -> Void) {
         // Note: At this point the request handler for the component should be created
         // from calling `nextRequestId()`
-        activeRequests[request.component, default: .init()].add(request: request, callback: callback)
+        getOrCreateHandler(for: request.component).add(request: request, callback: callback)
     }
 
     // MARK: Requests
