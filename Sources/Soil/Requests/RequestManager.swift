@@ -11,7 +11,7 @@
 final class RequestManager<ComponentId: Hashable> {
 
     /// The active requests for each component, indexed by component id
-    private var activeRequests: [ComponentId : ComponentRequests<ComponentId>] = [:]
+    private var activeRequests: [ComponentId : ComponentRequests] = [:]
 
     /**
      Create a manager for requests.
@@ -86,11 +86,11 @@ final class RequestManager<ComponentId: Hashable> {
      - Parameter component: The id of the component
      - Returns: The request handler
      */
-    private func getOrCreateHandler(for component: ComponentId) -> ComponentRequests<ComponentId> {
+    private func getOrCreateHandler(for component: ComponentId) -> ComponentRequests {
         if let existing = activeRequests[component] {
             return existing
         }
-        let created = ComponentRequests<ComponentId>()
+        let created = ComponentRequests()
         activeRequests[component] = created
         return created
     }
@@ -107,10 +107,10 @@ final class RequestManager<ComponentId: Hashable> {
     }
 
     /// Store a performed request with a callback for response processing
-    private func store(_ request: Request<ComponentId>, callback: @escaping (Response<ComponentId>) -> Void) {
+    private func store(_ request: Request, to component: ComponentId, callback: @escaping (Response) -> Void) {
         // Note: At this point the request handler for the component should be created
         // from calling `nextRequestId()`
-        getOrCreateHandler(for: request.component).add(request: request, callback: callback)
+        getOrCreateHandler(for: component).add(request: request, callback: callback)
     }
 
     // MARK: Requests
@@ -122,7 +122,7 @@ final class RequestManager<ComponentId: Hashable> {
         _ type: RequestType,
         to path: Path,
         of component: ComponentId,
-        responses: @escaping (Response<ComponentId>) -> Void
+        responses: @escaping (Response) -> Void
     ) -> Int {
         let id = nextRequestId(for: component)
         executeRequest(type, to: path, of: component, id: id, responses: responses)
@@ -134,7 +134,7 @@ final class RequestManager<ComponentId: Hashable> {
         to path: Path,
         of component: ComponentId,
         id: Int,
-        responses: @escaping (Response<ComponentId>) -> Void
+        responses: @escaping (Response) -> Void
     ) {
         let message = switch type {
             case .exclude(let depth):
@@ -150,12 +150,11 @@ final class RequestManager<ComponentId: Hashable> {
         defer { send(message: message, to: component) }
 
         let request =  Request(
-            component: component,
             id: id,
             path: path,
             type: type)
 
-        store(request, callback: responses)
+        store(request, to: component, callback: responses)
     }
 
     /**

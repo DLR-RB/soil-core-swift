@@ -1,13 +1,11 @@
 
 /**
  A response from a component to a request from a client.
-
- Resposes are generic over the component id, which is determined by the transport layer.
  */
-struct Response<ComponentId> {
+struct Response {
 
     /// The request associated with this response
-    let request: Request<ComponentId>
+    let request: Request
 
     /// The path contained in the response
     let path: Path

@@ -3,10 +3,10 @@
 /**
  Contains all active requests currently tracked for one component.
  */
-final class ComponentRequests<ComponentId> {
+final class ComponentRequests {
 
     /// The active requests for the component, indexed by the request id
-    private var requests: [Int : ActiveRequest<ComponentId>] = [:]
+    private var requests: [Int : ActiveRequest] = [:]
 
     /*
      The id used for the most recent request
@@ -61,7 +61,7 @@ final class ComponentRequests<ComponentId> {
      Add an active request.
      - Note: This function assumes that the request was made to the component associated with this handler.
      */
-    func add(request: Request<ComponentId>, callback: @escaping (Response<ComponentId>) -> Void) {
+    func add(request: Request, callback: @escaping (Response) -> Void) {
         requests[request.id] = .init(request: request, callback: callback)
     }
 
@@ -104,5 +104,41 @@ final class ComponentRequests<ComponentId> {
         // It might be possible to check the paths of request and response for matches
         // TODO: Implement
         return false
+    }
+
+    /**
+     Create and track a request for data.
+     - Parameter path: The path for which to request the value
+     - Parameter start: The start date of the requested interval (exclusive)
+     - Parameter end: The end date of the requested interval (inclusive)
+     - Parameter limit: The maximum number of samples to return (counted from `start`)
+     - Parameter depth: The number of levels below the requested node for which to return samples, defaults to no limit
+     - Parameter receivedSamples: The closure to call with the received values. May be called multiple times.
+     - Returns: The id of the performed request.
+     */
+    @discardableResult
+    func request(
+        id: Int,
+        for path: Path,
+        from start: Timestamp? = nil,
+        to end: Timestamp? = nil,
+        limit: Int? = nil,
+        depth: Int? = nil,
+        receivedSamples: @escaping (_ path: Path, _ sample: [Sample]) -> Void
+    ) -> Message {
+        let message = Message.request(path, from: start, to: end, limit: limit, depth: depth, id: id)
+
+        let request = Request(id: id, path: path, type: .data(start: start, end: end, depth: depth, limit: limit))
+
+        add(request: request) { response in
+            if let value = response.value {
+                let sample = Sample(value: value, timestamp: response.timestamp ?? .current())
+                receivedSamples(response.request.path, [sample])
+            }
+            if !response.samples.isEmpty {
+                receivedSamples(response.path, response.samples)
+            }
+        }
+        return message
     }
 }

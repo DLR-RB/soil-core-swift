@@ -3,10 +3,10 @@
 /**
  A request to a component that has not been completed
  */
-final class ActiveRequest<ComponentId> {
+final class ActiveRequest {
 
     /// The request that was sent to the component
-    let request: Request<ComponentId>
+    let request: Request
 
     /// The number of messages received for this request
     var receivedMessages: Int = 0
@@ -21,14 +21,14 @@ final class ActiveRequest<ComponentId> {
     var expectedMessages: Int?
 
     /// The closure to call when a message for the request is received
-    let callback: (Response<ComponentId>) -> Void
+    let callback: (Response) -> Void
 
     /**
      Create an active request with a callback
      - Parameter request: The information about the transmitted request
      - Parameter callback: The closure to call when the request receives responses
      */
-    init(request: Request<ComponentId>, callback: @escaping (Response<ComponentId>) -> Void) {
+    init(request: Request, callback: @escaping (Response) -> Void) {
         self.request = request
         self.callback = callback
         self.expectedMessages = request.type.expectedMessages
