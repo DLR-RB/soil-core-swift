@@ -145,6 +145,8 @@ extension Message {
             id: request)
     }
 
+    // MARK: Data
+
     /**
      Create a push message to transmit a value.
      - Parameter path: The path of the value to transmit.
@@ -181,6 +183,8 @@ extension Message {
             id: request)
     }
 
+    // MARK: Requests
+
     /**
      Create a message for a history request.
      - Parameter path: The path for which history is requested.
@@ -201,6 +205,27 @@ extension Message {
             end: end,
             id: id)
     }
+
+    /**
+     Create a message for a deletion request.
+     - Parameter path: The path for which the deletion is requested.
+     - Parameter start: The start date of the interval to delete (exclusive). `nil` indicates beginning of time.
+     - Parameter end: The end date of the interval to delete (inclusive). `nil` indicates end of time.
+     - Parameter depth: The number of levels below the path to delete.
+     - Parameter id: The optional request id to request a response.
+     - Note: The message type will be set to `deletionRequest`
+     */
+    public static func delete(_ path: Path, from start: Timestamp? = nil, to end: Timestamp? = nil, depth: Int? = nil, id: Int? = nil) -> Self {
+        .init(
+            type: .deletionRequest,
+            path: path,
+            time: start,
+            depth: depth,
+            end: end,
+            id: id)
+    }
+
+    // MARK: Subscription operations
 
     /**
      Create a subscription request.
@@ -250,6 +275,8 @@ extension Message {
     }
 }
 
+// MARK: Encoding
+
 extension Message: Codable {
 
     enum CodingKeys: Int, CodingKey {
@@ -264,6 +291,8 @@ extension Message: Codable {
         case id = 8
     }
 }
+
+// MARK: Equatable
 
 extension Message: Equatable {
 

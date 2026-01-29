@@ -4,20 +4,23 @@
  */
 public enum MessageType: Int {
 
-    /// A message containing one or more values
+    /// A message containing one or more samples
     case data = 0
 
-    /// A request to receive data, including subscriptions and exclusions
+    /// A request to receive data
     case request = 1
 
+    /// A request to delete data
+    case deletionRequest = 2
+
     /// A request to include a path in a subscription
-    case subscriptionInclusion = 2
+    case subscriptionInclusion = 3
 
     /// A request to exclude a path in a subscription
-    case subscriptionExclusion = 3
+    case subscriptionExclusion = 4
 
     /// A request to delete a subscription
-    case subscriptionDeletion = 4
+    case subscriptionDeletion = 5
 }
 
 extension MessageType: Codable {
