@@ -26,6 +26,7 @@ public final class Subscription {
      - Parameter depth: The depth of the inclusion (nil indicates the full sub-tree)
      - Returns: `true`, if the inclusion request was sent to the component
      */
+    @discardableResult
     public func include(_ path: Path, depth: Int?) -> Bool {
         let message = Message.include(path, depth: depth, in: id)
         guard send(message) else {
@@ -41,6 +42,7 @@ public final class Subscription {
      - Parameter depth: The depth of the exclusion (nil indicates the full sub-tree)
      - Returns: `true`, if the exclusion request was sent to the component
      */
+    @discardableResult
     public func exclude(_ path: Path, depth: Int?) -> Bool {
         let message = Message.exclude(path, depth: depth, from: id)
         guard send(message) else {
@@ -56,6 +58,7 @@ public final class Subscription {
      - Parameter depth: The depth of the deletion
      - Returns: `true`, if the deletion request was sent to the component
      */
+    @discardableResult
     public func deleteRules(at path: Path, depth: Int?) -> Bool {
         let message = Message.deleteRules(at: path, depth: depth, for: id)
         guard send(message) else {
@@ -69,6 +72,7 @@ public final class Subscription {
      Delete all rules, effectively canceling the subscription
      - Returns: `true`, if the deletion request was sent to the component
      */
+    @discardableResult
     public func delete() -> Bool {
         deleteRules(at: [], depth: nil)
     }

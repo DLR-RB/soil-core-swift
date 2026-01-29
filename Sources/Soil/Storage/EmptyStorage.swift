@@ -4,6 +4,11 @@
  */
 public final class EmptyStorage {
 
+    public init() { }
+}
+
+extension EmptyStorage: Storage {
+
     /**
      Pretends to receive the data, but discards it.
      - Parameter tree: The tree with the samples to store.
