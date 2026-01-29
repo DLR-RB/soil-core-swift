@@ -68,9 +68,7 @@ final class ComponentRequests {
     /**
      Find the active request matching the message and execute the callback.
      - Returns: `true`, if the message was associated with an active request, otherwise `false`
-     - Note: This function expects that:
-        - the message is a value message
-        - the component id matches the sender of the message
+     - Note: This function expects that the message is a data message
      */
     func findRequestAndUpdate(with message: Message) -> Bool {
         guard let id = message.id else {
@@ -82,7 +80,10 @@ final class ComponentRequests {
             // No active request found for the id, ignore the message
             return false
         }
-        activeRequest.update(with: message)
+        guard activeRequest.update(with: message) else {
+            // The path of the request did not match
+            return false
+        }
 
         // Remove the request if all messages are received.
         if activeRequest.isCompleted {

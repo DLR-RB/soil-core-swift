@@ -40,15 +40,18 @@ final class ActiveRequest {
        - the message is a data message
        - the component id matches the sender of the message
        - the request id matches this request.
+     - Returns: `true`, if the request matched and was processed
      */
-    func update(with message: Message) {
+    func update(with message: Message) -> Bool {
         guard requestPath(matches: message.path) else {
-            // TODO: Propagate warning instead of quietly ignoring the error
-
             // TODO: Should we still update the expected message count if the path is incorrect?
             // The misbehaving client may include this message in the count,
             // which would cause the request to not be completed.
-            return
+
+            // Note: We could also end up here if a malicious client attempts to use a request
+            // to respond with unrelated data that it's not allowed to write, in an attempt
+            // to circumvent access restrictions
+            return false
         }
         updateExpectedMessageCount(message.count)
         receivedMessages += 1
@@ -60,6 +63,7 @@ final class ActiveRequest {
             samples: message.samples ?? [],
             isCompleted: isCompleted)
         callback(response)
+        return true
     }
 
     /**
