@@ -1,8 +1,8 @@
 import Testing
 import Soil
 
-@Suite("InMemoryDatabase")
-struct InMemoryDatabase {
+@Suite("InMemoryStorage")
+struct InMemoryStorageTests {
 
     @Test("Store current value")
     func saveAndGetCurrentValue() async throws {

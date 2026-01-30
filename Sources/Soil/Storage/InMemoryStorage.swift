@@ -340,9 +340,11 @@ extension InMemoryStorage: Storage {
      - Parameter start: The start of the interval to delete (exclusive, defaults to `nil`, meaning from beginning of time)
      - Parameter end: The end of the interval to delete (inclusive, defaults to `nil`, meaning to end of time)
      - Parameter depth: The number of levels to include for deletion below the given path
+     - Returns: A request that can be used to wait until completion
      */
-    public nonisolated func delete(path: Path, from start: Timestamp?, to end: Timestamp?, depth: Int?) {
-        Task {
+    @discardableResult
+    public nonisolated func delete(path: Path, from start: Timestamp?, to end: Timestamp?, depth: Int?) -> Request {
+        AsyncRequest {
             await self.deleteInternal(path: path, from: start, to: end, depth: depth)
         }
     }
