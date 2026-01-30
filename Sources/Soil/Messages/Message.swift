@@ -4,7 +4,7 @@
 
  This structure implements all three message types (see ``MessageType``) in a single message through optional properties.
  */
-public struct Message {
+public struct Message: Sendable {
 
     /// Indicate the message type (may be ommited for a data message)
     public let type: MessageType
@@ -125,6 +125,18 @@ public struct Message {
             return nil
         }
         return .init(value: value, timestamp: time ?? .current())
+    }
+
+    /// All samples contained in the message (not necessarily sorted)
+    var allSamples: [Sample] {
+        guard let sample else {
+            return samples ?? []
+        }
+        guard let samples else {
+            return [sample]
+        }
+        // Note: Not sorted
+        return [sample] + samples
     }
 }
 

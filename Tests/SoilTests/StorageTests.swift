@@ -5,15 +5,15 @@ import Soil
 struct StorageTests {
 
     @Test("Current value for path")
-    func saveAndGetValues() throws {
+    func saveAndGetValues() async {
         let storage = InMemoryStorage()
 
         let pathA = ["a", "b", "c"]
         let now = Timestamp.current()
 
-        storage.receive(.integer(123), for: pathA, at: now)
+        await storage.receive(.integer(123), for: pathA, at: now).wait()
 
-        let storedPathA = storage.currentSample(for: pathA)
+        let storedPathA = await storage.currentSample(for: pathA)
         #expect(storedPathA != nil)
         #expect(storedPathA?.value == .integer(123))
         #expect(storedPathA?.timestamp == now)
@@ -23,17 +23,17 @@ struct StorageTests {
      Check if a sub-tree is correctly returned with all content when individual paths have been set
      */
     @Test("Get sub-tree")
-    func getSubTree() throws {
+    func getSubTree() async throws {
         let storage = InMemoryStorage()
 
         let now = Timestamp.current()
 
-        storage.receive(.integer(123), for: ["a", "b", "c"], at: now)
-        storage.receive(.double(3.14), for: ["a", "b", "d"], at: now)
-        storage.receive(.string("some"), for: ["a", "e"], at: now)
+        await storage.receive(.integer(123), for: ["a", "b", "c"], at: now).wait()
+        await storage.receive(.double(3.14), for: ["a", "b", "d"], at: now).wait()
+        await storage.receive(.string("some"), for: ["a", "e"], at: now).wait()
 
         do {
-            let tree = storage.tree(for: ["a"], depth: nil)
+            let tree = await storage.tree(for: ["a"], depth: nil)
             #expect(tree.current == nil)
             #expect(tree.children.count == 2)
             let b = try #require(tree.children["b"])
@@ -58,17 +58,22 @@ struct StorageTests {
     }
 
     @Test("Sub-tree with depth")
-    func subTreeWithDepth() throws {
+    func subTreeWithDepth() async throws {
         let storage = InMemoryStorage()
 
         let now = Timestamp.current()
 
-        storage.receive(.integer(123), for: ["a", "b", "c"], at: now)
-        storage.receive(.double(3.14), for: ["a", "b", "d"], at: now)
-        storage.receive(.string("some"), for: ["a", "e"], at: now)
+        do {
+            let c = SampleTree(value: .integer(123), timestamp: now)
+            let d = SampleTree(value: .double(3.14), timestamp: now)
+            let b = SampleTree(children: ["c" : c, "d" : d])
+            let e = SampleTree(value: .string("some"), timestamp: now)
+            let a = SampleTree(children: ["b" : b, "e" : e])
+            await storage.receive(a, for: ["a"]).wait()
+        }
 
         do {
-            let tree = storage.tree(for: ["a"], depth: 2)
+            let tree = await storage.tree(for: ["a"], depth: 2)
             #expect(tree.current == nil)
             #expect(tree.children.count == 2)
             let b = try #require(tree.children["b"])
@@ -95,7 +100,7 @@ struct StorageTests {
         }
 
         do {
-            let tree = storage.tree(for: ["a"], depth: 1)
+            let tree = await storage.tree(for: ["a"], depth: 1)
             #expect(tree.current == nil)
             #expect(tree.children.count == 2)
             let b = try #require(tree.children["b"])
@@ -110,7 +115,7 @@ struct StorageTests {
         }
 
         do {
-            let tree = storage.tree(for: ["a"], depth: 0)
+            let tree = await storage.tree(for: ["a"], depth: 0)
             #expect(tree.current == nil)
             #expect(tree.children.count == 0)
         }
@@ -127,51 +132,51 @@ struct StorageTests {
     }
 
     @Test("History")
-    func testGetHistory() throws {
+    func testGetHistory() async throws {
         let storage = InMemoryStorage()
 
         do {
-            let empty = storage.samples(for: [], from: nil, to: nil, limit: nil)
+            let empty = await storage.samples(for: [], from: nil, to: nil, limit: nil)
             #expect(empty.isEmpty)
         }
         do {
-            let empty = storage.samples(for: [], from: nil, to: nil, limit: 1)
+            let empty = await storage.samples(for: [], from: nil, to: nil, limit: 1)
             #expect(empty.isEmpty)
         }
         do {
-            let empty = storage.samples(for: [], from: .current(), to: nil, limit: nil)
+            let empty = await storage.samples(for: [], from: .current(), to: nil, limit: nil)
             #expect(empty.isEmpty)
         }
         do {
-            let empty = storage.samples(for: [], from: nil, to: .current(), limit: nil)
+            let empty = await storage.samples(for: [], from: nil, to: .current(), limit: nil)
             #expect(empty.isEmpty)
         }
 
         let first = Timestamp.current()
-        storage.receive(.integer(123), for: [], at: first)
+        await storage.receive(.integer(123), for: [], at: first).wait()
         do {
-            let one = storage.samples(for: [], from: nil, to: nil, limit: nil)
+            let one = await storage.samples(for: [], from: nil, to: nil, limit: nil)
             try #require(one.count == 1)
             #expect(one[0].value == .integer(123))
             #expect(one[0].timestamp == first)
         }
         do {
             // start date is exclusive, so no values expected
-            let empty = storage.samples(for: [], from: first, to: nil, limit: nil)
+            let empty = await storage.samples(for: [], from: first, to: nil, limit: nil)
             #expect(empty.isEmpty)
         }
         do {
             // end date is inclusive, so expect the value
-            let one = storage.samples(for: [], from: nil, to: first, limit: nil)
+            let one = await storage.samples(for: [], from: nil, to: first, limit: nil)
             try #require(one.count == 1)
             #expect(one[0].value == .integer(123))
             #expect(one[0].timestamp == first)
         }
 
         let second = first.addingTimeInterval(1.0)
-        storage.receive(.integer(234), for: [], at: second)
+        await storage.receive(.integer(234), for: [], at: second).wait()
         do {
-            let two = storage.samples(for: [], from: nil, to: nil, limit: nil)
+            let two = await storage.samples(for: [], from: nil, to: nil, limit: nil)
             try #require(two.count == 2)
             // Values are returned oldest first
             #expect(two[0].value == .integer(123))
@@ -181,14 +186,14 @@ struct StorageTests {
         }
         do {
             // start date is exclusive, so expect only second value
-            let one = storage.samples(for: [], from: first, to: nil, limit: nil)
+            let one = await storage.samples(for: [], from: first, to: nil, limit: nil)
             try #require(one.count == 1)
             #expect(one[0].value == .integer(234))
             #expect(one[0].timestamp == second)
         }
         do {
             // end date is inclusive, so expect both values
-            let two = storage.samples(for: [], from: nil, to: second, limit: nil)
+            let two = await storage.samples(for: [], from: nil, to: second, limit: nil)
             try #require(two.count == 2)
             // Values are returned oldest first
             #expect(two[0].value == .integer(234))
@@ -198,7 +203,7 @@ struct StorageTests {
         }
         do {
             // limit to 1, so only expect first value
-            let one = storage.samples(for: [], from: nil, to: nil, limit: 1)
+            let one = await storage.samples(for: [], from: nil, to: nil, limit: 1)
             try #require(one.count == 1)
             #expect(one[0].value == .integer(123))
             #expect(one[0].timestamp == first)
@@ -206,7 +211,7 @@ struct StorageTests {
     }
 
     @Test("History order")
-    func testHistoryOrder() throws {
+    func testHistoryOrder() async throws {
         let storage = InMemoryStorage()
 
         let now = Timestamp.current()
@@ -214,10 +219,10 @@ struct StorageTests {
             Sample(value: .integer(123 + $0), timestamp: now.addingTimeInterval(Double($0)))
         }
         for sample in samples {
-            storage.receive(sample.value, for: [], at: sample.timestamp)
+            await storage.receive(sample.value, for: [], at: sample.timestamp).wait()
         }
 
-        let history = storage.samples(for: [])
+        let history = await storage.samples(for: [])
         try #require(history.count == samples.count)
         #expect(history.first! < history.last!, "History should be sorted oldest first")
         for index in history.indices {

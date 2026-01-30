@@ -1,5 +1,4 @@
 
-
 /**
  A simple storage implementation that keeps all values in memory.
 
@@ -9,56 +8,48 @@
  Each sample for a tree node is inserted separately, which may result in many array operations, even if batch inserts may be possible.
  The assumption is that mostly current samples will be received, which can be appended to the sorted internal array of history values.
  */
-public final class InMemoryStorage {
+public actor InMemoryStorage {
 
-    /// All historic values at this node, sorted by oldest first
-    private var history: [Sample] = []
-
-    /**
-     The nodes immediately below this node in the tree,
-     indexed by their path component.
-     */
-    private var children: [PathComponent: InMemoryStorage] = [:]
+    /// The root node of the data tree, where all other data is stored
+    private let root = MutableSampleTree()
 
     /**
      Create an in-memory storage.
      */
     public init() { }
 
-    // MARK: Node selection
-
     /**
-     Get a node for a path below the current node, if it exists.
+     Save the samples of a tree at a path.
 
-     This function is used for read and delete operations, and does not create any new nodes.
-     - Parameter path: The path to select within the tree.
-     - Returns: The node at the path, if it exists.
+     This function searches for the correct node in the tree, and inserts the tree.
+     This includes inserting the provided values at the node, and then traversing the provided tree further, until all samples are stored.
+     - Parameter tree: The tree with the samples to store.
+     - Parameter path: The path of the tree.
      */
-    private func existingNode(for path: Path) -> InMemoryStorage? {
-        var current = self
-        for component in path {
-            guard let child = current.existingChild(named: component) else {
-                return nil
-            }
-            current = child
-        }
-        return current
+    private func receiveInternal(_ tree: SampleTree, for path: Path) {
+        root.findOrCreateNode(for: path).save(tree)
     }
 
     /**
-     Select or create a node for the given path.
+     Delete data from the storage.
 
-     This function is used for write operations, when the node is required to be present.
-     - Parameter path: The path to select within the tree.
-     - Returns: The node at the path, created if it did not exist yet.
+     The function searches for the correct node in the tree,
+     and removes all applicable values from the historic samples at this node.
+     - Parameter path: The path of the node targeted for the delete.
+     - Parameter start: The start of the interval to delete (exclusive, defaults to `nil`, meaning from beginning of time)
+     - Parameter end: The end of the interval to delete (inclusive, defaults to `nil`, meaning to end of time)
+     - Parameter depth: The number of levels to include for deletion below the given path
      */
-    private func getOrCreateNode(for path: Path) -> InMemoryStorage {
-        var current = self
-        for component in path {
-            current = current.child(named: component)
-        }
-        return current
+    private func deleteInternal(path: Path, from start: Timestamp?, to end: Timestamp?, depth: Int?) {
+        root.existingNode(for: path)?.delete(from: start, to: end, depth: depth)
     }
+}
+
+/**
+ A node in the data tree of `InMemoryStorage`.
+ */
+private extension MutableSampleTree {
+
 
     /**
      Select a child of this node with a given name.
@@ -68,24 +59,13 @@ public final class InMemoryStorage {
      - Parameter name: The name of the child.
      - Returns: The node of the child.
      */
-    private func child(named name: PathComponent) -> InMemoryStorage {
-        if let child = existingChild(named: name) {
+    private func child(named name: PathComponent) -> MutableSampleTree {
+        if let child = children[name] {
             return child
         }
-        let child = InMemoryStorage()
+        let child = Self.init()
         children[name] = child
         return child
-    }
-
-    /**
-     Get a node of a child, if it exists.
-
-     This function is used for read and delete operations.
-     - Parameter name: The name of the child.
-     - Returns: The child node, if it exists.
-     */
-    private func existingChild(named name: PathComponent) -> InMemoryStorage? {
-        children[name]
     }
 
     /**
@@ -94,7 +74,7 @@ public final class InMemoryStorage {
      Inserts all samples of the tree root, and recurses into the children to store the full tree.
      - Parameter tree: The tree to save for this node.
      */
-    private func save(_ tree: Tree) {
+    func save(_ tree: SampleTree) {
         for sample in tree.samples {
             insertSampleIntoHistory(sample)
         }
@@ -113,11 +93,11 @@ public final class InMemoryStorage {
      */
     private func insertSampleIntoHistory(_ sample: Sample) {
         // We assume that most new values will be recent, so check the last value first
-        if let last = history.last, last <= sample {
-            history.append(sample)
+        if let last = samples.last, last <= sample {
+            samples.append(sample)
         } else {
             // Do a binary search in the sorted array and insert in the right place
-            history.insertIntoSorted(sample)
+            samples.insertIntoSorted(sample)
         }
     }
 
@@ -130,7 +110,7 @@ public final class InMemoryStorage {
      - Returns: The values in the range, sorted from `start` to `end`, or by oldest first, if either is `nil`.
        If a limit is set, then the `limit` values counted from `start` (or oldest) are returned.
      */
-    private func tree(from start: Timestamp? = nil, to end: Timestamp? = nil, depth: Int? = nil, limitPerNode: Int? = nil) -> Tree {
+    func tree(from start: Timestamp? = nil, to end: Timestamp? = nil, depth: Int? = nil, limitPerNode: Int? = nil) -> SampleTree {
         let samples = samples(from: start, to: end, limit: limitPerNode)
 
         // Only return the value, if depth is reached
@@ -139,7 +119,7 @@ public final class InMemoryStorage {
         }
 
         let newDepth = depth?.subtracting(1)
-        let children: [PathComponent : Tree] = self.children.mapValues { child in
+        let children: [PathComponent : SampleTree] = self.children.mapValues { child in
             child.tree(from: start, to: end, depth: newDepth, limitPerNode: limitPerNode)
         }
         return .init(samples: samples, children: children)
@@ -168,10 +148,10 @@ public final class InMemoryStorage {
             guard let end else {
                 guard let limit else {
                     // No start, end, or limit, so return the full history
-                    return history
+                    return samples
                 }
                 // Limit the full history, return in ascending order (already sorted correctly)
-                return Array(history.prefix(limit))
+                return Array(samples.prefix(limit))
             }
             // No start, but end provided: descending order, end inclusive
             let endIndex = firstIndex(after: end)
@@ -181,7 +161,7 @@ public final class InMemoryStorage {
         guard let end else {
             // Start, but no end, so return in ascending order
             let startIndex = firstIndex(after: start)
-            return selectAscending(startIndex..<history.endIndex, limit: limit)
+            return selectAscending(startIndex..<samples.endIndex, limit: limit)
         }
         guard start < end else {
             // Reverse order requested
@@ -202,7 +182,7 @@ public final class InMemoryStorage {
     private func selectAscending(_ range: Range<Int>, limit: Int?) -> [Sample] {
         // Move the end index if the range needs to be limited
         let limitedEndIndex = limit.map { min(range.upperBound, range.lowerBound + $0) } ?? range.upperBound
-        return Array(history[range.lowerBound..<limitedEndIndex])
+        return Array(samples[range.lowerBound..<limitedEndIndex])
     }
 
     /**
@@ -214,10 +194,10 @@ public final class InMemoryStorage {
     private func selectDescending(from start: Timestamp, to end: Timestamp, limit: Int?) -> [Sample] {
         // The lower index of the subsequence is given by `start`
         // Start is inclusive, so we find the first index larger than or equal to `start`
-        let lowerIndex = history.partitioningIndex { $0.timestamp >= start }
+        let lowerIndex = samples.partitioningIndex { $0.timestamp >= start }
         // The higher index is given by `end`, but exclusive.
         // Since we need the index after the last included element, we select the first index larger than or equal to `end`
-        let higherIndex = history.partitioningIndex { $0.timestamp >= end }
+        let higherIndex = samples.partitioningIndex { $0.timestamp >= end }
         // Now we select the subrange in descending order, with the limit applied from the higher index
         return selectDescending(lowerIndex..<higherIndex, limit: limit)
     }
@@ -233,14 +213,14 @@ public final class InMemoryStorage {
         // Move the higher index if the range needs to be limited
         let limitedLowerIndex = limit.map { max(range.lowerBound, range.upperBound - $0) } ?? range.lowerBound
         // Reverse the subsequence, because the order is expected to be descending
-        return Array(history[limitedLowerIndex..<range.upperBound].reversed())
+        return Array(samples[limitedLowerIndex..<range.upperBound].reversed())
     }
 
     /// Return the history index of the first element larger than the given date
     private func firstIndex(after date: Timestamp) -> Int {
         // Find the first index in the array where the sample date is after the given date
         // If all values are smaller than or equal to the given date, then the end index is returned
-        return history.partitioningIndex { $0.timestamp > date }
+        return samples.partitioningIndex { $0.timestamp > date }
     }
 
     /**
@@ -276,36 +256,36 @@ public final class InMemoryStorage {
             // No start provided, so use beginning of time
             guard let end else {
                 // No end provided, so delete full history
-                history.removeAll()
+                samples.removeAll()
                 return
             }
             // No start, but end provided
             let endIndex = firstIndex(after: end)
-            history.removeSubrange(0..<endIndex)
+            samples.removeSubrange(0..<endIndex)
             return
         }
 
         guard let end else {
             // Start, but no end, so delete all values after an including `start`
             let startIndex = firstIndex(after: start)
-            history.removeSubrange(startIndex...)
+            samples.removeSubrange(startIndex...)
             return
         }
         guard start < end else {
             // Reverse order requested
             // This case needs to be treated differently, due to start being exclusive and end inclusive
-            let startIndex = history.partitioningIndex { $0.timestamp >= end }
+            let startIndex = samples.partitioningIndex { $0.timestamp >= end }
             // The end index is given by `start`, but exclusive.
             // Since we need the index after the last included element, we select the first index larger than or equal to `start`
-            let endIndex = history.partitioningIndex { $0.timestamp >= start }
-            history.removeSubrange(startIndex..<endIndex)
+            let endIndex = samples.partitioningIndex { $0.timestamp >= start }
+            samples.removeSubrange(startIndex..<endIndex)
             return
         }
         // Both start and end given in "correct" order
         let startIndex = firstIndex(after: start)
         let endIndex = firstIndex(after: end)
         // The start index is exclusive, and the end index is inclusive
-        history.removeSubrange(startIndex..<endIndex)
+        samples.removeSubrange(startIndex..<endIndex)
     }
 }
 
@@ -320,9 +300,13 @@ extension InMemoryStorage: Storage {
      This includes inserting the provided values at the node, and then traversing the provided tree further, until all samples are stored.
      - Parameter tree: The tree with the samples to store.
      - Parameter path: The path of the tree.
+     - Returns: The request, if the caller wants to wait for completion
      */
-    public func receive(_ tree: Tree, for path: Path) {
-        getOrCreateNode(for: path).save(tree)
+    @discardableResult
+    public nonisolated func receive(_ tree: SampleTree, for path: Path) -> Request {
+        AsyncRequest {
+            await self.receiveInternal(tree, for: path)
+        }
     }
 
     /**
@@ -343,8 +327,8 @@ extension InMemoryStorage: Storage {
         to end: Timestamp? = nil,
         depth: Int? = nil,
         limitPerNode: Int? = nil
-    ) -> Tree {
-        existingNode(for: path)?.tree(from: start, to: end, depth: depth, limitPerNode: limitPerNode) ?? .empty
+    ) async -> SampleTree {
+        root.existingNode(for: path)?.tree(from: start, to: end, depth: depth, limitPerNode: limitPerNode) ?? .empty
     }
 
     /**
@@ -357,7 +341,9 @@ extension InMemoryStorage: Storage {
      - Parameter end: The end of the interval to delete (inclusive, defaults to `nil`, meaning to end of time)
      - Parameter depth: The number of levels to include for deletion below the given path
      */
-    public func delete(path: Path, from start: Timestamp?, to end: Timestamp?, depth: Int?) {
-        existingNode(for: path)?.delete(from: start, to: end, depth: depth)
+    public nonisolated func delete(path: Path, from start: Timestamp?, to end: Timestamp?, depth: Int?) {
+        Task {
+            await self.deleteInternal(path: path, from: start, to: end, depth: depth)
+        }
     }
 }

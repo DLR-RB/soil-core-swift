@@ -3,7 +3,7 @@ import Foundation
 /**
  A primitive value.
  */
-public enum Value {
+public enum Value: Sendable {
 
     case integer(Int)
 

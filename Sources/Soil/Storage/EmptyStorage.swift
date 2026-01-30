@@ -14,8 +14,10 @@ extension EmptyStorage: Storage {
      - Parameter tree: The tree with the samples to store.
      - Parameter path: The path of the tree.
      */
-    public func receive(_ tree: Tree, for path: Path) {
+    @discardableResult
+    public func receive(_ tree: SampleTree, for path: Path) -> Request {
         // Does not store the data
+        CompletedRequest()
     }
 
     /**
@@ -34,7 +36,7 @@ extension EmptyStorage: Storage {
         to end: Timestamp? = nil,
         depth: Int? = nil,
         limitPerNode: Int? = nil
-    ) -> Tree {
+    ) -> SampleTree {
         .empty
     }
 

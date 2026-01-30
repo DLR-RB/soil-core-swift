@@ -12,7 +12,7 @@
 final class SubscriptionTree {
 
     /// The nodes below this node, indexed by their name
-    private var children: [PathComponent : SubscriptionTree] = [:]
+    var children: [PathComponent : SubscriptionTree] = [:]
 
     /// The inclusion rules for the node, sorted by smallest first
     private var inclusions: [Int?] = []
@@ -78,7 +78,7 @@ final class SubscriptionTree {
      - Parameter depth: The depth of the inclusion (nil indicates the full sub-tree)
      */
     public func include(_ path: Path, depth: Int?) {
-        findOrCreateNode(at: path).include(depth: depth)
+        findOrCreateNode(for: path).include(depth: depth)
     }
 
     /**
@@ -87,7 +87,7 @@ final class SubscriptionTree {
      - Parameter depth: The depth of the exclusion (nil indicates the full sub-tree)
      */
     public func exclude(_ path: Path, depth: Int?) {
-        findOrCreateNode(at: path).exclude(depth: depth)
+        findOrCreateNode(for: path).exclude(depth: depth)
     }
 
     /**
@@ -260,66 +260,10 @@ final class SubscriptionTree {
         // equality is prevented during insertion of rules
         return inclusionDepth < exclusionDepth
     }
+}
 
-    // MARK: Nodes and Paths
+extension SubscriptionTree: MutableTree {
 
-    /**
-     Find an existing node, or create it in the tree.
-
-     Used when inserting a subscription or exclusion.
-     - Parameter path: The path to the node.
-     - Returns: The final node corresponding to the path
-     */
-    func findOrCreateNode(at path: Path) -> SubscriptionTree {
-        var node = self
-        for component in path {
-            if let child = node.children[component] {
-                node = child
-            } else {
-                let child = SubscriptionTree()
-                node.children[component] = child
-                node = child
-            }
-        }
-        return node
-    }
-
-    /**
-     Get a node for a path below the current node, if it exists.
-
-     This function is used for read and delete operations, and does not create any new nodes.
-     - Parameter path: The path to select within the tree.
-     - Returns: The node at the path, if it exists.
-     */
-    func existingNode(for path: Path) -> SubscriptionTree? {
-        var current = self
-        for name in path {
-            guard let child = current.children[name] else {
-                return nil
-            }
-            current = child
-        }
-        return current
-    }
-
-    /**
-     Get all existing nodes in the tree on the way to a node corresponding to a path.
-     - Note: Includes this node as the first element of the result
-     - Parameter path: The path to the node.
-     - Returns: All existing nodes along the path.
-     */
-    func existingNodes(for path: Path) -> [SubscriptionTree] {
-        var result = [self]
-        var last = self
-        for component in path {
-            guard let child = last.children[component] else {
-                break
-            }
-            result.append(child)
-            last = child
-        }
-        return result
-    }
 }
 
 extension SubscriptionTree: CustomStringConvertible {

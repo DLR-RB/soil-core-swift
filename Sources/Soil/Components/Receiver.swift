@@ -11,20 +11,24 @@
  - Subscriber: Implies that the component chooses which data to receive
  - Listener: Also suggests that the component is actively looking for data
  */
-public protocol Receiver {
+public protocol Receiver: Sendable {
 
     /**
-     Receive a tree for a path.
-
-     This is the singular function to inject data into a component.
+     Receive a request to store a tree for a path.
 
      The provided tree can contain multiple values for each node, and be of arbitrary depth.
 
      Components may choose to ignore parts of the tree due to access rights or other reasons.
      - Parameter tree: The tree to store.
      - Parameter path: The path of the root node of the provided tree
+     - Returns: A request handle, to optionally wait until the data is stored.
+     - Note: This function is not marked `async`, because it is viewed as a request to store data.
+       The data does not actually need to be stored when the function returns, and should return as fast as possible.
+       To wait until the data is stored, use ``commit()``
+     - SeeAlso: ``commit(_:for:)``
      */
-    func receive(_ tree: Tree, for path: Path)
+    @discardableResult
+    func receive(_ tree: SampleTree, for path: Path) -> Request
 }
 
 extension Receiver {
@@ -35,9 +39,10 @@ extension Receiver {
      - Parameter path: The path of the value.
      - Parameter timestamp: The timestamp associated with the value
      */
-    public func receive(_ value: Value, for path: Path, at timestamp: Timestamp = .current()) {
-        let tree = Tree(samples: [.init(value: value, timestamp: timestamp)])
-        receive(tree, for: path)
+    @discardableResult
+    public func receive(_ value: Value, for path: Path, at timestamp: Timestamp = .current()) -> Request {
+        let tree = SampleTree(samples: [.init(value: value, timestamp: timestamp)])
+        return receive(tree, for: path)
     }
 
     /**
@@ -45,8 +50,9 @@ extension Receiver {
      - Parameter sample: The timestamped value to store.
      - Parameter path: The path of the value.
      */
-    public func receive(_ sample: Sample, for path: Path) {
-        receive(.init(samples: [sample]), for: path)
+    @discardableResult
+    public func receive(_ sample: Sample, for path: Path) -> Request {
+        receive([sample], for: path)
     }
 
     /**
@@ -54,7 +60,8 @@ extension Receiver {
      - Parameter samples: The timestamped values to store.
      - Parameter path: The path of the value.
      */
-    public func receive(_ samples: [Sample], for path: Path) {
+    @discardableResult
+    public func receive(_ samples: [Sample], for path: Path) -> Request {
         receive(.init(samples: samples), for: path)
     }
 }

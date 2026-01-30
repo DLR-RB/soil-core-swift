@@ -7,7 +7,7 @@
 
  - Note: In other contexts, a provider may also be called a data source, sender, producer, publisher, transmitter, or writer.
  */
-public protocol Provider {
+public protocol Provider: Sendable {
 
     /**
      Read a data tree for a given path within a given interval.
@@ -28,8 +28,10 @@ public protocol Provider {
      - Parameter depth: The number of levels below the path to include in the result
      - Parameter limitPerNode: The maximum number of values to return for each node of the tree (defaults to `nil`, e.g. no limit)
      - Returns: The tree with the given depth, limited to the maximum count per node, for the requested interval.
+     - Note: This function is `async`, because providing the data may take some time.
+       It could be retrieved over a network, from an otherwise slow database, or from other components.
      */
-    func tree(for path: Path, from start: Timestamp?, to end: Timestamp?, depth: Int?, limitPerNode: Int?) -> Tree
+    func tree(for path: Path, from start: Timestamp?, to end: Timestamp?, depth: Int?, limitPerNode: Int?) async -> SampleTree
 }
 
 extension Provider {
@@ -43,8 +45,8 @@ extension Provider {
      - Parameter depth: The number of levels in the sub-tree to include
      - Returns: The sample containing the current values of the requested sub-tree.
      */
-    public func tree(for path: Path, beforeOrAt time: Timestamp, depth: Int? = nil) -> Tree {
-        tree(for: path, from: nil, to: time, depth: depth, limitPerNode: 1)
+    public func tree(for path: Path, beforeOrAt time: Timestamp, depth: Int? = nil) async -> SampleTree {
+        await tree(for: path, from: nil, to: time, depth: depth, limitPerNode: 1)
     }
 
     /**
@@ -64,8 +66,8 @@ extension Provider {
      - Parameter limit: The maximum number of values to return (defaults to `nil`, e.g. no limit)
      - Returns: The values in the range, limit to the maximum count
      */
-    public func samples(for path: Path, from start: Timestamp? = nil, to end: Timestamp? = nil, limit: Int? = nil) -> [Sample] {
-        tree(for: path, from: start, to: end, depth: 0, limitPerNode: limit).samples
+    public func samples(for path: Path, from start: Timestamp? = nil, to end: Timestamp? = nil, limit: Int? = nil) async -> [Sample] {
+        await tree(for: path, from: start, to: end, depth: 0, limitPerNode: limit).samples
     }
 
     /**
@@ -74,8 +76,8 @@ extension Provider {
      - Parameter date: The point in time for which the value is requested (`nil` indicates the most recent sample)
      - Returns: If present: The most recent value for the path where the timestamp is before the provided date.
      */
-    public func sample(for path: Path, beforeOrAt date: Timestamp) -> Sample? {
-        tree(for: path, from: nil, to: date, depth: 0, limitPerNode: 1).samples.first
+    public func sample(for path: Path, beforeOrAt date: Timestamp) async -> Sample? {
+        await tree(for: path, from: nil, to: date, depth: 0, limitPerNode: 1).samples.first
     }
 
     /**
@@ -83,8 +85,8 @@ extension Provider {
      - Parameter path: The requested path
      - Returns: The most recent timestamped value for the path, if present
      */
-    public func currentSample(for path: Path) -> Sample? {
-        sample(for: path, beforeOrAt: .current())
+    public func currentSample(for path: Path) async -> Sample? {
+        await sample(for: path, beforeOrAt: .current())
     }
 
     /**
@@ -93,8 +95,8 @@ extension Provider {
      - Parameter depth: The number of levels in the sub-tree to include
      - Returns: The sample containing the current values of the requested sub-tree.
      */
-    public func currentTree(for path: Path, depth: Int?) -> Tree {
-        tree(for: path, from: nil, to: .current(), depth: depth, limitPerNode: 1)
+    public func currentTree(for path: Path, depth: Int?) async -> SampleTree {
+        await tree(for: path, from: nil, to: .current(), depth: depth, limitPerNode: 1)
     }
 
     /**
@@ -102,7 +104,7 @@ extension Provider {
      - Parameter path: The requested path
      - Returns: The sample containing the current values of the requested sub-tree.
      */
-    public func currentTree(for path: Path) -> Tree {
-        currentTree(for: path, depth: nil)
+    public func currentTree(for path: Path) async -> SampleTree {
+        await currentTree(for: path, depth: nil)
     }
 }

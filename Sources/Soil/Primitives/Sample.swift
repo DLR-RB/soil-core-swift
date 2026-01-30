@@ -1,7 +1,7 @@
 
 
 /// A value with a timestamp
-public struct Sample {
+public struct Sample: Sendable {
 
     /// The value associated with the timestamp
     public let value: Value

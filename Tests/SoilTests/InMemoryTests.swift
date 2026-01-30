@@ -5,16 +5,16 @@ import Soil
 struct InMemoryDatabase {
 
     @Test("Store current value")
-    func saveAndGetCurrentValue() throws {
+    func saveAndGetCurrentValue() async throws {
         let storage = InMemoryStorage()
 
         let value = Value.integer(123)
         let time = Timestamp.current()
         let path = ["a", "b", "c"]
 
-        storage.receive(value, for: path)
+        await storage.receive(value, for: path).wait()
 
-        let stored = storage.tree(for: path, depth: 0)
+        let stored = await storage.tree(for: path, depth: 0)
         let sample = try #require(stored.current)
         #expect(sample.value == value)
         #expect(sample.timestamp.isVeryClose(to: time))
@@ -22,16 +22,16 @@ struct InMemoryDatabase {
     }
 
     @Test("Store value with timestamp")
-    func saveAndGetValueWithTimestamp() throws {
+    func saveAndGetValueWithTimestamp() async throws {
         let storage = InMemoryStorage()
 
         let value = Value.integer(123)
         let time = Timestamp.current()
         let path = ["a", "b", "c"]
 
-        storage.receive(value, for: path, at: time)
+        await storage.receive(value, for: path, at: time).wait()
 
-        let stored = storage.tree(for: path, depth: 0)
+        let stored = await storage.tree(for: path, depth: 0)
         let sample = try #require(stored.current)
         #expect(sample.value == value)
         #expect(sample.timestamp.isVeryClose(to: time))
@@ -39,7 +39,7 @@ struct InMemoryDatabase {
     }
 
     @Test("Replace current value")
-    func replaceCurrentValue() throws {
+    func replaceCurrentValue() async throws {
         let storage = InMemoryStorage()
 
         let newValue = Value.integer(123)
@@ -49,22 +49,22 @@ struct InMemoryDatabase {
         let oldValue = Value.integer(234)
         let oldTime = newTime.addingTimeInterval(-10)
 
-        storage.receive(oldValue, for: path, at: oldTime)
+        await storage.receive(oldValue, for: path, at: oldTime).wait()
 
         do {
             // Get current value
-            let stored = storage.tree(for: path, depth: 0)
+            let stored = await storage.tree(for: path, depth: 0)
             let sample = try #require(stored.current)
             #expect(sample.value == oldValue)
             #expect(sample.timestamp.isVeryClose(to: oldTime))
             #expect(stored.children.isEmpty)
         }
 
-        storage.receive(newValue, for: path, at: newTime)
+        await storage.receive(newValue, for: path, at: newTime).wait()
 
         do {
             // Get current value
-            let stored = storage.currentTree(for: path, depth: 0)
+            let stored = await storage.currentTree(for: path, depth: 0)
             #expect(stored.samples.count == 1)
             let sample = try #require(stored.current)
             #expect(sample.value == newValue)
@@ -74,7 +74,7 @@ struct InMemoryDatabase {
 
         do {
             // Get old value
-            let stored = storage.tree(for: path, beforeOrAt: oldTime.addingTimeInterval(1), depth: 0)
+            let stored = await storage.tree(for: path, beforeOrAt: oldTime.addingTimeInterval(1), depth: 0)
             let sample = try #require(stored.current)
             #expect(sample.value == oldValue)
             #expect(sample.timestamp.isVeryClose(to: oldTime))
@@ -84,16 +84,16 @@ struct InMemoryDatabase {
     }
 
     @Test("Store root value")
-    func saveAndGetRootValue() throws {
+    func saveAndGetRootValue() async throws {
         let storage = InMemoryStorage()
 
         let value = Value.integer(123)
         let time = Timestamp.current()
         let path: Path = []
 
-        storage.receive(value, for: path, at: time)
+        await storage.receive(value, for: path, at: time).wait()
 
-        let stored = storage.tree(for: path, depth: 0)
+        let stored = await storage.tree(for: path, depth: 0)
         let sample = try #require(stored.current)
         #expect(sample.value == value)
         #expect(sample.timestamp == time)
@@ -101,25 +101,25 @@ struct InMemoryDatabase {
     }
 
     @Test("Store tree")
-    func storeTree() throws {
+    func storeTree() async throws {
         let storage = InMemoryStorage()
 
         let now = Timestamp.current()
         do {
-            let cTree = Tree(value: .string("hello"), timestamp: now)
-            let fTree = Tree(value: .double(3.14), timestamp: now)
-            let bTree = Tree(children: ["c" : cTree, "f" : fTree])
-            let eTree = Tree(value: .path(["z", "x"]), timestamp: now)
-            let dTree = Tree(children: ["e" : eTree])
-            let aTree = Tree(value: .integer(123), timestamp: now, children: [
+            let cTree = SampleTree(value: .string("hello"), timestamp: now)
+            let fTree = SampleTree(value: .double(3.14), timestamp: now)
+            let bTree = SampleTree(children: ["c" : cTree, "f" : fTree])
+            let eTree = SampleTree(value: .path(["z", "x"]), timestamp: now)
+            let dTree = SampleTree(children: ["e" : eTree])
+            let aTree = SampleTree(value: .integer(123), timestamp: now, children: [
                 "d" : dTree
             ])
-            let tree = Tree(children: ["a" : aTree, "b" : bTree])
-            storage.receive(tree, for: [])
+            let tree = SampleTree(children: ["a" : aTree, "b" : bTree])
+            await storage.receive(tree, for: []).wait()
         }
 
         do {
-            let tree = storage.tree(for: [])
+            let tree = await storage.tree(for: [])
             #expect(tree.children.count == 2)
             #expect(tree.samples.isEmpty)
 
@@ -158,17 +158,17 @@ struct InMemoryDatabase {
     }
 
     @Test("Full tree")
-    func getFullTree() throws {
+    func getFullTree() async throws {
         let storage = InMemoryStorage()
 
         let now = Timestamp.current()
-        storage.receive(.integer(123), for: ["a"], at: now)
-        storage.receive(.string("hello"), for: ["b", "c"], at: now)
-        storage.receive(.path(["z", "x"]), for: ["a", "d", "e"], at: now)
-        storage.receive(.double(3.14), for: ["b", "f"], at: now)
+        await storage.receive(.integer(123), for: ["a"], at: now).wait()
+        await storage.receive(.string("hello"), for: ["b", "c"], at: now).wait()
+        await storage.receive(.path(["z", "x"]), for: ["a", "d", "e"], at: now).wait()
+        await storage.receive(.double(3.14), for: ["b", "f"], at: now).wait()
 
         do {
-            let tree = storage.tree(for: [])
+            let tree = await storage.tree(for: [])
             #expect(tree.children.count == 2)
             #expect(tree.samples.isEmpty)
 
@@ -207,23 +207,23 @@ struct InMemoryDatabase {
     }
 
     @Test("Limited tree")
-    func getTreeWithDepth() throws {
+    func getTreeWithDepth() async throws {
         let storage = InMemoryStorage()
 
         let now = Timestamp.current()
-        storage.receive(.integer(123), for: ["a"], at: now)
-        storage.receive(.string("hello"), for: ["b", "c"], at: now)
-        storage.receive(.path(["z", "x"]), for: ["a", "d", "e"], at: now)
-        storage.receive(.double(3.14), for: ["b", "f"], at: now)
+        await storage.receive(.integer(123), for: ["a"], at: now).wait()
+        await storage.receive(.string("hello"), for: ["b", "c"], at: now).wait()
+        await storage.receive(.path(["z", "x"]), for: ["a", "d", "e"], at: now).wait()
+        await storage.receive(.double(3.14), for: ["b", "f"], at: now).wait()
 
         do {
-            let tree = storage.tree(for: [], depth: 0)
+            let tree = await storage.tree(for: [], depth: 0)
             #expect(tree.children.isEmpty)
             #expect(tree.samples.isEmpty)
         }
 
         do {
-            let tree = storage.tree(for: [], depth: 1)
+            let tree = await storage.tree(for: [], depth: 1)
             #expect(tree.children.count == 2)
             #expect(tree.samples.isEmpty)
 
@@ -239,13 +239,13 @@ struct InMemoryDatabase {
         }
 
         do {
-            let b = storage.tree(for: ["b"], depth: 0)
+            let b = await storage.tree(for: ["b"], depth: 0)
             #expect(b.samples.isEmpty)
             #expect(b.children.count == 0)
         }
 
         do {
-            let b = storage.tree(for: ["b"], depth: 1)
+            let b = await storage.tree(for: ["b"], depth: 1)
             #expect(b.samples.isEmpty)
             #expect(b.children.count == 2)
 
@@ -264,7 +264,7 @@ struct InMemoryDatabase {
     }
 
     @Test("Tree at time")
-    func getFullTreeAtTime() throws {
+    func getFullTreeAtTime() async throws {
         let storage = InMemoryStorage()
 
         let now = Timestamp.current()
@@ -273,19 +273,19 @@ struct InMemoryDatabase {
 
         // Store old and new values in mixed order
         do {
-            storage.receive(.string("there"), for: ["b", "c"], at: old)
-            storage.receive(.integer(123), for: ["a"], at: now)
-            storage.receive(.string("hello"), for: ["b", "c"], at: now)
-            storage.receive(.integer(234), for: ["a"], at: old)
-            storage.receive(.double(42.1), for: ["b", "f"], at: old)
-            storage.receive(.path(["z", "x"]), for: ["a", "d", "e"], at: now)
-            storage.receive(.path(["y", "w"]), for: ["a", "d", "e"], at: old)
-            storage.receive(.double(3.14), for: ["b", "f"], at: now)
+            await storage.receive(.string("there"), for: ["b", "c"], at: old).wait()
+            await storage.receive(.integer(123), for: ["a"], at: now).wait()
+            await storage.receive(.string("hello"), for: ["b", "c"], at: now).wait()
+            await storage.receive(.integer(234), for: ["a"], at: old).wait()
+            await storage.receive(.double(42.1), for: ["b", "f"], at: old).wait()
+            await storage.receive(.path(["z", "x"]), for: ["a", "d", "e"], at: now).wait()
+            await storage.receive(.path(["y", "w"]), for: ["a", "d", "e"], at: old).wait()
+            await storage.receive(.double(3.14), for: ["b", "f"], at: now).wait()
         }
 
         // Get current tree
         do {
-            let tree = storage.tree(for: [])
+            let tree = await storage.tree(for: [])
             #expect(tree.children.count == 2)
             #expect(tree.samples.isEmpty)
 
@@ -323,7 +323,7 @@ struct InMemoryDatabase {
         }
         // Get old tree
         do {
-            let tree = storage.tree(for: [], beforeOrAt: queryTime)
+            let tree = await storage.tree(for: [], beforeOrAt: queryTime)
             #expect(tree.current == nil)
             #expect(tree.children.count == 2)
 
@@ -362,7 +362,7 @@ struct InMemoryDatabase {
     }
 
     @Test("Limited tree at time")
-    func getTreeWithDepthAtTime() throws {
+    func getTreeWithDepthAtTime() async throws {
         let storage = InMemoryStorage()
 
         let now = Timestamp.current()
@@ -371,18 +371,18 @@ struct InMemoryDatabase {
 
         // Store old and new values in mixed order
         do {
-            storage.receive(.string("there"), for: ["b", "c"], at: old)
-            storage.receive(.integer(123), for: ["a"], at: now)
-            storage.receive(.string("hello"), for: ["b", "c"], at: now)
-            storage.receive(.integer(234), for: ["a"], at: old)
-            storage.receive(.double(42.1), for: ["b", "f"], at: old)
-            storage.receive(.path(["z", "x"]), for: ["a", "d", "e"], at: now)
-            storage.receive(.path(["y", "w"]), for: ["a", "d", "e"], at: old)
-            storage.receive(.double(3.14), for: ["b", "f"], at: now)
+            await storage.receive(.string("there"), for: ["b", "c"], at: old).wait()
+            await storage.receive(.integer(123), for: ["a"], at: now).wait()
+            await storage.receive(.string("hello"), for: ["b", "c"], at: now).wait()
+            await storage.receive(.integer(234), for: ["a"], at: old).wait()
+            await storage.receive(.double(42.1), for: ["b", "f"], at: old).wait()
+            await storage.receive(.path(["z", "x"]), for: ["a", "d", "e"], at: now).wait()
+            await storage.receive(.path(["y", "w"]), for: ["a", "d", "e"], at: old).wait()
+            await storage.receive(.double(3.14), for: ["b", "f"], at: now).wait()
         }
 
         do {
-            let root = storage.tree(for: [], beforeOrAt: queryTime, depth: 1)
+            let root = await storage.tree(for: [], beforeOrAt: queryTime, depth: 1)
             #expect(root.children.count == 2)
             #expect(root.samples.isEmpty)
 
@@ -398,7 +398,7 @@ struct InMemoryDatabase {
         }
 
         do {
-            let a = storage.tree(for: ["a"], beforeOrAt: queryTime, depth: 1)
+            let a = await storage.tree(for: ["a"], beforeOrAt: queryTime, depth: 1)
             let aSample = try #require(a.current)
             #expect(aSample.value == .integer(234))
             #expect(aSample.timestamp.isVeryClose(to: old))
@@ -410,11 +410,11 @@ struct InMemoryDatabase {
         }
 
         do {
-            let d: Tree = storage.tree(for: ["a", "d"], beforeOrAt: queryTime, depth: 1)
+            let d: SampleTree = await storage.tree(for: ["a", "d"], beforeOrAt: queryTime, depth: 1)
             #expect(d.samples.isEmpty)
             #expect(d.children.count == 1)
 
-            let e: Tree = try #require(d.children["e"])
+            let e: SampleTree = try #require(d.children["e"])
             let eSample = try #require(e.current)
             #expect(eSample.value == .path(["y", "w"]))
             #expect(eSample.timestamp.isVeryClose(to: old))
@@ -422,7 +422,7 @@ struct InMemoryDatabase {
         }
 
         do {
-            let e = storage.tree(for: ["a", "d", "e"], beforeOrAt: queryTime, depth: 1)
+            let e = await storage.tree(for: ["a", "d", "e"], beforeOrAt: queryTime, depth: 1)
             let eSample = try #require(e.current)
             #expect(eSample.value == .path(["y", "w"]))
             #expect(eSample.timestamp.isVeryClose(to: old))
@@ -430,7 +430,7 @@ struct InMemoryDatabase {
         }
 
         do {
-            let b = storage.tree(for: ["b"], beforeOrAt: queryTime, depth: 1)
+            let b = await storage.tree(for: ["b"], beforeOrAt: queryTime, depth: 1)
             #expect(b.samples.isEmpty)
             #expect(b.children.count == 2)
 
@@ -449,7 +449,7 @@ struct InMemoryDatabase {
     }
 
     @Test("Full history")
-    func getFullHistory() throws {
+    func getFullHistory() async {
         let storage = InMemoryStorage()
 
         let old = Timestamp.current().addingTimeInterval(-10)
@@ -458,12 +458,12 @@ struct InMemoryDatabase {
         }
         do {
             for sample in values {
-                storage.receive(sample.value, for: ["a"], at: sample.timestamp)
+                await storage.receive(sample.value, for: ["a"], at: sample.timestamp).wait()
             }
         }
 
         do {
-            let samples = storage.samples(for: ["a"])
+            let samples = await storage.samples(for: ["a"])
             #expect(samples.count == values.count)
             #expect(samples == values)
         }
@@ -471,18 +471,18 @@ struct InMemoryDatabase {
         // Test shuffled insert
         do {
             for sample in values.shuffled() {
-                storage.receive(sample.value, for: ["b"], at: sample.timestamp)
+                await storage.receive(sample.value, for: ["b"], at: sample.timestamp).wait()
             }
         }
 
         do {
-            let samples = storage.samples(for: ["b"])
+            let samples = await storage.samples(for: ["b"])
             #expect(samples.count == values.count)
             #expect(samples == values)
         }
     }
 
-    private func databaseWithShuffledValues(count: Int = 100, path: Path = ["a"]) -> (storage: Storage, start: Timestamp, path: Path) {
+    private func databaseWithShuffledValues(count: Int = 100, path: Path = ["a"]) async -> (storage: Storage, start: Timestamp, path: Path) {
         let storage = InMemoryStorage()
 
         let start = Timestamp.current().addingTimeInterval(Double(-count))
@@ -491,49 +491,49 @@ struct InMemoryDatabase {
         }
 
         for sample in values.shuffled() {
-            storage.receive(sample.value, for: path, at: sample.timestamp)
+            await storage.receive(sample.value, for: path, at: sample.timestamp).wait()
         }
         return (storage, start, path)
     }
 
     @Test("Limited history")
-    func getFullHistoryWithLimit() throws {
-        let (storage, start, path) = databaseWithShuffledValues()
+    func getFullHistoryWithLimit() async {
+        let (storage, start, path) = await databaseWithShuffledValues()
 
-        let samples = storage.samples(for: path, from: nil, to: nil, limit: 10)
+        let samples = await storage.samples(for: path, from: nil, to: nil, limit: 10)
         #expect(samples.count == 10)
         let expected = (0..<10).map { Sample(value: .integer($0), timestamp: start.addingTimeInterval(Double($0))) }
         #expect(samples == expected)
     }
 
     @Test("History with start")
-    func getHistoryWithStart() throws {
-        let (storage, start, path) = databaseWithShuffledValues()
+    func getHistoryWithStart() async {
+        let (storage, start, path) = await databaseWithShuffledValues()
 
         let begin = start.addingTimeInterval(49.5)
-        let samples = storage.samples(for: path, from: begin, to: nil, limit: nil)
+        let samples = await storage.samples(for: path, from: begin, to: nil, limit: nil)
         #expect(samples.count == 50)
         let expected = (0..<50).map { Sample(value: .integer(50 + $0), timestamp: start.addingTimeInterval(Double(50 + $0))) }
         #expect(samples == expected)
     }
 
     @Test("Limited history with start")
-    func getHistoryWithStartAndLimit() throws {
-        let (storage, start, path) = databaseWithShuffledValues()
+    func getHistoryWithStartAndLimit() async {
+        let (storage, start, path) = await databaseWithShuffledValues()
 
         let begin = start.addingTimeInterval(49.5)
-        let samples = storage.samples(for: path, from: begin, to: nil, limit: 20)
+        let samples = await storage.samples(for: path, from: begin, to: nil, limit: 20)
         #expect(samples.count == 20)
         let expected = (0..<20).map { Sample(value: .integer(50 + $0), timestamp: start.addingTimeInterval(Double(50 + $0))) }
         #expect(samples == expected)
     }
 
     @Test("Empty history with start")
-    func getEmptyHistoryWithStart() throws {
-        let (storage, start, path) = databaseWithShuffledValues()
+    func getEmptyHistoryWithStart() async {
+        let (storage, start, path) = await databaseWithShuffledValues()
 
         let begin = start.addingTimeInterval(100)
-        let samples = storage.samples(for: path, from: begin, to: nil, limit: nil)
+        let samples = await storage.samples(for: path, from: begin, to: nil, limit: nil)
         #expect(samples.count == 0)
     }
 
@@ -541,11 +541,11 @@ struct InMemoryDatabase {
      When requesting history with only the end date set, then we expect descending order of the results.
      */
     @Test("History with end")
-    func getHistoryWithEnd() throws {
-        let (storage, start, path) = databaseWithShuffledValues()
+    func getHistoryWithEnd() async {
+        let (storage, start, path) = await databaseWithShuffledValues()
 
         let end = start.addingTimeInterval(49.5)
-        let samples = storage.samples(for: path, from: nil, to: end, limit: nil)
+        let samples = await storage.samples(for: path, from: nil, to: end, limit: nil)
         #expect(samples.count == 50)
         let expected = (0..<50).reversed().map { Sample(value: .integer($0), timestamp: start.addingTimeInterval(Double($0))) }
         #expect(samples == expected)
@@ -557,76 +557,76 @@ struct InMemoryDatabase {
      limited from the latest timestamps
      */
     @Test("Limited history with end")
-    func getHistoryWithEndAndLimit() throws {
-        let (storage, start, path) = databaseWithShuffledValues()
+    func getHistoryWithEndAndLimit() async {
+        let (storage, start, path) = await databaseWithShuffledValues()
 
         let end = start.addingTimeInterval(49.5)
-        let samples = storage.samples(for: path, from: nil, to: end, limit: 20)
+        let samples = await storage.samples(for: path, from: nil, to: end, limit: 20)
         #expect(samples.count == 20)
         let expected = (30..<50).reversed().map { Sample(value: .integer($0), timestamp: start.addingTimeInterval(Double($0))) }
         #expect(samples == expected)
     }
 
     @Test("Empty history with end")
-    func getEmptyHistoryWithEnd() throws {
-        let (storage, start, path) = databaseWithShuffledValues()
+    func getEmptyHistoryWithEnd() async {
+        let (storage, start, path) = await databaseWithShuffledValues()
 
         let end = start.addingTimeInterval(-10)
-        let samples = storage.samples(for: path, from: nil, to: end, limit: nil)
+        let samples = await storage.samples(for: path, from: nil, to: end, limit: nil)
         #expect(samples.count == 0)
     }
 
     @Test("History in interval")
-    func getHistoryInInterval() throws {
-        let (storage, start, path) = databaseWithShuffledValues()
+    func getHistoryInInterval() async {
+        let (storage, start, path) = await databaseWithShuffledValues()
 
         let begin = start.addingTimeInterval(49.5)
         let end = begin.addingTimeInterval(20)
-        let samples = storage.samples(for: path, from: begin, to: end, limit: nil)
+        let samples = await storage.samples(for: path, from: begin, to: end, limit: nil)
         #expect(samples.count == 20)
         let expected = (0..<20).map { Sample(value: .integer(50 + $0), timestamp: start.addingTimeInterval(Double(50 + $0))) }
         #expect(samples == expected)
     }
 
     @Test("Limited history in interval")
-    func getHistoryInIntervalWithLimit() throws {
-        let (storage, start, path) = databaseWithShuffledValues()
+    func getHistoryInIntervalWithLimit() async {
+        let (storage, start, path) = await databaseWithShuffledValues()
 
         let begin = start.addingTimeInterval(49.5)
         let end = begin.addingTimeInterval(20)
-        let samples = storage.samples(for: path, from: begin, to: end, limit: 10)
+        let samples = await storage.samples(for: path, from: begin, to: end, limit: 10)
         #expect(samples.count == 10)
         let expected = (0..<10).map { Sample(value: .integer(50 + $0), timestamp: start.addingTimeInterval(Double(50 + $0))) }
         #expect(samples == expected)
     }
 
     @Test("Empty history in interval")
-    func getEmptyHistoryInInterval() throws {
-        let (storage, start, path) = databaseWithShuffledValues()
+    func getEmptyHistoryInInterval() async {
+        let (storage, start, path) = await databaseWithShuffledValues()
 
         let begin = start.addingTimeInterval(-20)
         let end = begin.addingTimeInterval(-10)
-        let samples = storage.samples(for: path, from: begin, to: end, limit: nil)
+        let samples = await storage.samples(for: path, from: begin, to: end, limit: nil)
         #expect(samples.count == 0)
     }
 
     @Test("Empty history in reversed interval")
-    func getEmptyHistoryInReversedInterval() throws {
-        let (storage, start, path) = databaseWithShuffledValues()
+    func getEmptyHistoryInReversedInterval() async {
+        let (storage, start, path) = await databaseWithShuffledValues()
 
         let begin = start.addingTimeInterval(-10)
         let end = begin.addingTimeInterval(-20)
-        let samples = storage.samples(for: path, from: begin, to: end, limit: nil)
+        let samples = await storage.samples(for: path, from: begin, to: end, limit: nil)
         #expect(samples.count == 0)
     }
 
     @Test("Reversed history in interval")
-    func getReversedHistoryInInterval() throws {
-        let (storage, start, path) = databaseWithShuffledValues()
+    func getReversedHistoryInInterval() async {
+        let (storage, start, path) = await databaseWithShuffledValues()
 
         let begin = start.addingTimeInterval(69.5)
         let end = begin.addingTimeInterval(-20)
-        let samples = storage.samples(for: path, from: begin, to: end, limit: 10)
+        let samples = await storage.samples(for: path, from: begin, to: end, limit: 10)
         #expect(samples.count == 10)
         let expected = (60..<70).reversed().map { Sample(value: .integer($0), timestamp: start.addingTimeInterval(Double($0))) }
         #expect(samples == expected)
