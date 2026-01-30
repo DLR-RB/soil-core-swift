@@ -4,31 +4,20 @@
 
  Use this request to execute an async function and optionally wait for the result.
  */
-actor AsyncRequest: Request {
+final class AsyncRequest: Request {
 
-    private var continuation: CheckedContinuation<Void, Never>?
-
-    private var isDone = false
+    let task: Task<Void, Never>
 
     /**
      Execute an async function as a task within the request.
      */
     init(_ operation: @escaping @Sendable () async -> Void) {
-        Task {
+        self.task = Task {
             await operation()
-            await self.complete()
         }
-    }
-
-    private func complete() {
-        self.isDone = true
-        self.continuation?.resume()
     }
 
     func wait() async {
-        if isDone { return }
-        await withCheckedContinuation { cont in
-            self.continuation = cont
-        }
+        await task.value
     }
 }
