@@ -3,12 +3,7 @@
 /**
  A subscription made to a component
  */
-public protocol Subscription {
-
-    /**
-     The receiver of updates that match the subscription
-     */
-    var receiver: (any Receiver)? { get set }
+public protocol Subscription: Sendable {
 
     /**
      Include a path in the subscription.

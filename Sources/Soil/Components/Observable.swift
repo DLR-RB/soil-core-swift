@@ -15,6 +15,7 @@ public protocol Observable {
     /**
      Create a subscription for a receiver
      - Parameter receiver: The receiver of data matching the subscription
+     - Returns: The subscription for the receiver
      */
-    func subscribe(_ receiver: any Receiver) -> Subscription
+    func subscribe(_ receiver: any Receiver) async -> Subscription
 }
