@@ -34,11 +34,12 @@ public struct Message: Sendable {
 
     /**
      The samples associated with the `path`.
+     Can be ommitted from messages if empty.
 
      Usage:
      - Data message: Used to transmit multiple samples for a path
      */
-    public let samples: [Sample]?
+    public let samples: [Sample]
 
     /**
      A generic count or limit
@@ -103,7 +104,7 @@ public struct Message: Sendable {
         path: Path,
         value: Value? = nil,
         time: Timestamp? = nil,
-        samples: [Sample]? = nil,
+        samples: [Sample] = [],
         count: Int? = nil,
         depth: Int? = nil,
         end: Timestamp? = nil,
@@ -130,16 +131,13 @@ public struct Message: Sendable {
 
     /// Indicate if the message contains any samples
     var hasSamples: Bool {
-        value != nil || !(samples?.isEmpty ?? true)
+        value != nil || !samples.isEmpty
     }
 
     /// All samples contained in the message (not necessarily sorted)
     var allSamples: [Sample] {
         guard let sample else {
-            return samples ?? []
-        }
-        guard let samples else {
-            return [sample]
+            return samples
         }
         // Note: Not sorted
         return [sample] + samples
@@ -314,7 +312,7 @@ extension Message: Codable {
         self.type = try container.decodeIfPresent(MessageType.self, forKey: .type) ?? .data
         self.path = try container.decodeIfPresent(Path.self, forKey: .path) ?? []
         self.value = try container.decodeIfPresent(Value.self, forKey: .value)
-        self.samples = try container.decodeIfPresent([Sample].self, forKey: .samples)
+        self.samples = try container.decodeIfPresent([Sample].self, forKey: .samples) ?? []
         self.count = try container.decodeIfPresent(Int.self, forKey: .count)
         self.depth = try container.decodeIfPresent(Int.self, forKey: .depth)
         self.time = try container.decodeIfPresent(Double.self, forKey: .time).map { Timestamp(timeIntervalSince1970: $0) }
@@ -329,7 +327,7 @@ extension Message: Codable {
         }
         try container.encode(path, forKey: .path)
         try container.encodeIfPresent(value, forKey: .value)
-        if let samples, !samples.isEmpty {
+        if !samples.isEmpty {
             try container.encode(samples, forKey: .samples)
         }
         try container.encodeIfPresent(count, forKey: .count)

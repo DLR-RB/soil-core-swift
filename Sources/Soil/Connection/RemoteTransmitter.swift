@@ -34,9 +34,9 @@ extension RemoteTransmitter: MessageReceiver {
      - Note: This function is called automatically by the connection, and should not be called manually.
      */
     public func didReceive(message: Message) {
-        guard let samples = message.samples, !samples.isEmpty else {
+        guard message.hasSamples else {
             return
         }
-        receiver.receive(samples, for: message.path)
+        receiver.receive(message.allSamples, for: message.path)
     }
 }
