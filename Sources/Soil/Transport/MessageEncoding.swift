@@ -3,7 +3,7 @@ import Foundation
 /**
  An interface to convert messages for the transport layer.
  */
-public protocol MessageEncoding {
+public protocol MessageEncoding: Sendable {
 
     /**
      Convert a message to binary data for transmission.

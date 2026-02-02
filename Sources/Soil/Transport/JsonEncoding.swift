@@ -3,7 +3,7 @@ import Foundation
 /**
  An encoding that represents messages as JSON objects
  */
-public final class JsonEncoding {
+public final class JsonEncoding: Sendable {
 
     /// The encoder used to encode messages to binary data
     private let encoder: JSONEncoder

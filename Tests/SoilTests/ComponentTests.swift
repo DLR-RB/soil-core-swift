@@ -16,7 +16,7 @@ struct ComponentTests {
 
         let rawConnectionToClient = layer.connect(id: "remote", to: "client")
         let connectionToClient = await DecodedConnection(wrapping: rawConnectionToClient, encoding: JsonEncoding())
-        let connectedClient = await HostedStorage(storage: storage, connection: connectionToClient)
+        let connectedClient = await HostedStorage(hosting: storage, through: connectionToClient)
 
         // Send value to bob
         let now = Timestamp.current()
@@ -83,7 +83,7 @@ struct ComponentTests {
         let remoteStorage = ObservableStorage(wrapping: InMemoryStorage())
         let rawConnectionToClient = layer.connect(id: "remote", to: "client")
         let connectionToClient = await DecodedConnection(wrapping: rawConnectionToClient, encoding: JsonEncoding())
-        let remoteConnectionToClient = await HostedObservable(observing: remoteStorage, connection: connectionToClient)
+        let remoteConnectionToClient = await HostedObservable(hosting: remoteStorage, through: connectionToClient)
 
         let rawConnectionToRemote = layer.connect(id: "client", to: "remote")
         let connectionToRemote = await DecodedConnection(wrapping: rawConnectionToRemote, encoding: JsonEncoding())
