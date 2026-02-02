@@ -28,7 +28,7 @@ public protocol Receiver: Sendable {
      - SeeAlso: ``commit(_:for:)``
      */
     @discardableResult
-    func receive(_ tree: SampleTree, for path: Path) -> Request
+    func receive(_ tree: SampleTree, for path: Path) -> any Request
 }
 
 extension Receiver {
@@ -40,7 +40,7 @@ extension Receiver {
      - Parameter timestamp: The timestamp associated with the value
      */
     @discardableResult
-    public func receive(_ value: Value, for path: Path, at timestamp: Timestamp = .current()) -> Request {
+    public func receive(_ value: Value, for path: Path, at timestamp: Timestamp = .current()) -> any Request {
         let tree = SampleTree(samples: [.init(value: value, timestamp: timestamp)])
         return receive(tree, for: path)
     }
@@ -51,7 +51,7 @@ extension Receiver {
      - Parameter path: The path of the value.
      */
     @discardableResult
-    public func receive(_ sample: Sample, for path: Path) -> Request {
+    public func receive(_ sample: Sample, for path: Path) -> any Request {
         receive([sample], for: path)
     }
 
@@ -61,7 +61,7 @@ extension Receiver {
      - Parameter path: The path of the value.
      */
     @discardableResult
-    public func receive(_ samples: [Sample], for path: Path) -> Request {
+    public func receive(_ samples: [Sample], for path: Path) -> any Request {
         receive(.init(samples: samples), for: path)
     }
 }

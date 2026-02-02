@@ -14,5 +14,5 @@ public protocol Storage: Provider, Receiver {
      - Returns: A request that can be used to wait until completion
      */
     @discardableResult
-    func delete(path: Path, from start: Timestamp?, to end: Timestamp?, depth: Int?) -> Request
+    func delete(path: Path, from start: Timestamp?, to end: Timestamp?, depth: Int?) -> any Request
 }

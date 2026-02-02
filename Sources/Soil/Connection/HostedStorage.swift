@@ -2,22 +2,23 @@
 /**
  Expose a storage over a transport interface.
  */
-public actor StorageServer {
+public actor HostedStorage {
 
-    let storage: any Storage
+    private let storage: any Storage
 
-    let transport: any ComponentTransport
+    private let connection: any ComponentConnection
 
-    public init(storage: any Storage, transport: any ComponentTransport) {
+    public init(storage: any Storage, connection: any ComponentConnection) {
         self.storage = storage
-        self.transport = transport
+        self.connection = connection
 
         // Register to receive messages from the component
-        transport.onReceive { [weak self] message in
-            if let self {
-                Task {
-                    await self.didReceive(message: message)
-                }
+        connection.onReceive { [weak self] message in
+            guard let self else {
+                return
+            }
+            Task {
+                await self.didReceive(message: message)
             }
         }
     }
@@ -26,11 +27,11 @@ public actor StorageServer {
      Send a message to the component.
      - Parameter message: The message to send.
      - Note: If no message callback is available, then the message is discarded.
-     - Returns: `true` if the message was handed to the transport layer.
+     - Returns: The request to send the message
      */
     @discardableResult
-    private func send(_ message: Message) -> Bool {
-        transport.send(message: message)
+    private func send(_ message: Message) -> any Request {
+        connection.send(message: message)
     }
 
     // MARK: Response handling
@@ -71,6 +72,7 @@ public actor StorageServer {
     }
 
     private func didReceive(request message: Message) async {
+        // TODO: Schedule this on another thread to not block other requests in the meantime?
         let tree = await storage.tree(
             for: message.path,
             from: message.time,
