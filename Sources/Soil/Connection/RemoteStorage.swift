@@ -1,35 +1,31 @@
-
+import Foundation
 
 /**
  Encapsulate a remote component that provides storage to treat it like a local storage
  */
 public actor RemoteStorage {
 
+    /// The connection to the storage
     private let connection: any MessageConnection
 
+    /// The object managing active requests
     private let requests: RemoteDataRequests
 
-    public init(connection: any MessageConnection) async {
+    /// The number of seconds until a request times out
+    private let requestTimeout: TimeInterval
+
+    /**
+     Connect to a remote storage.
+     - Parameter connection: The connection to the storage.
+     - Parameter requestTimeout: The number of seconds to wait for each request
+     */
+    public init(connection: any MessageConnection, requestTimeout: TimeInterval = 30.0) async {
         self.connection = connection
         self.requests = .init()
+        self.requestTimeout = requestTimeout
 
         // Register to receive messages from the component
         await connection.setReceiver(self)
-    }
-
-    private func deleteInternal(path: Path, from start: Timestamp?, to end: Timestamp?, depth: Int?) {
-        // TODO: Track deletion requests
-        let message = Message.delete(path, from: start, to: end, depth: depth, id: nil)
-        send(message)
-    }
-
-    private func transmit(_ tree: SampleTree, for path: Path) {
-        if !tree.samples.isEmpty {
-            send(.samples(tree.samples, for: path))
-        }
-        for (name, child) in tree.children {
-            transmit(child, for: path + [name])
-        }
     }
 
     /**
@@ -62,6 +58,12 @@ public actor RemoteStorage {
         return lastRequestId
     }
 
+    /**
+     Create a task that times out after a given interval.
+     - Parameter seconds: The number of seconds to wait before the timeout function is called.
+     - Parameter id: The id of the request that timed out
+     - Note: The `reachedTimeout()` function is called with the provided id when the task reaches its timeout
+     */
     private func startRequestTimeout(seconds: Double, id: Int) -> Task<Void, Never> {
         Task { [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
@@ -71,18 +73,27 @@ public actor RemoteStorage {
         }
     }
 
+    /**
+     Callback function executed when a timeout for a request is reached.
+     - Parameter id: The request that timed out
+     */
     private func reachedTimeout(forRequest id: Int) {
         requests.cancel(request: id)
     }
 
-    private func request(path: Path, from start: Timestamp?, to end: Timestamp?, depth: Int?, limit: Int?) async -> SampleTree {
+    /**
+     Actor-isolated function to get a tree from the remote storage.
+
+     Sends a data request, and waits for all responses.
+     All samples are returned when the request completes or times out.
+     */
+    private func tree(for path: Path, from start: Timestamp?, to end: Timestamp?, depth: Int?, limit: Int?) async -> SampleTree {
         let id = nextRequestId()
         // Send the request message to the remote
         // If it's not delivered, then the timeout will be triggered
         send(.request(path, from: start, to: end, limit: limit, depth: depth, id: id))
 
-        // TODO: Specify timeout
-        let timeoutTask = startRequestTimeout(seconds: 30, id: id)
+        let timeoutTask = startRequestTimeout(seconds: requestTimeout, id: id)
         // Store the request and wait for the data (with a timeout)
         return await withCheckedContinuation { continuation in
             let request = DataRequest(
@@ -96,36 +107,25 @@ public actor RemoteStorage {
             requests.add(request, for: id)
         }
     }
-
-    // MARK: Response handling
-
-    public func didReceive(message: Message) {
-        switch message.type {
-        case .data:
-            didReceive(data: message)
-        case .request:
-            break
-        case .deletionRequest:
-            break
-        case .subscriptionInclusion, .subscriptionDeletion, .subscriptionExclusion:
-            break
-        }
-    }
-
-    /**
-     Process a data message, by checking which request it matches
-     - Parameter message: The received data message
-     */
-    private func didReceive(data message: Message) {
-        // Note: We know that the message is a data message
-
-        // Pass the request to the handler, which checks if the message
-        // matches an active request
-        requests.didReceive(message)
-    }
 }
 
 extension RemoteStorage: MessageReceiver {
+
+    /**
+     Callback to receive messages from the remote component.
+     - Parameter message: The message received over the connection
+     - Note: This function is called automatically by the connection, and should not be called manually.
+     */
+    public func didReceive(message: Message) {
+        switch message.type {
+        case .data:
+            // Pass the request to the handler, which checks if the message
+            // matches an active request
+            requests.didReceive(message)
+        case .request, .deletionRequest, .subscriptionInclusion, .subscriptionDeletion, .subscriptionExclusion:
+            break
+        }
+    }
 
 }
 
@@ -148,9 +148,7 @@ extension RemoteStorage: Storage {
      */
     @discardableResult
     public nonisolated func receive(_ tree: SampleTree, for path: Path) -> Request {
-        AsyncRequest {
-            await self.transmit(tree, for: path)
-        }
+        connection.send(tree, for: path)
     }
 
     /**
@@ -176,9 +174,8 @@ extension RemoteStorage: Storage {
        It could be retrieved over a network, from an otherwise slow database, or from other components.
      */
     public func tree(for path: Path, from start: Timestamp?, to end: Timestamp?, depth: Int?, limitPerNode: Int?) async -> SampleTree {
-        await request(path: path, from: start, to: end, depth: depth, limit: limitPerNode)
+        await tree(for: path, from: start, to: end, depth: depth, limit: limitPerNode)
     }
-
 
     /**
      Delete data from the storage.
@@ -189,8 +186,8 @@ extension RemoteStorage: Storage {
      */
     @discardableResult
     public nonisolated func delete(path: Path, from start: Timestamp?, to end: Timestamp?, depth: Int?) -> Request {
-        AsyncRequest {
-            await self.deleteInternal(path: path, from: start, to: end, depth: depth)
-        }
+        // TODO: Track deletion requests
+        let message = Message.delete(path, from: start, to: end, depth: depth, id: nil)
+        return connection.send(message: message)
     }
 }

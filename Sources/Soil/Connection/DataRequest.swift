@@ -4,26 +4,39 @@
  */
 final class DataRequest {
 
+    /// The path contained in the request
     let path: Path
 
+    /// The (start) time of the requested interval
     let start: Timestamp?
 
+    /// The end time of the requested interval
     let end: Timestamp?
 
+    /// The requested depth of the data to provide
     let depth: Int?
 
+    /// The maximum number of samples per node
     let limit: Int?
 
+    /// The tree containing the received samples while waiting for more responses
     let tree: MutableSampleTree = .init()
 
+    /// The continuation to execute when the request is completed or timed out
     let continuation: CheckedContinuation<SampleTree, Never>
 
+    /// The timeout task to cancel if the request is completed before timing out
     let timeout: Task<Void, Never>
 
+    /// The expected number of response messages, extracted from received responses
     var expectedMessages: Int?
 
+    /// The number of already received messages for this request
     var receivedMessages = 0
 
+    /**
+     Create a request for tracking
+     */
     init(path: Path,
          start: Timestamp?,
          end: Timestamp?,
@@ -41,6 +54,12 @@ final class DataRequest {
         self.timeout = timeout
     }
 
+    /**
+     Complete the request.
+
+     This function is called regardless if the request is completed or a timeout is reached.
+     The timeout task will be canceled (may already be completed), and the continuation is resumed with the available data.
+     */
     func finish() {
         timeout.cancel()
         continuation.resume(returning: tree.tree)
@@ -121,16 +140,29 @@ final class DataRequest {
         return samples.filter { $0.timestamp > start && $0.timestamp <= end }
     }
 
+    /**
+     Add samples from a response to the tree containing the previously received data.
+     - Parameter samples: The samples to add
+     - Parameter path: The full path of the samples
+     - Note: Before insertion, the absolute path is converted to be relative to the requested path.
+     */
     private func insert(_ samples: [Sample], at path: Path) {
         let requestedSamples = limit(samples)
         guard !requestedSamples.isEmpty else {
             // No applicable samples remaining
             return
         }
+        // All paths in responses are absolute,
+        // so we need to remove the requested path to get the relative path
+        // within the response tree
         let relativePath = path.removing(prefix: self.path)
         tree.insert(samples, at: relativePath)
     }
 
+    /**
+     Update the number of expected messages if the response contains this info.
+     - Note: If a mismatching count is received, then the larger one is used.
+     */
     private func updateExpectedMessageCount(_ count: Int?) {
         guard let count else {
             // Keep the existing count, since no new one received

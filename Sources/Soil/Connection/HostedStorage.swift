@@ -20,7 +20,7 @@ public actor HostedStorage {
      - Parameter storage: The storage to expose
      - Parameter connection: The connection over which the storage should be accessible.
      */
-    public init(storage: any Storage, connection: any MessageConnection) async {
+    public init(hosting storage: any Storage, through connection: any MessageConnection) async {
         self.storage = storage
         self.connection = connection
 
@@ -44,6 +44,7 @@ public actor HostedStorage {
     /**
      The central point where all received messages are processed.
      - Parameter message: The message received over the connection.
+     - Note: This function is called automatically by the connection, and should not be called manually.
      */
     public func didReceive(message: Message) async {
         switch message.type {
