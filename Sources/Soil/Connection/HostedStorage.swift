@@ -1,26 +1,31 @@
 
 /**
  Expose a storage over a transport interface.
+
+ The class can be used to provide access to a storage interface via a remote connection.
+ Request messages received over the connection are processed, and the requested data is returned.
+ Data received over the connection is inserted into the provided storage.
+ Deletion requests are also executed.
  */
 public actor HostedStorage {
 
+    /// The storage that is exposed over the connection
     private let storage: any Storage
 
-    private let connection: any ComponentConnection
+    /// The connection over which the storage is hosted
+    private let connection: any MessageConnection
 
-    public init(storage: any Storage, connection: any ComponentConnection) {
+    /**
+     Create a hosted storage.
+     - Parameter storage: The storage to expose
+     - Parameter connection: The connection over which the storage should be accessible.
+     */
+    public init(storage: any Storage, connection: any MessageConnection) async {
         self.storage = storage
         self.connection = connection
 
         // Register to receive messages from the component
-        connection.onReceive { [weak self] message in
-            guard let self else {
-                return
-            }
-            Task {
-                await self.didReceive(message: message)
-            }
-        }
+        await connection.setReceiver(self)
     }
 
     /**
@@ -36,7 +41,11 @@ public actor HostedStorage {
 
     // MARK: Response handling
 
-    private func didReceive(message: Message) async {
+    /**
+     The central point where all received messages are processed.
+     - Parameter message: The message received over the connection.
+     */
+    public func didReceive(message: Message) async {
         switch message.type {
         case .data:
             await didReceive(data: message)
@@ -67,10 +76,15 @@ public actor HostedStorage {
             return
         }
         // Wait for the insert to complete and send an acknowledgement
+        // TODO: Dispatch to the background to not block other requests from being processed?
         await request.wait()
         send(.acknowledge(id, to: message.path))
     }
 
+    /**
+     Processing point for all data requests.
+     - Parameter message: The data request
+     */
     private func didReceive(request message: Message) async {
         // TODO: Schedule this on another thread to not block other requests in the meantime?
         let tree = await storage.tree(
@@ -95,6 +109,13 @@ public actor HostedStorage {
         send(tree: tree, path: message.path, request: id, count: count)
     }
 
+    /**
+     Send the contents of a tree as individual data messages per node.
+     - Parameter tree: The tree to send
+     - Parameter path: The path of the tree root in the data model
+     - Parameter request: The id to include in the response
+     - Parameter count: The total number of messages to be indicated in each message.
+     */
     private func send(tree: SampleTree, path: Path, request: Int?, count: Int?) {
         if !tree.samples.isEmpty {
             // TODO: Should we send an empty message for existing tree nodes without a value?
@@ -108,6 +129,11 @@ public actor HostedStorage {
         }
     }
 
+    /**
+     The central point to process deletion requests received over the connection.
+     - Parameter message: The deletion request message received over the connection.
+     - Note: This function waits for the deletion to be completed and then sends an acknowledgement
+     */
     private func didReceive(deletion message: Message) async {
         // Schedule the deletion
         let request = storage.delete(path: message.path, from: message.time, to: message.end, depth: message.depth)
@@ -117,7 +143,12 @@ public actor HostedStorage {
             return
         }
         // Wait for the delete to complete
+        // TODO: Dispatch to the background to not block other requests from being processed?
         await request.wait()
         send(.acknowledge(requestId, to: message.path))
     }
+}
+
+extension HostedStorage: MessageReceiver {
+
 }

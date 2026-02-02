@@ -14,8 +14,8 @@ public protocol MessageConnection: Sendable {
     func send(message: Message) -> Request
 
     /**
-     Register a callback to receive messages from the component
-     - Parameter callback: The closure called with new messages.
+     Set the receiver for messages produced by this connection.
+     - Parameter receiver: The receiver of the messages coming in over this connection.
      */
-    func onReceive(_ callback: @escaping @Sendable (Message) -> Void)
+    func setReceiver(_ receiver: MessageReceiver) async
 }

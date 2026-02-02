@@ -3,7 +3,7 @@ import Soil
 
 extension BinaryTransportLayer {
 
-    actor Connection: BinaryConnection {
+    actor Connection: EncodedMessageConnection {
 
         private let layer: BinaryTransportLayer
 
@@ -21,20 +21,14 @@ extension BinaryTransportLayer {
             await layer.send(message, to: remote)
         }
 
-        func onReceiveInternal(_ callback: @escaping @Sendable (Data) -> Void) async {
-            await layer.setCallback(id: id, callback)
-        }
-
         nonisolated func send(message: Data) -> Request {
             AsyncRequest {
                 await self.sendInternal(message: message)
             }
         }
 
-        nonisolated func onReceive(_ callback: @escaping @Sendable (Data) -> Void) {
-            Task {
-                await self.onReceiveInternal(callback)
-            }
+        func setReceiver(_ receiver: EncodedMessageReceiver) async {
+            await layer.setReceiver(receiver, for: id)
         }
     }
-    }
+}

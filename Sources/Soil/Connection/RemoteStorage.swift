@@ -5,22 +5,16 @@
  */
 public actor RemoteStorage {
 
-    let transport: any ComponentTransport
+    private let connection: any MessageConnection
 
     private let requests: RemoteDataRequests
 
-    public init(transport: any ComponentTransport) {
-        self.transport = transport
+    public init(connection: any MessageConnection) async {
+        self.connection = connection
         self.requests = .init()
 
         // Register to receive messages from the component
-        transport.onReceive { [weak self] message in
-            if let self {
-                Task {
-                    await self.didReceive(message: message)
-                }
-            }
-        }
+        await connection.setReceiver(self)
     }
 
     private func deleteInternal(path: Path, from start: Timestamp?, to end: Timestamp?, depth: Int?) {
@@ -42,11 +36,11 @@ public actor RemoteStorage {
      Send a message to the component.
      - Parameter message: The message to send.
      - Note: If no message callback is available, then the message is discarded.
-     - Returns: `true` if the message was handed to the transport layer.
+     - Returns: The request to send the message
      */
     @discardableResult
-    private func send(_ message: Message) -> Bool {
-        transport.send(message: message)
+    private func send(_ message: Message) -> any Request {
+        connection.send(message: message)
     }
 
     /*
@@ -83,12 +77,11 @@ public actor RemoteStorage {
 
     private func request(path: Path, from start: Timestamp?, to end: Timestamp?, depth: Int?, limit: Int?) async -> SampleTree {
         let id = nextRequestId()
-        let message = Message.request(path, from: start, to: end, limit: limit, depth: depth, id: id)
-        guard send(message) else {
-            // If the message is not sent, then we can't produce any data
-            return .init()
-        }
+        // Send the request message to the remote
+        // If it's not delivered, then the timeout will be triggered
+        send(.request(path, from: start, to: end, limit: limit, depth: depth, id: id))
 
+        // TODO: Specify timeout
         let timeoutTask = startRequestTimeout(seconds: 30, id: id)
         // Store the request and wait for the data (with a timeout)
         return await withCheckedContinuation { continuation in
@@ -106,7 +99,7 @@ public actor RemoteStorage {
 
     // MARK: Response handling
 
-    private func didReceive(message: Message) {
+    public func didReceive(message: Message) {
         switch message.type {
         case .data:
             didReceive(data: message)
@@ -126,9 +119,17 @@ public actor RemoteStorage {
     private func didReceive(data message: Message) {
         // Note: We know that the message is a data message
 
+        // Pass the request to the handler, which checks if the message
+        // matches an active request
         requests.didReceive(message)
     }
 }
+
+extension RemoteStorage: MessageReceiver {
+
+}
+
+// MARK: Storage
 
 extension RemoteStorage: Storage {
 

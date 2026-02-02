@@ -9,36 +9,21 @@ public actor DecodedConnection {
     private let encoding: any MessageEncoding
 
     /// The binary connection over which encoded messages are exchanged
-    private let connection: any BinaryConnection
+    private let connection: any EncodedMessageConnection
 
-    /// The callback function for new messages
-    private var callback: ((Message) -> Void)?
+    /// The receiver getting decoded messages
+    private weak var receiver: (any MessageReceiver)?
 
     /**
      Wrap a binary connection with an encoding.
      - Parameter connection: The binary connection to apply the encoding to
      - Parameter encoding: The encoding used for the binary connection.
      */
-    public init(wrapping connection: any BinaryConnection, encoding: any MessageEncoding) {
+    public init(wrapping connection: any EncodedMessageConnection, encoding: any MessageEncoding) async {
         self.connection = connection
         self.encoding = encoding
 
-        connection.onReceive { [weak self] data in
-            guard let self else {
-                return
-            }
-            Task {
-                await self.didReceive(data)
-            }
-        }
-    }
-
-    /**
-     Set the callback function (actor-isolated) to forward messages to the connection.
-     - Parameter callback: The closure to call with new messages.
-     */
-    private func setCallback(_ callback: @escaping @Sendable (Message) -> Void) {
-        self.callback = callback
+        await connection.setReceiver(self)
     }
 
     /**
@@ -46,8 +31,8 @@ public actor DecodedConnection {
 
      Attempts to decode the message contained in the data and forwards it to the message connection.
      */
-    private func didReceive(_ data: Data) {
-        guard let callback else {
+    public func didReceive(encodedMessage data: Data) async {
+        guard let receiver else {
             return
         }
 
@@ -61,7 +46,7 @@ public actor DecodedConnection {
         }
 
         // Forward the decoded message to the component connection
-        callback(message)
+        await receiver.didReceive(message: message)
     }
 
     /**
@@ -82,6 +67,10 @@ public actor DecodedConnection {
     }
 }
 
+extension DecodedConnection: EncodedMessageReceiver {
+
+}
+
 extension DecodedConnection: MessageConnection {
 
     /**
@@ -98,13 +87,10 @@ extension DecodedConnection: MessageConnection {
     }
 
     /**
-     Register a callback to receive messages from the component
-     - Parameter callback: The closure called with new messages.
-     - Note: the callback is saved asynchronously, so it is not immidatelly available.
+     Set the receiver for messages produced by this connection.
+     - Parameter receiver: The receiver of the messages coming in over this connection.
      */
-    public nonisolated func onReceive(_ callback: @escaping @Sendable (Message) -> Void) {
-        Task {
-            await self.setCallback(callback)
-        }
+    public func setReceiver(_ receiver: any MessageReceiver) {
+        self.receiver = receiver
     }
 }

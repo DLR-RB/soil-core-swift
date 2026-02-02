@@ -3,23 +3,23 @@ import Soil
 
 actor BinaryTransportLayer {
 
-    private var callbacks: [String: (Data) -> Void] = [:]
+    private var receivers: [String: any EncodedMessageReceiver] = [:]
 
-    nonisolated func connect(id: String, to remote: String) -> BinaryConnection {
+    nonisolated func connect(id: String, to remote: String) -> EncodedMessageConnection {
         Connection(id: id, remote: remote, layer: self)
     }
 
-    func setCallback(id: String, _ callback: @escaping @Sendable (Data) -> Void) {
-        callbacks[id] = callback
+    func setReceiver(_ receiver: EncodedMessageReceiver, for id: String) {
+        receivers[id] = receiver
     }
 
     @discardableResult
     func send(_ data: Data, to remote: String) async -> Bool {
-        guard let callback = callbacks[remote] else {
+        guard let receiver = receivers[remote] else {
             missingCallback = remote
             return false
         }
-        callback(data)
+        await receiver.didReceive(encodedMessage: data)
         numberOfMessages += 1
         self.complete()
         return true

@@ -3,7 +3,7 @@ import Foundation
 /**
  A connection to a component that transmits and receives encoded messages.
  */
-public protocol BinaryConnection {
+public protocol EncodedMessageConnection: Sendable {
 
     /**
      Send a message to the component via the underlying transport layer.
@@ -15,8 +15,8 @@ public protocol BinaryConnection {
     func send(message: Data) -> Request
 
     /**
-     Register a callback to receive messages from the component
-     - Parameter callback: The closure called with new messages.
+     Set the receiver for encoded messages from this connection.
+     - Parameter receiver: The receiver of the encoded messages coming in over this connection.
      */
-    func onReceive(_ callback: @escaping @Sendable (Data) -> Void)
+    func setReceiver(_ receiver: EncodedMessageReceiver) async
 }

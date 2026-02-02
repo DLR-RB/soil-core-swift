@@ -10,7 +10,7 @@
  - Notifier: Suggests limited agency of clients, 'notification' suggests only events, not complete data
  - Publisher: Not clear that observers request which data to receive
  */
-public protocol Observable {
+public protocol Observable: Sendable {
 
     /**
      Create a subscription for a receiver
