@@ -120,11 +120,17 @@ public struct Message: Sendable {
         self.id = id
     }
 
+    /// The sample in the message containing the value
     var sample: Sample? {
         guard let value else {
             return nil
         }
         return .init(value: value, timestamp: time ?? .current())
+    }
+
+    /// Indicate if the message contains any samples
+    var hasSamples: Bool {
+        value != nil || !(samples?.isEmpty ?? true)
     }
 
     /// All samples contained in the message (not necessarily sorted)
@@ -301,6 +307,36 @@ extension Message: Codable {
         case time = 6
         case end = 7
         case id = 8
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.type = try container.decodeIfPresent(MessageType.self, forKey: .type) ?? .data
+        self.path = try container.decodeIfPresent(Path.self, forKey: .path) ?? []
+        self.value = try container.decodeIfPresent(Value.self, forKey: .value)
+        self.samples = try container.decodeIfPresent([Sample].self, forKey: .samples)
+        self.count = try container.decodeIfPresent(Int.self, forKey: .count)
+        self.depth = try container.decodeIfPresent(Int.self, forKey: .depth)
+        self.time = try container.decodeIfPresent(Double.self, forKey: .time).map { Timestamp(timeIntervalSince1970: $0) }
+        self.end = try container.decodeIfPresent(Double.self, forKey: .end).map { Timestamp(timeIntervalSince1970: $0) }
+        self.id = try container.decodeIfPresent(Int.self, forKey: .id)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        if type != .data {
+            try container.encode(type, forKey: .type)
+        }
+        try container.encode(path, forKey: .path)
+        try container.encodeIfPresent(value, forKey: .value)
+        if let samples, !samples.isEmpty {
+            try container.encode(samples, forKey: .samples)
+        }
+        try container.encodeIfPresent(count, forKey: .count)
+        try container.encodeIfPresent(depth, forKey: .depth)
+        try container.encodeIfPresent(time?.timeIntervalSince1970, forKey: .time)
+        try container.encodeIfPresent(end?.timeIntervalSince1970, forKey: .end)
+        try container.encodeIfPresent(id, forKey: .id)
     }
 }
 
