@@ -4,20 +4,25 @@
 
  Use this request to execute an async function and optionally wait for the result.
  */
-final class AsyncRequest: Request {
+public final class AsyncRequest: Request {
 
-    let task: Task<Void, Never>
+    /// The task to complete with the request.
+    private let task: Task<Void, Never>
 
     /**
      Execute an async function as a task within the request.
+     - Parameter operation: The async function to complete with the request.
      */
-    init(_ operation: @escaping @Sendable () async -> Void) {
+    public init(_ operation: @escaping @Sendable () async -> Void) {
         self.task = Task {
             await operation()
         }
     }
 
-    func wait() async {
+    /**
+     Wait for the request to complete
+     */
+    public func wait() async {
         await task.value
     }
 }

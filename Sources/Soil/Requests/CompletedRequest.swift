@@ -2,7 +2,10 @@
 /**
  A request that is already completed.
  */
-struct CompletedRequest: Request {
+public struct CompletedRequest: Request {
 
-    func wait() async { }
+    /**
+     Immediatelly return since the request is already completed
+     */
+    public func wait() async { }
 }
