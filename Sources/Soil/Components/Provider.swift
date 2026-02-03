@@ -41,7 +41,7 @@ extension Provider {
 
      For each node, this function returns the most recent sample that is before or at the specified date.
      - Parameter path: The requested path
-     - Parameter date: The point in time which is requested (`nil` indicates the current time).
+     - Parameter date: The point in time which is requested (inclusive, `nil` indicates the current time).
      - Parameter depth: The number of levels in the sub-tree to include
      - Returns: The sample containing the current values of the requested sub-tree.
      */
@@ -73,7 +73,7 @@ extension Provider {
     /**
      Get the value for a path at a specific point in time.
      - Parameter path: The requested path
-     - Parameter date: The point in time for which the value is requested (`nil` indicates the most recent sample)
+     - Parameter date: The point in time for which the value is requested (inclusive, `nil` indicates the most recent sample)
      - Returns: If present: The most recent value for the path where the timestamp is before the provided date.
      */
     public func sample(for path: Path, beforeOrAt date: Timestamp) async -> Sample? {

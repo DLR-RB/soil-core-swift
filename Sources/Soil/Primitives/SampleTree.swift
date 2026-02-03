@@ -1,5 +1,4 @@
 
-
 /**
  A path tree containing samples
  */
