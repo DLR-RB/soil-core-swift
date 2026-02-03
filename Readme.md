@@ -12,4 +12,19 @@ This core library provides:
 - Components to track subscriptions (both from external components and code)
 - Request tracking
 - Access control interfaces
+- Transport layer definitions and encoding interfaces
+- Interfaces to connect to different remote components
+- Interfaces to expose local components over connections
 
+## Usage
+
+It's incredibly easy to get started using SOIL.
+To create a very simple component that connects to a WebSocket interface to send data:
+
+```swift
+let socket = await WebSocket(url: "192.168.1.32", port: 80)
+    .apply(encoding: JsonEncoding())
+
+let transmitter = HostedTransmitter(connection: socket)
+transmitter.receive(.integer(123), for: ["my", "value"])
+```
