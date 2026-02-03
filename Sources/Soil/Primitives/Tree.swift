@@ -5,14 +5,10 @@
  */
 protocol Tree {
 
-    /**
-     Create a tree node
-     */
+    /// Create a tree node
     init()
 
-    /**
-     The children of this tree node, indexed by their names
-     */
+    /// The children of this tree node, indexed by their names
     var children: [PathComponent : Self] { get }
 }
 

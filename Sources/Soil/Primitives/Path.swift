@@ -7,6 +7,11 @@ public typealias Path = [PathComponent]
 
 extension Path {
 
+    /**
+     Check if the path starts with another path.
+     - Parameter prefix: The path to check as the prefix
+     - Returns: `true`, if this path starts with the prefix path
+     */
     func hasPrefix(_ prefix: Path) -> Bool {
         // A prefix can only match if the path is at least as the prefix
         guard self.count >= prefix.count else { return false }
@@ -18,8 +23,13 @@ extension Path {
         return true
     }
 
+    /**
+     Remove a prefix from the path.
+     - Note: If the path does not start with the prefix, then it remains unchanged.
+     - Parameter prefix: The path to remove as the prefix
+     - Returns: The path without the given prefix.
+     */
     func removing(prefix: Path) -> Path {
-        // A prefix can only match if the path is at least as long as the prefix
         guard hasPrefix(prefix) else {
             return self
         }

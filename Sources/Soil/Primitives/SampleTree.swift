@@ -2,14 +2,12 @@
 /**
  A path tree containing samples
  */
-public final class SampleTree: Sendable {
+public final class SampleTree: Tree, Sendable {
 
     /// The samples at this tree node
     public let samples: [Sample]
 
-    /**
-     The child nodes of the tree, indexed by their path component.
-     */
+    /// The child nodes of the tree, indexed by their path component.
     public let children: [PathComponent : SampleTree]
 
     /**
@@ -22,9 +20,7 @@ public final class SampleTree: Sendable {
         self.children = children
     }
 
-    /**
-     Create an empty tree.
-     */
+    /// Create an empty tree.
     public init() {
         self.samples = []
         self.children = [:]
@@ -77,8 +73,4 @@ public final class SampleTree: Sendable {
         // Count this node if it has samples, and sum up the trees of all children
         children.values.reduce(samples.isEmpty ? 0 : 1) { $0 + $1.numberOfNodesWithSamples }
     }
-}
-
-extension SampleTree: Tree {
-
 }

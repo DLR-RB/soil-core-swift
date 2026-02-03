@@ -4,20 +4,23 @@
  */
 public enum ValueType: Int {
 
-    /// Unspecified binary data
-    case data = 0
+    /// The absence of a value, represented as ``nil``
+    case null = 0
 
-    /// A natural number
-    case integer = 1
+    /// Unspecified binary data, represented as ``Data``
+    case data = 1
 
-    /// A decimal value
-    case double = 2
+    /// A natural number, represented as ``Int``
+    case integer = 2
 
-    /// A textual value
-    case string = 3
+    /// A decimal value, represented as ``Double``
+    case double = 3
 
-    /// A path value (an array of strings)
-    case path = 4
+    /// A textual value, represented as ``String``
+    case string = 4
+
+    /// A path value, represented as `[String]`
+    case path = 5
 }
 
 extension ValueType: Codable {

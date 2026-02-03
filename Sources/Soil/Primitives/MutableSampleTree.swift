@@ -2,14 +2,12 @@
 /**
  A tree structure that allows mutations to the samples and nodes
  */
-final class MutableSampleTree {
+final class MutableSampleTree: MutableTree {
 
     /// The samples at this tree node
     var samples: [Sample]
 
-    /**
-     The child nodes of the tree, indexed by their path component.
-     */
+    /// The child nodes of the tree, indexed by their path component.
     var children: [PathComponent : MutableSampleTree]
 
     /**
@@ -22,9 +20,7 @@ final class MutableSampleTree {
         self.children = children
     }
 
-    /**
-     Create an empty tree node.
-     */
+    /// Create an empty tree node.
     init() {
         self.samples = []
         self.children = [:]
@@ -44,8 +40,4 @@ final class MutableSampleTree {
     func insert(_ samples: [Sample], at path: Path) {
         findOrCreateNode(for: path).samples.append(contentsOf: samples)
     }
-}
-
-extension MutableSampleTree: MutableTree {
-
 }
