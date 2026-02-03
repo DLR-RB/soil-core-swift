@@ -46,24 +46,6 @@ public actor RemoteObservable {
     // MARK: Transport layer interaction
 
     /**
-     Callback to receive messages from the remote component.
-     - Parameter message: The message received over the connection
-     - Note: This function is called automatically by the connection, and should not be called manually.
-     */
-    public func didReceive(message: Message) {
-        switch message.type {
-        case .data:
-            didReceive(data: message)
-        case .request:
-            break
-        case .deletionRequest:
-            break
-        case .subscriptionInclusion, .subscriptionDeletion, .subscriptionExclusion:
-            break
-        }
-    }
-
-    /**
      Process a data message, by checking which request it matches
      - Parameter message: The received data message
      */
@@ -180,8 +162,27 @@ public actor RemoteObservable {
     }
 }
 
+// MARK: Message receiver
+
 extension RemoteObservable: MessageReceiver {
 
+    /**
+     Callback to receive messages from the remote component.
+     - Parameter message: The message received over the connection
+     - Note: This function is called automatically by the connection, and should not be called manually.
+     */
+    public func didReceive(message: Message) {
+        switch message.type {
+        case .data:
+            didReceive(data: message)
+        case .request:
+            break
+        case .deletionRequest:
+            break
+        case .subscriptionInclusion, .subscriptionDeletion, .subscriptionExclusion:
+            break
+        }
+    }
 }
 
 // MARK: Observable

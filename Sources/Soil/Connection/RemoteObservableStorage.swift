@@ -12,6 +12,10 @@ public actor RemoteObservableStorage {
     /// The object managing the storage interface to the remote
     private let storage: RemoteStorage
 
+    /**
+     Create a connection to an observable storage over a connection.
+     - Parameter connection: The connection where the component is hosted.
+     */
     public init(connection: any MessageConnection) async {
         observable = await .init(connection: connection)
         storage = await .init(connection: connection)
@@ -19,6 +23,8 @@ public actor RemoteObservableStorage {
         await connection.setReceiver(self)
     }
 }
+
+// MARK: Message receiver
 
 extension RemoteObservableStorage: MessageReceiver {
 

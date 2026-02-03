@@ -4,19 +4,19 @@ import Soil
 
 @Suite("Component")
 struct ComponentTests {
+
     @Test("Remote storage")
     func testValue() async throws {
 
         let layer = BinaryTransportLayer()
         let rawConnectionToRemote = layer.connect(id: "client", to: "remote")
         let connectionToRemote = await DecodedConnection(wrapping: rawConnectionToRemote, encoding: JsonEncoding())
-        let storage = InMemoryStorage()
 
         let connectedRemote = await RemoteStorage(connection: connectionToRemote)
 
         let rawConnectionToClient = layer.connect(id: "remote", to: "client")
         let connectionToClient = await DecodedConnection(wrapping: rawConnectionToClient, encoding: JsonEncoding())
-        let connectedClient = await HostedStorage(hosting: storage, through: connectionToClient)
+        let connectedClient = await HostedStorage(hosting: InMemoryStorage(), through: connectionToClient)
 
         // Send value to bob
         let now = Timestamp.current()
@@ -31,7 +31,7 @@ struct ComponentTests {
 
         // Check value on bob's side
         do {
-            let sample = await storage.currentSample(for: path)
+            let sample = await connectedClient.currentSample(for: path)
             let existingSample = try #require(sample)
             #expect(existingSample.value == .integer(123))
             #expect(existingSample.timestamp.isVeryClose(to: now))
@@ -62,7 +62,7 @@ struct ComponentTests {
 
         // Check that no value is present on bob's side
         do {
-            let all = await storage.samples(for: path)
+            let all = await connectedClient.samples(for: path)
             #expect(all.isEmpty)
         }
 
@@ -85,6 +85,8 @@ struct ComponentTests {
         let connectionToClient = await DecodedConnection(wrapping: rawConnectionToClient, encoding: JsonEncoding())
         let remoteConnectionToClient = await HostedObservable(hosting: remoteStorage, through: connectionToClient)
 
+        #expect(await remoteConnectionToClient.numberOfSubscriptions == 0)
+
         let rawConnectionToRemote = layer.connect(id: "client", to: "remote")
         let connectionToRemote = await DecodedConnection(wrapping: rawConnectionToRemote, encoding: JsonEncoding())
         let clientConnectionToRemote = await RemoteObservable(connection: connectionToRemote)
@@ -100,6 +102,8 @@ struct ComponentTests {
         try await Task.sleep(for: .seconds(0.1))
         #expect(await layer.numberOfMessages == 1)
         await layer.resetMessageCount()
+
+        #expect(await remoteConnectionToClient.numberOfSubscriptions == 1)
 
         await remoteStorage.receive(.integer(123), for: path, at: now).wait()
 
@@ -124,6 +128,8 @@ struct ComponentTests {
         let connectionToLocal = await DecodedConnection(wrapping: connection.one, encoding: JsonEncoding())
         let remoteConnectionToLocal = await HostedObservableStorage(host: remoteStorage, through: connectionToLocal)
 
+        #expect(await remoteConnectionToLocal.numberOfSubscriptions() == 0)
+
         let localStorage = InMemoryStorage()
         let connectionToRemote = await DecodedConnection(wrapping: connection.two, encoding: JsonEncoding())
         let localConnectionToRemote = await RemoteObservableStorage(connection: connectionToRemote)
@@ -140,6 +146,8 @@ struct ComponentTests {
         #expect(await connection.two.receivedMessages == 0)
         #expect(await connection.two.sentMessages == 1)
         await connection.resetCounters()
+
+        #expect(await remoteConnectionToLocal.numberOfSubscriptions() == 1)
 
         // Send data to the remote
         await localConnectionToRemote.receive(.integer(123), for: path, at: now).wait()

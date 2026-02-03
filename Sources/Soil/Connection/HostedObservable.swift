@@ -11,7 +11,7 @@ public actor HostedObservable {
     private let connection: any MessageConnection
 
     /// The subscriptions of the connecting component
-    private var componentSubscriptions: [Int : Subscription] = [:]
+    private var subscriptions: [Int : Subscription] = [:]
 
     /**
      Create hosting for an observable over a connection.
@@ -26,30 +26,14 @@ public actor HostedObservable {
         await connection.setReceiver(self)
     }
 
-    // MARK: Response handling
-
-    /**
-     Insertion point for messages received over the connection.
-
-     Only subscription messages are considered when hosting observable components.
-     - Parameter message: The message received over the connection.
-     - Note: This function is called automatically be the connection, and should not be called manually.
-     */
-    public func didReceive(message: Message) async {
-        switch message.type {
-        case .data, .request, .deletionRequest:
-            return
-        case .subscriptionInclusion, .subscriptionDeletion, .subscriptionExclusion:
-            await didReceive(subscriptionRequest: message)
-        }
-    }
+    // MARK: Subscription message handling
 
     /**
      Process subscription messages received over the connection
      - Parmaeter request: The received subscription request message
      */
     private func didReceive(subscriptionRequest request: Message) async {
-        let subscription = await componentSubscription(id: request.id ?? 0)
+        let subscription = await subscription(id: request.id ?? 0)
         switch request.type {
             case .subscriptionInclusion:
                 subscription.include(request.path, depth: request.depth)
@@ -67,19 +51,43 @@ public actor HostedObservable {
      - Parameter id: The id of the subscription
      - Returns: An existing or new subscription for the id
      */
-    private func componentSubscription(id: Int) async -> Subscription {
-        if let subscription = componentSubscriptions[id] {
+    private func subscription(id: Int) async -> Subscription {
+        if let subscription = subscriptions[id] {
             return subscription
         }
         let created = await observable.subscribe(self)
-        componentSubscriptions[id] = created
+        subscriptions[id] = created
         return created
+    }
+
+    /// The number of subscriptions currently registered by the component
+    public var numberOfSubscriptions: Int {
+        subscriptions.count
     }
 }
 
+// MARK: Message receiver
+
 extension HostedObservable: MessageReceiver {
 
+        /**
+     Insertion point for messages received over the connection.
+
+     Only subscription messages are considered when hosting observable components.
+     - Parameter message: The message received over the connection.
+     - Note: This function is called automatically be the connection, and should not be called manually.
+     */
+    public func didReceive(message: Message) async {
+        switch message.type {
+        case .data, .request, .deletionRequest:
+            return
+        case .subscriptionInclusion, .subscriptionDeletion, .subscriptionExclusion:
+            await didReceive(subscriptionRequest: message)
+        }
+    }
 }
+
+// MARK: Receiver
 
 extension HostedObservable: Receiver {
 

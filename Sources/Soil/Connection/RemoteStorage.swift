@@ -1,7 +1,7 @@
 import Foundation
 
 /**
- Encapsulate a remote component that provides storage to treat it like a local storage
+ Encapsulate a remote component that provides storage to treat it like a local storage.
  */
 public actor RemoteStorage {
 
@@ -39,7 +39,7 @@ public actor RemoteStorage {
         connection.send(message: message)
     }
 
-    /*
+    /**
      The id used for the most recent request
 
      This id is always incremented for the next request,
@@ -108,6 +108,8 @@ public actor RemoteStorage {
         }
     }
 }
+
+// MARK: Message receiver
 
 extension RemoteStorage: MessageReceiver {
 

@@ -16,6 +16,8 @@ public actor HostedTransmitter {
     }
 }
 
+// MARK: Receiver
+
 extension HostedTransmitter: Receiver {
 
     /**
@@ -37,4 +39,3 @@ extension HostedTransmitter: Receiver {
         connection.send(tree, for: path)
     }
 }
-
