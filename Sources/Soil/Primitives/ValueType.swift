@@ -2,7 +2,7 @@
 /**
  An enum indicating the primitive value types
  */
-public enum ValueType: Int {
+public enum ValueType: Int, Sendable {
 
     /// The absence of a value, represented as ``nil``
     case null = 0
