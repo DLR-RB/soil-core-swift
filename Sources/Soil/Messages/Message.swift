@@ -342,4 +342,25 @@ extension Message: Codable {
 
 extension Message: Equatable {
 
+    public static func == (_ lhs: Message, _ rhs: Message) -> Bool {
+        lhs.type == rhs.type &&
+        lhs.path == rhs.path &&
+        lhs.value == rhs.value &&
+        lhs.samples == rhs.samples &&
+        lhs.count == rhs.count &&
+        lhs.depth == rhs.depth &&
+        lhs.id == rhs.id &&
+        compare(lhs.time, to: rhs.time) &&
+        compare(lhs.end, to: rhs.end)
+    }
+}
+
+private func compare(_ date: Timestamp?, to other: Timestamp?) -> Bool {
+    guard let date else {
+        return other == nil
+    }
+    guard let other else {
+        return false
+    }
+    return date.distance(to: other) < 0.001
 }
