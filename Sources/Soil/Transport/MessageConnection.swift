@@ -2,7 +2,7 @@
 /**
  A connection to a component via a transport layer
  */
-public protocol MessageConnection: Sendable {
+public protocol MessageConnection: Receiver, Sendable {
 
     /**
      Send a message to the component via the underlying transport layer.
@@ -20,44 +20,21 @@ public protocol MessageConnection: Sendable {
     func setReceiver(_ receiver: MessageReceiver) async
 }
 
+// MARK: Receiver
 
 extension MessageConnection {
 
     /**
-     Send samples in a tree over the connection.
-     - Parameter tree: The tree to send
-     - Parameter path: The path associated with the tree
-     - Note: Each node with samples in the tree is sent as a separate message
+     Send samples over the connection.
+     - Parameter samples: The samples to send for the path.
+     - Parameter path: The path associated with the samples
+     - Returns: A request handle, to optionally wait until the data is transmitted.
+     - Note: This function is not marked `async`, because it is viewed as a request to send data.
+       The data does not actually need to be sent when the function returns, and should return as fast as possible.
+       To wait until the receive is completed, await the returned request.
      */
     @discardableResult
-    func send(_ tree: SampleTree, for path: Path) -> Request {
-        AsyncRequest {
-            await self.send(tree, for: path)
-        }
-    }
-
-    /**
-     Send samples in a tree over the connection and wait for each message to be sent
-     - Parameter tree: The tree to send
-     - Parameter path: The path associated with the tree
-     - Note: Each node with samples in the tree is sent as a separate message
-     */
-    private func send(_ tree: SampleTree, for path: Path) async {
-        if !tree.samples.isEmpty {
-            await send(tree.samples, for: path)
-        }
-        // Recurse into sub-trees to send all changes
-        for (childPath, child) in tree.children {
-            await send(child, for: path + [childPath])
-        }
-    }
-
-    /**
-     Send all samples of a node as a single message.
-     - Parameter samples: The samples to send
-     - Parameter path: The path associated with the samples.
-     */
-    private func send(_ samples: [Sample], for path: Path) async {
-        await send(message: .samples(samples, for: path)).wait()
+    public func receive(_ samples: [Sample], for path: Path) -> any Request {
+        send(message: .samples(samples, for: path))
     }
 }

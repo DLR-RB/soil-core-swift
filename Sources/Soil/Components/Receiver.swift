@@ -14,18 +14,35 @@
 public protocol Receiver: Sendable {
 
     /**
+     Receive samples for a path.
+
+     Components may choose to ignore samples due to access rights or other reasons.
+     - Parameter samples: The samples to store for the path.
+     - Parameter path: The path associated with the samples
+     - Returns: A request handle, to optionally wait until the data is stored.
+     - Note: This function is not marked `async`, because it is viewed as a request to store data.
+       The data does not actually need to be stored when the function returns, and should return as fast as possible.
+       To wait until the receive is completed, await the returned request.
+     */
+    @discardableResult
+    func receive(_ samples: [Sample], for path: Path) -> any Request
+
+    /**
      Receive a request to store a tree for a path.
 
      The provided tree can contain multiple values for each node, and be of arbitrary depth.
 
      Components may choose to ignore parts of the tree due to access rights or other reasons.
+
+     A default implementation is provided for this function that iterates through the tree
+     and calls ``receive(_:for)`` with the samples of each node.
+     This function only needs to be provided if specific performance improvements should be implemented.
      - Parameter tree: The tree to store.
      - Parameter path: The path of the root node of the provided tree
      - Returns: A request handle, to optionally wait until the data is stored.
      - Note: This function is not marked `async`, because it is viewed as a request to store data.
        The data does not actually need to be stored when the function returns, and should return as fast as possible.
-       To wait until the data is stored, use ``commit()``
-     - SeeAlso: ``commit(_:for:)``
+       To wait until the receive is completed, await the returned request.
      */
     @discardableResult
     func receive(_ tree: SampleTree, for path: Path) -> any Request
@@ -41,8 +58,7 @@ extension Receiver {
      */
     @discardableResult
     public func receive(_ value: Value, for path: Path, at timestamp: Timestamp = .current()) -> any Request {
-        let tree = SampleTree(samples: [.init(value: value, timestamp: timestamp)])
-        return receive(tree, for: path)
+        return receive(Sample(value: value, timestamp: timestamp), for: path)
     }
 
     /**
@@ -56,12 +72,27 @@ extension Receiver {
     }
 
     /**
-     Save timestamped values for a path
-     - Parameter samples: The timestamped values to store.
-     - Parameter path: The path of the value.
+     Receive a request to store a tree for a path.
+
+     The provided tree can contain multiple values for each node, and be of arbitrary depth.
+
+     Components may choose to ignore parts of the tree due to access rights or other reasons.
+     - Parameter tree: The tree to store.
+     - Parameter path: The path of the root node of the provided tree
+     - Returns: A request handle, to optionally wait until the data is stored.
+     - Note: This function is not marked `async`, because it is viewed as a request to store data.
+       The data does not actually need to be stored when the function returns, and should return as fast as possible.
+       To wait until the receive is completed, await the returned request.
      */
     @discardableResult
-    public func receive(_ samples: [Sample], for path: Path) -> any Request {
-        receive(.init(samples: samples), for: path)
+    public func receive(_ tree: SampleTree, for path: Path) -> any Request {
+        AsyncRequest {
+            if !tree.samples.isEmpty {
+                await receive(tree.samples, for: path).wait()
+            }
+            for (name, child) in tree.children {
+                await receive(child, for: path + [name]).wait()
+            }
+        }
     }
 }

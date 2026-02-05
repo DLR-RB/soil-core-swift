@@ -31,6 +31,17 @@ public actor InMemoryStorage {
     }
 
     /**
+     Save the samples at a path.
+
+     This function searches for the correct node in the tree, and inserts the samples.
+     - Parameter samples: The samples to store.
+     - Parameter path: The path of the samples.
+     */
+    private func receiveInternal(_ samples: [Sample], for path: Path) {
+        root.findOrCreateNode(for: path).save(samples)
+    }
+
+    /**
      Delete data from the storage.
 
      The function searches for the correct node in the tree,
@@ -75,13 +86,21 @@ private extension MutableSampleTree {
      - Parameter tree: The tree to save for this node.
      */
     func save(_ tree: SampleTree) {
-        for sample in tree.samples {
-            insertSampleIntoHistory(sample)
-        }
+        save(tree.samples)
 
         // Recurse into the tree to store all samples
         for (name, subTree) in tree.children {
             child(named: name).save(subTree)
+        }
+    }
+
+    /**
+     Save samples at this node.
+     - Parameter samples: The samples to save for this node.
+     */
+    func save(_ samples: [Sample]) {
+        for sample in samples {
+            insertSampleIntoHistory(sample)
         }
     }
 
@@ -292,6 +311,21 @@ private extension MutableSampleTree {
 // MARK: Storage
 
 extension InMemoryStorage: Storage {
+
+    /**
+     Save the samples at a path.
+
+     This function searches for the correct node in the tree, and inserts the samples.
+     - Parameter samples: The samples to store.
+     - Parameter path: The path of the samples.
+     - Returns: The request, if the caller wants to wait for completion
+     */
+    @discardableResult
+    public nonisolated func receive(_ samples: [Sample], for path: Path) -> Request {
+        AsyncRequest {
+            await self.receiveInternal(samples, for: path)
+        }
+    }
 
     /**
      Save the samples of a tree at a path.

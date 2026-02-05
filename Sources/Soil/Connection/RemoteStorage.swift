@@ -136,6 +136,22 @@ extension RemoteStorage: MessageReceiver {
 extension RemoteStorage: Storage {
 
     /**
+     Receive samples for a path.
+
+     Components may choose to ignore samples due to access rights or other reasons.
+     - Parameter samples: The samples to store for the path.
+     - Parameter path: The path associated with the samples
+     - Returns: A request handle, to optionally wait until the data is stored.
+     - Note: This function is not marked `async`, because it is viewed as a request to store data.
+       The data does not actually need to be stored when the function returns, and should return as fast as possible.
+       To wait until the receive is completed, await the returned request.
+     */
+    @discardableResult
+    public nonisolated func receive(_ samples: [Sample], for path: Path) -> any Request {
+        connection.receive(samples, for: path)
+    }
+
+    /**
      Receive a tree for a path.
 
      This is the singular function to inject data into a component.
@@ -150,7 +166,7 @@ extension RemoteStorage: Storage {
      */
     @discardableResult
     public nonisolated func receive(_ tree: SampleTree, for path: Path) -> Request {
-        connection.send(tree, for: path)
+        connection.receive(tree, for: path)
     }
 
     /**

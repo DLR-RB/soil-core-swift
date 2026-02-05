@@ -15,25 +15,16 @@ public actor ObservableStorage {
         self.storage = storage
     }
 
-    private func receiveInternal(_ tree: SampleTree, for path: Path) async {
+    private func receiveInternal(_ samples: [Sample], for path: Path) async {
+        guard !samples.isEmpty else {
+            return
+        }
+
         // Store the data, wait for completion so that the receive of this class
         // works as expected
-        await storage.receive(tree, for: path).wait()
+        await storage.receive(samples, for: path).wait()
 
         // Notify the subscriptions, but don't wait for each one to complete
-        await informSubscriptions(of: tree, for: path)
-    }
-
-    private func informSubscriptions(of tree: SampleTree, for path: Path) async {
-        if !tree.samples.isEmpty {
-            await informSubscriptions(samples: tree.samples, for: path)
-        }
-        for (childPath, child) in tree.children {
-            await informSubscriptions(of: child, for: path + [childPath])
-        }
-    }
-
-    private func informSubscriptions(samples: [Sample], for path: Path) async {
         for subscription in subscriptions.values {
             guard await subscription.isSubscribed(to: path) else {
                 continue
@@ -74,20 +65,14 @@ extension ObservableStorage: Observable {
 extension ObservableStorage: Storage {
 
     /**
-     Receive a tree for a path.
-
-     This is the singular function to inject data into a component.
-
-     The provided tree can contain multiple values for each node, and be of arbitrary depth.
-
-     Components may choose to ignore parts of the tree due to access rights or other reasons.
-     - Parameter tree: The tree to store.
-     - Parameter path: The path of the root node of the provided tree
+     Receive samples for a path.
+     - Parameter samples: The samples to store.
+     - Parameter path: The path associated with the samples
      */
     @discardableResult
-    public nonisolated func receive(_ tree: SampleTree, for path: Path) -> Request {
+    public nonisolated func receive(_ samples: [Sample], for path: Path) -> Request {
         AsyncRequest {
-            await self.receiveInternal(tree, for: path)
+            await self.receiveInternal(samples, for: path)
         }
     }
 
