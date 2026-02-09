@@ -18,7 +18,7 @@ public protocol EncodedMessageConnection: Sendable {
      Set the receiver for encoded messages from this connection.
      - Parameter receiver: The receiver of the encoded messages coming in over this connection.
      */
-    func setReceiver(_ receiver: EncodedMessageReceiver) async
+    func setReceiver(_ receiver: any EncodedMessageReceiver) async
 }
 
 extension EncodedMessageConnection {
@@ -28,7 +28,7 @@ extension EncodedMessageConnection {
      - Parameter encoding: The encoding to use for messages over the connection.
      - Returns: The message connection using the encoding over the binary connection.
      */
-    public func apply(encoding: MessageEncoding) async -> MessageConnection {
+    public func apply(encoding: any MessageEncoding) async -> MessageConnection {
         await DecodedConnection(wrapping: self, encoding: encoding)
     }
 }

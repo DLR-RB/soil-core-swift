@@ -1,0 +1,66 @@
+import Foundation
+import Soil
+
+/**
+ A test class that simulates a stream connection between two parties.
+*/
+final class BidirectionalStream {
+
+    let one: Connection
+
+    let two: Connection
+
+    init() async {
+        one = .init()
+        two = .init()
+
+        await one.setRemote(two)
+        await two.setRemote(one)
+    }
+
+    func resetCounters() async {
+        await one.resetCounters()
+        await two.resetCounters()
+    }
+
+    actor Connection: StreamConnection, StreamReceiver {
+
+        private weak var receiver: StreamReceiver?
+
+        private weak var remote: StreamReceiver?
+
+        var sentBytes = 0
+        var receivedBytes = 0
+
+        init() { }
+
+        func sendToRemote(_ bytes: [UInt8]) async {
+            await remote?.didReceive(bytes: bytes)
+            sentBytes += bytes.count
+        }
+
+        nonisolated func send(bytes: [UInt8]) -> Request {
+            AsyncRequest {
+                await self.sendToRemote(bytes)
+            }
+        }
+
+        func setReceiver(_ receiver: StreamReceiver) async {
+            self.receiver = receiver
+        }
+
+        fileprivate func setRemote(_ remote: StreamReceiver) async {
+            self.remote = remote
+        }
+
+        func didReceive(bytes: [UInt8]) async {
+            await receiver?.didReceive(bytes: bytes)
+            receivedBytes += bytes.count
+        }
+
+        func resetCounters() {
+            sentBytes = 0
+            receivedBytes = 0
+        }
+    }
+}

@@ -1,6 +1,9 @@
 import Foundation
 import Soil
 
+/**
+ A test class that simulates an encoded message connection between two components
+ */
 final class BidirectionalConnection {
 
     let one: Connection
