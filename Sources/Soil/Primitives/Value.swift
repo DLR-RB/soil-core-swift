@@ -106,7 +106,7 @@ extension Value: Encodable {
         var container = encoder.unkeyedContainer()
         switch self {
         case .null:
-            break
+            try container.encode(ValueType.null)
         case .data(let value):
             try container.encode(ValueType.data)
             try container.encode(value)

@@ -2,7 +2,7 @@
 /**
  The type of a message used to exchange data between components.
  */
-public enum MessageType: Int, Sendable {
+public enum MessageType: Int, Sendable, CaseIterable {
 
     /// A message containing one or more samples
     case data = 0

@@ -23,6 +23,7 @@ struct CodableTests {
     @Test("Value")
     func testValue() throws {
         try encodeAndDecode(Value.self) { [
+            .null,
             .data(.init(repeating: 42, count: 12)),
             .integer(123),
             .double(3.14),
@@ -34,6 +35,7 @@ struct CodableTests {
     @Test("ValueType")
     func testValueType() throws {
         try encodeAndDecode(ValueType.self) { [
+            .null,
             .data,
             .integer,
             .double,
@@ -45,6 +47,7 @@ struct CodableTests {
     @Test("Sample")
     func testSample() throws {
         try encodeAndDecode(Sample.self) { [
+            .init(value: .null),
             .init(value: .data(.init(repeating: 42, count: 12))),
             .init(value: .integer(123)),
             .init(value: .double(3.14)),
@@ -56,6 +59,7 @@ struct CodableTests {
     @Test("Message")
     func testMessage() throws {
         try encodeAndDecode(Message.self) { [
+            .value(.null, for: ["a", "b"]),
             .value(.integer(123), for: ["a", "b", "c"], at: .current()),
             .value(.integer(234), for: []),
             .samples([
