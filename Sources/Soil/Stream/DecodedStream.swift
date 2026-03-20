@@ -89,3 +89,19 @@ extension DecodedStream: EncodedMessageConnection {
         self.receiver = receiver
     }
 }
+
+extension DecodedStream: Connection {
+
+    public func isOpen() async -> Bool {
+        await stream.isOpen()
+    }
+
+    @discardableResult
+    public nonisolated func close() -> Request {
+        stream.close()
+    }
+
+    public func onClose(perform block: @escaping @Sendable () -> Void) async {
+        await stream.onClose(perform: block)
+    }
+}

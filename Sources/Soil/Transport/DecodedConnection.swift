@@ -94,3 +94,19 @@ extension DecodedConnection: MessageConnection {
         self.receiver = receiver
     }
 }
+
+extension DecodedConnection: Connection {
+
+    public func isOpen() async -> Bool {
+        await connection.isOpen()
+    }
+
+    @discardableResult
+    public nonisolated func close() -> Request {
+        connection.close()
+    }
+
+    public func onClose(perform block: @escaping @Sendable () -> Void) async {
+        await connection.onClose(perform: block)
+    }
+}

@@ -62,5 +62,17 @@ final class BidirectionalConnection {
             sentMessages = 0
             receivedMessages = 0
         }
+
+        func isOpen() async -> Bool {
+            true
+        }
+
+        nonisolated func close() -> Request {
+            CompletedRequest()
+        }
+
+        func onClose(perform block: @escaping @Sendable () -> Void) async {
+
+        }
     }
 }

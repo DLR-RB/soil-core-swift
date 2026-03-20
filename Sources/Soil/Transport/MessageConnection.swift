@@ -2,7 +2,7 @@
 /**
  A connection to a component via a transport layer
  */
-public protocol MessageConnection: Receiver, Sendable {
+public protocol MessageConnection: Receiver, Connection, Sendable {
 
     /**
      Send a message to the component via the underlying transport layer.

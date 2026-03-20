@@ -2,7 +2,7 @@
 /**
  A connection to a component that transmits and receives encoded messages.
  */
-public protocol StreamConnection: Sendable {
+public protocol StreamConnection: Connection, Sendable {
 
     /**
      Send a message to the component via the underlying transport layer.
