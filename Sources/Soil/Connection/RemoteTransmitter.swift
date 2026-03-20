@@ -8,7 +8,7 @@ public actor RemoteTransmitter {
     private let receiver: any Receiver
 
     /// The connection to receive messages
-    private let connection: any MessageConnection
+    public let connection: any MessageConnection
 
     /**
      Create an interface to a remote transmitter.

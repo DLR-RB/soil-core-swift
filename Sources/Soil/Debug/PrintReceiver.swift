@@ -5,10 +5,15 @@ import Foundation
  */
 public final class PrintReceiver {
 
-    public let pathFormatter: PathFormatter
+    private let pathFormatter: PathFormatter
 
     private let df: DateFormatter
 
+    /**
+     Create a new print receiver
+     - Parameter pathFormatter: The formatter to convert paths to strings
+     - Parameter dateFormat: The formatter to convert timestamps to strings
+     */
     public init(pathFormatter: PathFormatter = SeparatedPathFormatter(), dateFormat: DateFormatter = .init()) {
         self.pathFormatter = pathFormatter
         self.df = dateFormat

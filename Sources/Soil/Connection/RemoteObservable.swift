@@ -5,7 +5,7 @@
 public actor RemoteObservable {
 
     /// The connection to the remote component via the underlying transport layer
-    private let connection: any MessageConnection
+    public let connection: any MessageConnection
 
     /// The active subscriptions, indexed by the subscription id
     private var subscriptions: [Int : RemoteSubscriptionData] = [:]

@@ -179,6 +179,7 @@ struct ComponentTests {
         let connectionToLocal = await connection.one.apply(framing: SyncByteLengthFraming()).apply(encoding: JsonEncoding())
         let remoteConnectionToLocal = await HostedObservableStorage(host: remoteStorage, through: connectionToLocal)
 
+        #expect(await remoteConnectionToLocal.connection.isOpen())
         #expect(await remoteConnectionToLocal.numberOfSubscriptions() == 0)
 
         let localStorage = InMemoryStorage()

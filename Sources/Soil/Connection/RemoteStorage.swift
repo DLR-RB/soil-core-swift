@@ -5,8 +5,8 @@ import Foundation
  */
 public actor RemoteStorage {
 
-    /// The connection to the storage
-    private let connection: any MessageConnection
+    /// The connection to the remote
+    public let connection: any MessageConnection
 
     /// The object managing active requests
     private let requests: RemoteDataRequests

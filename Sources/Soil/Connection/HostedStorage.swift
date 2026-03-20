@@ -13,7 +13,7 @@ public actor HostedStorage {
     private let storage: any Storage
 
     /// The connection over which the storage is hosted
-    private let connection: any MessageConnection
+    public let connection: any MessageConnection
 
     /**
      Create a hosted storage.

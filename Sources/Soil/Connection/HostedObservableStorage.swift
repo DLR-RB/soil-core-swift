@@ -13,6 +13,11 @@ public actor HostedObservableStorage {
     /// The exposed storage
     private let storage: HostedStorage
 
+    /// The connection to the remote
+    public var connection: Connection {
+        observable.connection
+    }
+
     /**
      Host an observable storage over a connection.
      - Parameter observable: The observable storage to expose.

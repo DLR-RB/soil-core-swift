@@ -12,6 +12,11 @@ public actor RemoteObservableStorage {
     /// The object managing the storage interface to the remote
     private let storage: RemoteStorage
 
+    /// The connection to the remote
+    public var connection: any Connection {
+        observable.connection
+    }
+
     /**
      Create a connection to an observable storage over a connection.
      - Parameter connection: The connection where the component is hosted.

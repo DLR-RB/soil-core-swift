@@ -8,7 +8,7 @@ public actor HostedObservable {
     private let observable: any Observable
 
     /// The connection over which the observable is exposed
-    private let connection: any MessageConnection
+    public let connection: any MessageConnection
 
     /// The subscriptions of the connecting component
     private var subscriptions: [Int : Subscription] = [:]
