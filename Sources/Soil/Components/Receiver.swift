@@ -20,12 +20,9 @@ public protocol Receiver: Sendable {
 
      Components may choose to ignore parts of the tree due to access rights or other reasons.
 
-     A default implementation is provided for this function that iterates through the tree
-     and calls ``receive(_:for)`` with the samples of each node.
-     This function only needs to be provided if specific performance improvements should be implemented.
-     - Parameter tree: The tree to store.
+     - Parameter tree: The tree to ingest.
      - Parameter path: The path of the root node of the provided tree
-     - Returns: A request handle, to optionally wait until the data is stored.
+     - Returns: A request handle, to optionally wait until the data is ingested.
      - Note: This function is not marked `async`, because it is viewed as a request to store data.
        The data does not actually need to be stored when the function returns, and should return as fast as possible.
        To wait until the receive is completed, await the returned request.
@@ -37,13 +34,23 @@ public protocol Receiver: Sendable {
 extension Receiver {
 
     /**
+     Receive a tree for the root path.
+     - Parameter tree: The tree to store.
+     - Returns: A request to wait for completion.
+     */
+    @discardableResult
+    public func receive(_ tree: SampleTree) -> any Request {
+        receive(tree, for: [])
+    }
+
+    /**
      Save a value for a path.
      - Parameter value: The value to store.
      - Parameter path: The path of the value.
      - Parameter timestamp: The timestamp associated with the value
      */
     @discardableResult
-    public func receive(_ value: Value, for path: Path, at timestamp: Timestamp = .current()) -> any Request {
+    public func receive(_ value: Value, for path: Path = [], at timestamp: Timestamp = .current()) -> any Request {
         return receive(Sample(value: value, timestamp: timestamp), for: path)
     }
 
@@ -53,7 +60,7 @@ extension Receiver {
      - Parameter path: The path of the value.
      */
     @discardableResult
-    public func receive(_ sample: Sample, for path: Path) -> any Request {
+    public func receive(_ sample: Sample, for path: Path = []) -> any Request {
         receive([sample], for: path)
     }
 
@@ -69,7 +76,7 @@ extension Receiver {
        To wait until the receive is completed, await the returned request.
      */
     @discardableResult
-    func receive(_ samples: [Sample], for path: Path) -> any Request {
+    func receive(_ samples: [Sample], for path: Path = []) -> any Request {
         receive(SampleTree(samples: samples), for: path)
     }
 }
