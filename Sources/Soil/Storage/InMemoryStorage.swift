@@ -313,21 +313,6 @@ private extension MutableSampleTree {
 extension InMemoryStorage: Storage {
 
     /**
-     Save the samples at a path.
-
-     This function searches for the correct node in the tree, and inserts the samples.
-     - Parameter samples: The samples to store.
-     - Parameter path: The path of the samples.
-     - Returns: The request, if the caller wants to wait for completion
-     */
-    @discardableResult
-    public nonisolated func receive(_ samples: [Sample], for path: Path) -> Request {
-        AsyncRequest {
-            await self.receiveInternal(samples, for: path)
-        }
-    }
-
-    /**
      Save the samples of a tree at a path.
 
      This function searches for the correct node in the tree, and inserts the tree.

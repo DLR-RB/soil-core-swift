@@ -15,21 +15,22 @@ public actor ObservableStorage {
         self.storage = storage
     }
 
-    private func receiveInternal(_ samples: [Sample], for path: Path) async {
-        guard !samples.isEmpty else {
+    private func receiveInternal(_ tree: SampleTree, for path: Path) async {
+        guard !tree.isEmpty else {
             return
         }
 
         // Store the data, wait for completion so that the receive of this class
         // works as expected
-        await storage.receive(samples, for: path).wait()
+        await storage.receive(tree, for: path).wait()
 
         // Notify the subscriptions, but don't wait for each one to complete
         for subscription in subscriptions.values {
             guard await subscription.isSubscribed(to: path) else {
                 continue
             }
-            await subscription.receive(samples, for: path)
+            // Don't wait for completion here
+            await subscription.receive(tree, for: path)
         }
     }
 
@@ -65,14 +66,14 @@ extension ObservableStorage: Observable {
 extension ObservableStorage: Storage {
 
     /**
-     Receive samples for a path.
-     - Parameter samples: The samples to store.
+     Receive a tree for a path.
+     - Parameter tree: The tree to store.
      - Parameter path: The path associated with the samples
      */
     @discardableResult
-    public nonisolated func receive(_ samples: [Sample], for path: Path) -> Request {
+    public nonisolated func receive(_ tree: SampleTree, for path: Path) -> Request {
         AsyncRequest {
-            await self.receiveInternal(samples, for: path)
+            await self.receiveInternal(tree, for: path)
         }
     }
 

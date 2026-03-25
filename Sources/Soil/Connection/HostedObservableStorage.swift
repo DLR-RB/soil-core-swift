@@ -66,22 +66,6 @@ extension HostedObservableStorage: MessageReceiver {
 extension HostedObservableStorage: Storage {
 
     /**
-     Receive samples for a path.
-
-     Components may choose to ignore samples due to access rights or other reasons.
-     - Parameter samples: The samples to store for the path.
-     - Parameter path: The path associated with the samples
-     - Returns: A request handle, to optionally wait until the data is stored.
-     - Note: This function is not marked `async`, because it is viewed as a request to store data.
-       The data does not actually need to be stored when the function returns, and should return as fast as possible.
-       To wait until the receive is completed, await the returned request.
-     */
-    @discardableResult
-    public nonisolated func receive(_ samples: [Sample], for path: Path) -> any Request {
-        storage.receive(samples, for: path)
-    }
-
-    /**
      Receive a request to store a tree for a path.
 
      The provided tree can contain multiple values for each node, and be of arbitrary depth.

@@ -6,6 +6,61 @@
  */
 public struct Message: Sendable {
 
+    public struct ChildTree: Sendable {
+
+        /**
+         A value associated with the `path`.
+
+         Usage:
+         - Data message: The single value transmitted for a path
+
+         - Note: If `time` is set, then it represents the timestamp of the value,
+         otherwise the value is treated as a current time value.
+        */
+        public let value: Value?
+
+        /**
+         A (start) date.
+
+         Usage:
+         - Data message: Used together with `value` to indicate the timestamp (`nil` represents the current time).
+         - Request message: Used as the `start` date for the requested path.
+        */
+        public let time: Timestamp?
+
+        /**
+         The samples associated with the `path`.
+         Can be ommitted from messages if empty.
+
+         Usage:
+         - Data message: Used to transmit multiple samples for a path
+        */
+        public let samples: [Sample]
+
+        public let children: [String : ChildTree]
+
+        public init(value: Value? = nil, time: Timestamp? = nil, samples: [Sample] = [], children: [String : ChildTree] = [:]) {
+            self.value = value
+            self.time = time
+            self.samples = samples
+            self.children = children
+        }
+
+        public init(tree: SampleTree) {
+            if tree.samples.count == 1 {
+                let sample = tree.samples[0]
+                self.value = sample.value
+                self.time = sample.timestamp
+                self.samples = []
+            } else {
+                self.value = nil
+                self.time = nil
+                self.samples = tree.samples
+            }
+            self.children = tree.children.mapValues(ChildTree.init)
+        }
+    }
+
     /// Indicate the message type (may be ommited for a data message)
     public let type: MessageType
 
@@ -40,6 +95,8 @@ public struct Message: Sendable {
      - Data message: Used to transmit multiple samples for a path
      */
     public let samples: [Sample]
+
+    public let children: [String : ChildTree]
 
     /**
      A generic count or limit
@@ -105,6 +162,7 @@ public struct Message: Sendable {
         value: Value? = nil,
         time: Timestamp? = nil,
         samples: [Sample] = [],
+        children: [String : ChildTree] = [:],
         count: Int? = nil,
         depth: Int? = nil,
         end: Timestamp? = nil,
@@ -114,6 +172,7 @@ public struct Message: Sendable {
         self.path = path
         self.value = value
         self.samples = samples
+        self.children = children
         self.count = count
         self.depth = depth
         self.time = time
@@ -195,6 +254,24 @@ extension Message {
             type: .data,
             path: path,
             samples: samples,
+            count: totalMessages,
+            id: request)
+    }
+
+    /**
+     Create a message with a tree.
+     - Parameter path: The path of the value to transmit.
+     - Parameter tree: The tree associated with the path.
+     - Parameter request: The optional id of the request that prompted the message.
+     - Parameter totalMessages: The total number of messages in response to the request
+     - Note: The message type will be set to `data`
+     */
+    public static func tree(_ tree: SampleTree, for path: Path, inResponseTo request: Int? = nil, totalMessages: Int? = nil) -> Self {
+        .init(
+            type: .data,
+            path: path,
+            samples: tree.samples,
+            children: tree.children.mapValues(ChildTree.init),
             count: totalMessages,
             id: request)
     }
@@ -305,6 +382,7 @@ extension Message: Codable {
         case time = 6
         case end = 7
         case id = 8
+        case children = 9
     }
 
     public init(from decoder: any Decoder) throws {
@@ -313,6 +391,7 @@ extension Message: Codable {
         self.path = try container.decodeIfPresent(Path.self, forKey: .path) ?? []
         self.value = try container.decodeIfPresent(Value.self, forKey: .value)
         self.samples = try container.decodeIfPresent([Sample].self, forKey: .samples) ?? []
+        self.children = try container.decodeIfPresent([String : ChildTree].self, forKey: .children) ?? [:]
         self.count = try container.decodeIfPresent(Int.self, forKey: .count)
         self.depth = try container.decodeIfPresent(Int.self, forKey: .depth)
         self.time = try container.decodeIfPresent(Double.self, forKey: .time).map { Timestamp(timeIntervalSince1970: $0) }
@@ -330,11 +409,44 @@ extension Message: Codable {
         if !samples.isEmpty {
             try container.encode(samples, forKey: .samples)
         }
+        if !children.isEmpty {
+            try container.encode(children, forKey: .children)
+        }
         try container.encodeIfPresent(count, forKey: .count)
         try container.encodeIfPresent(depth, forKey: .depth)
         try container.encodeIfPresent(time?.timeIntervalSince1970, forKey: .time)
         try container.encodeIfPresent(end?.timeIntervalSince1970, forKey: .end)
         try container.encodeIfPresent(id, forKey: .id)
+    }
+}
+
+extension Message.ChildTree: Codable {
+
+    enum CodingKeys: Int, CodingKey {
+        case value = 2
+        case samples = 3
+        case time = 6
+        case children = 9
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.value = try container.decodeIfPresent(Value.self, forKey: .value)
+        self.time = try container.decodeIfPresent(Double.self, forKey: .time).map { Timestamp(timeIntervalSince1970: $0) }
+        self.samples = try container.decodeIfPresent([Sample].self, forKey: .samples) ?? []
+        self.children = try container.decodeIfPresent([String : Message.ChildTree].self, forKey: .children) ?? [:]
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(value, forKey: .value)
+        if !samples.isEmpty {
+            try container.encode(samples, forKey: .samples)
+        }
+        if !children.isEmpty {
+            try container.encode(children, forKey: .children)
+        }
+        try container.encodeIfPresent(time?.timeIntervalSince1970, forKey: .time)
     }
 }
 
@@ -347,6 +459,7 @@ extension Message: Equatable {
         lhs.path == rhs.path &&
         lhs.value == rhs.value &&
         lhs.samples == rhs.samples &&
+        lhs.children == rhs.children &&
         lhs.count == rhs.count &&
         lhs.depth == rhs.depth &&
         lhs.id == rhs.id &&
@@ -363,4 +476,14 @@ private func compare(_ date: Timestamp?, to other: Timestamp?) -> Bool {
         return false
     }
     return date.distance(to: other) < 0.001
+}
+
+extension Message.ChildTree: Equatable {
+
+    public static func ==(_ lhs: Self, _ rhs: Self) -> Bool {
+        lhs.value == rhs.value &&
+        compare(lhs.time, to: rhs.time) &&
+        lhs.samples == rhs.samples &&
+        lhs.children == rhs.children
+    }
 }
