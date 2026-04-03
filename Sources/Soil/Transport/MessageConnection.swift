@@ -25,9 +25,9 @@ public protocol MessageConnection: Receiver, Connection, Sendable {
 extension MessageConnection {
 
     /**
-     Send samples over the connection.
-     - Parameter samples: The samples to send for the path.
-     - Parameter path: The path associated with the samples
+     Send a tree over the connection.
+     - Parameter tree: The tree to send for the path.
+     - Parameter path: The path associated with the tree
      - Returns: A request handle, to optionally wait until the data is transmitted.
      - Note: This function is not marked `async`, because it is viewed as a request to send data.
        The data does not actually need to be sent when the function returns, and should return as fast as possible.
