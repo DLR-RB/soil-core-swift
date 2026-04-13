@@ -27,8 +27,8 @@ final class MutableSampleTree: MutableTree {
     }
 
     /// Convert to an immutable tree
-    var tree: SampleTree {
-        .init(samples: samples, children: children.mapValues { $0.tree })
+    var tree: any SampleTree {
+        ImmutableSampleTree(samples: samples, children: children.mapValues { $0.tree })
     }
 
     /**

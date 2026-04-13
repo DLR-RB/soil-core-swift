@@ -34,25 +34,25 @@ struct StorageTests {
 
         do {
             let tree = await storage.tree(for: ["a"], depth: nil)
-            #expect(tree.current == nil)
+            #expect(tree.newestSample == nil)
             #expect(tree.children.count == 2)
             let b = try #require(tree.children["b"])
-            #expect(b.current == nil)
+            #expect(b.newestSample == nil)
             #expect(b.children.count == 2)
             let c = try #require(b.children["c"])
-            let cSample = try #require(c.current)
+            let cSample = try #require(c.newestSample)
             #expect(cSample.value == .integer(123))
-            #expect(cSample.timestamp.isVeryClose(to: now))
+            #expect(cSample.isVeryClose(to: now))
             #expect(c.children.count == 0)
             let d = try #require(b.children["d"])
-            let dSample = try #require(d.current)
+            let dSample = try #require(d.newestSample)
             #expect(dSample.value == .double(3.14))
-            #expect(dSample.timestamp.isVeryClose(to: now))
+            #expect(dSample.isVeryClose(to: now))
             #expect(d.children.count == 0)
             let e = try #require(tree.children["e"])
-            let eSample = try #require(e.current)
+            let eSample = try #require(e.newestSample)
             #expect(eSample.value == .string("some"))
-            #expect(eSample.timestamp.isVeryClose(to: now))
+            #expect(eSample.isVeryClose(to: now))
             #expect(e.children.count == 0)
         }
     }
@@ -64,59 +64,59 @@ struct StorageTests {
         let now = Timestamp.current()
 
         do {
-            let c = SampleTree(value: .integer(123), timestamp: now)
-            let d = SampleTree(value: .double(3.14), timestamp: now)
-            let b = SampleTree(children: ["c" : c, "d" : d])
-            let e = SampleTree(value: .string("some"), timestamp: now)
-            let a = SampleTree(children: ["b" : b, "e" : e])
+            let c = ImmutableSampleTree(value: .integer(123), timestamp: now)
+            let d = ImmutableSampleTree(value: .double(3.14), timestamp: now)
+            let b = ImmutableSampleTree(children: ["c" : c, "d" : d])
+            let e = ImmutableSampleTree(value: .string("some"), timestamp: now)
+            let a = ImmutableSampleTree(children: ["b" : b, "e" : e])
             await storage.receive(a, for: ["a"]).wait()
         }
 
         do {
             let tree = await storage.tree(for: ["a"], depth: 2)
-            #expect(tree.current == nil)
+            #expect(tree.newestSample == nil)
             #expect(tree.children.count == 2)
             let b = try #require(tree.children["b"])
-            #expect(b.current == nil)
+            #expect(b.newestSample == nil)
             #expect(b.children.count == 2)
             let c = try #require(b.children["c"])
-            let cSample = try #require(c.current)
+            let cSample = try #require(c.newestSample)
             #expect(c.samples.count == 1)
             #expect(cSample.value == .integer(123))
-            #expect(cSample.timestamp.isVeryClose(to: now))
+            #expect(cSample.isVeryClose(to: now))
             #expect(c.children.count == 0)
             let d = try #require(b.children["d"])
-            let dSample = try #require(d.current)
+            let dSample = try #require(d.newestSample)
             #expect(d.samples.count == 1)
             #expect(dSample.value == .double(3.14))
-            #expect(dSample.timestamp.isVeryClose(to: now))
+            #expect(dSample.isVeryClose(to: now))
             #expect(d.children.count == 0)
             let e = try #require(tree.children["e"])
-            let eSample = try #require(e.current)
+            let eSample = try #require(e.newestSample)
             #expect(e.samples.count == 1)
             #expect(eSample.value == .string("some"))
-            #expect(eSample.timestamp.isVeryClose(to: now))
+            #expect(eSample.isVeryClose(to: now))
             #expect(e.children.count == 0)
         }
 
         do {
             let tree = await storage.tree(for: ["a"], depth: 1)
-            #expect(tree.current == nil)
+            #expect(tree.newestSample == nil)
             #expect(tree.children.count == 2)
             let b = try #require(tree.children["b"])
-            #expect(b.current == nil)
+            #expect(b.newestSample == nil)
             #expect(b.children.count == 0)
             let e = try #require(tree.children["e"])
             #expect(e.samples.count == 1)
-            let eSample = try #require(e.current)
+            let eSample = try #require(e.newestSample)
             #expect(eSample.value == .string("some"))
-            #expect(eSample.timestamp.isVeryClose(to: now))
+            #expect(eSample.isVeryClose(to: now))
             #expect(e.children.count == 0)
         }
 
         do {
             let tree = await storage.tree(for: ["a"], depth: 0)
-            #expect(tree.current == nil)
+            #expect(tree.newestSample == nil)
             #expect(tree.children.count == 0)
         }
     }
@@ -228,8 +228,9 @@ struct StorageTests {
         for index in history.indices {
             let retrieved = history[index]
             let original = samples[index]
+            let origTime = try #require(original.timestamp)
             #expect(retrieved.value == original.value)
-            #expect(retrieved.timestamp.isVeryClose(to: original.timestamp))
+            #expect(retrieved.isVeryClose(to: origTime))
         }
     }
 }

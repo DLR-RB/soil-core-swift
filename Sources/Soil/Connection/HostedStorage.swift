@@ -99,7 +99,7 @@ public actor HostedStorage {
      - Parameter request: The id to include in the response
      - Parameter count: The total number of messages to be indicated in each message.
      */
-    private func send(tree: SampleTree, path: Path, request: Int?, count: Int?) {
+    private func send(tree: any SampleTree, path: Path, request: Int?, count: Int?) {
         if !tree.samples.isEmpty {
             // TODO: Should we send an empty message for existing tree nodes without a value?
             // If we change this, then the `count` needs to be adjusted as well.
@@ -174,7 +174,7 @@ extension HostedStorage: Storage {
      - SeeAlso: ``commit(_:for:)``
      */
     @discardableResult
-    public nonisolated func receive(_ tree: SampleTree, for path: Path) -> any Request {
+    public nonisolated func receive(_ tree: any SampleTree, for path: Path) -> any Request {
         storage.receive(tree, for: path)
     }
 
@@ -200,7 +200,7 @@ extension HostedStorage: Storage {
      - Note: This function is `async`, because providing the data may take some time.
        It could be retrieved over a network, from an otherwise slow database, or from other components.
      */
-    public func tree(for path: Path, from start: Timestamp?, to end: Timestamp?, depth: Int?, limitPerNode: Int?) async -> SampleTree {
+    public func tree(for path: Path, from start: Timestamp?, to end: Timestamp?, depth: Int?, limitPerNode: Int?) async -> any SampleTree {
         await storage.tree(for: path, from: start, to: end, depth: depth, limitPerNode: limitPerNode)
     }
 

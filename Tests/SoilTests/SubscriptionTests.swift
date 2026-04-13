@@ -27,7 +27,7 @@ struct SubscriptionTests {
             let optionalSample = await receiver.currentSample(for: path)
             let sample = try #require(optionalSample)
             #expect(sample.value == .integer(123))
-            #expect(sample.timestamp.isVeryClose(to: now))
+            #expect(sample.isVeryClose(to: now))
         }
     }
 }

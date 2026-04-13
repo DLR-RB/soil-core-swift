@@ -5,12 +5,12 @@
 final class CallbackReceiver {
 
     /// The stored callback
-    let callback: @Sendable (_ samples: SampleTree, _ path: Path) async -> Void
+    let callback: @Sendable (_ samples: any SampleTree, _ path: Path) async -> Void
 
     /**
      Create a receiver with a callback.
      */
-    init(callback: @escaping @Sendable (_ samples: SampleTree, _ path: Path) async -> Void) {
+    init(callback: @escaping @Sendable (_ samples: any SampleTree, _ path: Path) async -> Void) {
         self.callback = callback
     }
 }
@@ -28,7 +28,7 @@ extension CallbackReceiver: Receiver {
        The data does not actually need to be stored when the function returns, and should return as fast as possible.
        To wait until the receive is completed, await the returned request.
      */
-    func receive(_ tree: SampleTree, for path: Path) -> any Request {
+    func receive(_ tree: any SampleTree, for path: Path) -> any Request {
         AsyncRequest {
             await self.callback(tree, path)
         }

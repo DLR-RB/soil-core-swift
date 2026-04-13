@@ -80,7 +80,7 @@ extension HostedObservableStorage: Storage {
      - SeeAlso: ``commit(_:for:)``
      */
     @discardableResult
-    public nonisolated func receive(_ tree: SampleTree, for path: Path) -> any Request {
+    public nonisolated func receive(_ tree: any SampleTree, for path: Path) -> any Request {
         storage.receive(tree, for: path)
     }
 
@@ -106,7 +106,7 @@ extension HostedObservableStorage: Storage {
      - Note: This function is `async`, because providing the data may take some time.
        It could be retrieved over a network, from an otherwise slow database, or from other components.
      */
-    public func tree(for path: Path, from start: Timestamp?, to end: Timestamp?, depth: Int?, limitPerNode: Int?) async -> SampleTree {
+    public func tree(for path: Path, from start: Timestamp?, to end: Timestamp?, depth: Int?, limitPerNode: Int?) async -> any SampleTree {
         await storage.tree(for: path, from: start, to: end, depth: depth, limitPerNode: limitPerNode)
     }
 

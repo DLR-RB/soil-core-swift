@@ -15,7 +15,7 @@ public actor ObservableStorage {
         self.storage = storage
     }
 
-    private func receiveInternal(_ tree: SampleTree, for path: Path) async {
+    private func receiveInternal(_ tree: any SampleTree, for path: Path) async {
         guard !tree.isEmpty else {
             return
         }
@@ -71,7 +71,7 @@ extension ObservableStorage: Storage {
      - Parameter path: The path associated with the samples
      */
     @discardableResult
-    public nonisolated func receive(_ tree: SampleTree, for path: Path) -> Request {
+    public nonisolated func receive(_ tree: any SampleTree, for path: Path) -> Request {
         AsyncRequest {
             await self.receiveInternal(tree, for: path)
         }

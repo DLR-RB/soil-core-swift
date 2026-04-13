@@ -149,7 +149,7 @@ extension RemoteStorage: Storage {
        The data does not actually need to be stored when the function returns, and should return as fast as possible.
      */
     @discardableResult
-    public nonisolated func receive(_ tree: SampleTree, for path: Path) -> Request {
+    public nonisolated func receive(_ tree: any SampleTree, for path: Path) -> Request {
         connection.receive(tree, for: path)
     }
 

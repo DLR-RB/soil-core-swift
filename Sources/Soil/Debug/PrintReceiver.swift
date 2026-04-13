@@ -44,7 +44,7 @@ extension PrintReceiver: Receiver {
      - Parameter path: The path of the root node of the provided tree
      - Returns: A request handle, to optionally wait until the data is printed.
      */
-    public func receive(_ tree: SampleTree, for path: Path) -> any Request {
+    public func receive(_ tree: any SampleTree, for path: Path) -> any Request {
         print(tree, for: path)
         return CompletedRequest()
     }
@@ -59,7 +59,7 @@ extension PrintReceiver: Receiver {
     /**
      Print all samples of a tree, formatted using the path and date formatter
      */
-    private func print(_ tree: SampleTree, for path: Path) {
+    private func print(_ tree: any SampleTree, for path: Path) {
         let pathString = pathFormatter.string(from: path)
         for sample in tree.samples {
             Swift.print("\(prefix)\(pathString): \(sample.value) (\(timeString(for: sample)))")

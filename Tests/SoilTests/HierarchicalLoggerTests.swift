@@ -14,26 +14,26 @@ private final class TestStorage: Storage {
 
     func tree(for path: Path, from start: Timestamp?, to end: Timestamp?, depth: Int?, limitPerNode: Int?) async -> SampleTree {
         guard let level = logLevels[path] else {
-            return .empty
+            return ImmutableSampleTree.empty
         }
-        if let start, level.timestamp <= start {
-            return .empty
+        if let start, level.time <= start {
+            return ImmutableSampleTree.empty
         }
-        if let end, level.timestamp > end {
-            return .empty
+        if let end, level.time > end {
+            return ImmutableSampleTree.empty
         }
-        return .init(sample: level)
+        return ImmutableSampleTree(sample: level)
     }
 
     nonisolated(unsafe) var logged: (path: Path, sample: Sample)?
 
-    func receive(_ tree: SampleTree, for path: Path) -> any Request {
+    func receive(_ tree: any SampleTree, for path: Path) -> any Request {
         guard let sample = tree.samples.first else {
             return CompletedRequest()
         }
         if let raw = path.last, raw == "level" {
             // Store log level
-            logLevels[path] = sample
+            logLevels[path] = sample.withTimeSet()
             return CompletedRequest()
         }
         logged = (path, sample)

@@ -20,7 +20,7 @@ actor StorageSubscription {
      Inform the receiver about new samples
      */
     @discardableResult
-    func receive(_ tree: SampleTree, for path: Path) -> any Request {
+    func receive(_ tree: any SampleTree, for path: Path) -> any Request {
         receiver.receive(tree, for: path)
     }
 

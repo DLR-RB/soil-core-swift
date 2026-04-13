@@ -70,7 +70,7 @@ extension StorageNode: Receiver {
        To wait until the receive is completed, await the returned request.
      */
     @discardableResult
-    public func receive(_ tree: SampleTree, for path: Path) -> any Request {
+    public func receive(_ tree: any SampleTree, for path: Path) -> any Request {
         storage.receive(tree, for: self.path + path)
     }
 }

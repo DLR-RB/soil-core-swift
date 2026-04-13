@@ -31,7 +31,7 @@ public protocol Provider: Sendable {
      - Note: This function is `async`, because providing the data may take some time.
        It could be retrieved over a network, from an otherwise slow database, or from other components.
      */
-    func tree(for path: Path, from start: Timestamp?, to end: Timestamp?, depth: Int?, limitPerNode: Int?) async -> SampleTree
+    func tree(for path: Path, from start: Timestamp?, to end: Timestamp?, depth: Int?, limitPerNode: Int?) async -> any SampleTree
 }
 
 extension Provider {
@@ -45,7 +45,7 @@ extension Provider {
      - Parameter depth: The number of levels in the sub-tree to include
      - Returns: The sample containing the current values of the requested sub-tree.
      */
-    public func tree(for path: Path = [], beforeOrAt time: Timestamp, depth: Int? = nil) async -> SampleTree {
+    public func tree(for path: Path = [], beforeOrAt time: Timestamp, depth: Int? = nil) async -> any SampleTree {
         await tree(for: path, from: nil, to: time, depth: depth, limitPerNode: 1)
     }
 
@@ -104,7 +104,7 @@ extension Provider {
      - Parameter depth: The number of levels in the sub-tree to include
      - Returns: The sample containing the current values of the requested sub-tree.
      */
-    public func currentTree(for path: Path = [], depth: Int?) async -> SampleTree {
+    public func currentTree(for path: Path = [], depth: Int?) async -> any SampleTree {
         await tree(for: path, from: nil, to: .current(), depth: depth, limitPerNode: 1)
     }
 
@@ -113,7 +113,7 @@ extension Provider {
      - Parameter path: The requested path
      - Returns: The sample containing the current values of the requested sub-tree.
      */
-    public func currentTree(for path: Path = []) async -> SampleTree {
+    public func currentTree(for path: Path = []) async -> any SampleTree {
         await currentTree(for: path, depth: nil)
     }
 }

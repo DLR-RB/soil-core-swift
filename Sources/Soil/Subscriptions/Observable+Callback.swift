@@ -9,7 +9,7 @@ extension Observable {
      - Returns: The created subscription, to modify with more rules
      */
     @discardableResult
-    public func subscribe(to path: Path, depth: Int? = 0, callback: @escaping @Sendable (_ samples: SampleTree, _ path: Path) async -> Void) async -> Subscription {
+    public func subscribe(to path: Path, depth: Int? = 0, callback: @escaping @Sendable (_ samples: any SampleTree, _ path: Path) async -> Void) async -> Subscription {
         let receiver = CallbackReceiver(callback: callback)
         let subscription = await subscribe(receiver)
         subscription.include(path, depth: depth)

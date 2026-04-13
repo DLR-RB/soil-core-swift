@@ -28,7 +28,7 @@ struct ComponentTests {
             let sample = await connectedClient.currentSample(for: path)
             let existingSample = try #require(sample)
             #expect(existingSample.value == .integer(123))
-            #expect(existingSample.timestamp.isVeryClose(to: now))
+            #expect(existingSample.isVeryClose(to: now))
         }
 
         // Get value again from alice's side
@@ -36,7 +36,7 @@ struct ComponentTests {
             let sample = await connectedRemote.currentSample(for: path)
             let existingSample = try #require(sample)
             #expect(existingSample.value == .integer(123))
-            #expect(existingSample.timestamp.isVeryClose(to: now))
+            #expect(existingSample.isVeryClose(to: now))
         }
 
         // Two more messages expected
@@ -116,7 +116,7 @@ struct ComponentTests {
             let optional = await clientStorage.currentSample(for: path)
             let sample = try #require(optional)
             #expect(sample.value == .integer(123))
-            #expect(sample.timestamp.isVeryClose(to: now))
+            #expect(sample.isVeryClose(to: now))
         }
     }
 
@@ -167,7 +167,7 @@ struct ComponentTests {
             let optional = await localStorage.currentSample(for: path)
             let sample = try #require(optional)
             #expect(sample.value == .integer(123))
-            #expect(sample.timestamp.isVeryClose(to: now))
+            #expect(sample.isVeryClose(to: now))
         }
     }
 
@@ -234,7 +234,7 @@ struct ComponentTests {
             let optional = await localStorage.currentSample(for: path)
             let sample = try #require(optional)
             #expect(sample.value == .integer(123))
-            #expect(sample.timestamp.isVeryClose(to: now))
+            #expect(sample.isVeryClose(to: now))
         }
     }
 }

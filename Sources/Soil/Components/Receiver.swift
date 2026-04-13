@@ -28,7 +28,7 @@ public protocol Receiver: Sendable {
        To wait until the receive is completed, await the returned request.
      */
     @discardableResult
-    func receive(_ tree: SampleTree, for path: Path) -> any Request
+    func receive(_ tree: any SampleTree, for path: Path) -> any Request
 }
 
 extension Receiver {
@@ -39,7 +39,7 @@ extension Receiver {
      - Returns: A request to wait for completion.
      */
     @discardableResult
-    public func receive(_ tree: SampleTree) -> any Request {
+    public func receive(_ tree: any SampleTree) -> any Request {
         receive(tree, for: [])
     }
 
@@ -77,6 +77,7 @@ extension Receiver {
      */
     @discardableResult
     func receive(_ samples: [Sample], for path: Path = []) -> any Request {
-        receive(SampleTree(samples: samples), for: path)
+        let tree = ImmutableSampleTree(samples: samples)
+        return receive(tree, for: path)
     }
 }

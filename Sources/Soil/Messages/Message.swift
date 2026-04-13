@@ -46,7 +46,7 @@ public struct Message: Sendable {
             self.children = children
         }
 
-        public init(tree: SampleTree) {
+        public init(tree: any SampleTree) {
             if tree.samples.count == 1 {
                 let sample = tree.samples[0]
                 self.value = sample.value
@@ -266,7 +266,7 @@ extension Message {
      - Parameter totalMessages: The total number of messages in response to the request
      - Note: The message type will be set to `data`
      */
-    public static func tree(_ tree: SampleTree, for path: Path, inResponseTo request: Int? = nil, totalMessages: Int? = nil) -> Self {
+    public static func tree(_ tree: any SampleTree, for path: Path, inResponseTo request: Int? = nil, totalMessages: Int? = nil) -> Self {
         .init(
             type: .data,
             path: path,

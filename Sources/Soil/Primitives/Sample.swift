@@ -19,6 +19,7 @@ public struct Sample: Sendable {
         self.timestamp = timestamp
     }
 
+    /// The timestamp of the sample, or the current time
     public var time: Timestamp {
         timestamp ?? .current()
     }
@@ -31,6 +32,16 @@ public struct Sample: Sendable {
     public init(value: Value, timeIntervalSince1970: Double) {
         self.init(value: value, timestamp: .init(timeIntervalSince1970: timeIntervalSince1970))
     }
+
+    /**
+     Set the timestamp to the current time, if it is not set already.
+     */
+    public func withTimeSet() -> Sample {
+        if timestamp != nil {
+            return self
+        }
+        return .init(value: value, timestamp: .current())
+    }
 }
 
 extension Sample: Equatable {
@@ -40,7 +51,15 @@ extension Sample: Equatable {
 extension Sample: Comparable {
 
     public static func < (lhs: Sample, rhs: Sample) -> Bool {
-        lhs.time < rhs.time
+        guard let lhsTime = lhs.timestamp else {
+            // `nil` represents end of time, so lhs can't be smaller than rhs
+            return false
+        }
+        guard let rhsTime = rhs.timestamp else {
+            return true // rhs is end of time, so lhs must be smaller
+        }
+        // Compare finite values
+        return lhsTime < rhsTime
     }
 }
 

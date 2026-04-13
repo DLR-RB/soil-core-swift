@@ -26,7 +26,7 @@ public actor InMemoryStorage {
      - Parameter tree: The tree with the samples to store.
      - Parameter path: The path of the tree.
      */
-    private func receiveInternal(_ tree: SampleTree, for path: Path) {
+    private func receiveInternal(_ tree: any SampleTree, for path: Path) {
         root.findOrCreateNode(for: path).save(tree)
     }
 
@@ -85,7 +85,7 @@ private extension MutableSampleTree {
      Inserts all samples of the tree root, and recurses into the children to store the full tree.
      - Parameter tree: The tree to save for this node.
      */
-    func save(_ tree: SampleTree) {
+    func save(_ tree: any SampleTree) {
         save(tree.samples)
 
         // Recurse into the tree to store all samples
@@ -100,7 +100,7 @@ private extension MutableSampleTree {
      */
     func save(_ samples: [Sample]) {
         for sample in samples {
-            insertSampleIntoHistory(sample)
+            insertSampleIntoHistory(sample.withTimeSet())
         }
     }
 
@@ -134,14 +134,14 @@ private extension MutableSampleTree {
 
         // Only return the value, if depth is reached
         if let depth, depth == 0 {
-            return .init(samples: samples)
+            return ImmutableSampleTree(samples: samples)
         }
 
         let newDepth = depth?.subtracting(1)
-        let children: [PathComponent : SampleTree] = self.children.mapValues { child in
+        let children: [PathComponent : any SampleTree] = children.mapValues { child in
             child.tree(from: start, to: end, depth: newDepth, limitPerNode: limitPerNode)
         }
-        return .init(samples: samples, children: children)
+        return ImmutableSampleTree(samples: samples, children: children)
     }
 
     /**
@@ -322,7 +322,7 @@ extension InMemoryStorage: Storage {
      - Returns: The request, if the caller wants to wait for completion
      */
     @discardableResult
-    public nonisolated func receive(_ tree: SampleTree, for path: Path) -> Request {
+    public nonisolated func receive(_ tree: any SampleTree, for path: Path) -> Request {
         AsyncRequest {
             await self.receiveInternal(tree, for: path)
         }
@@ -347,7 +347,7 @@ extension InMemoryStorage: Storage {
         depth: Int? = nil,
         limitPerNode: Int? = nil
     ) async -> SampleTree {
-        root.existingNode(for: path)?.tree(from: start, to: end, depth: depth, limitPerNode: limitPerNode) ?? .empty
+        root.existingNode(for: path)?.tree(from: start, to: end, depth: depth, limitPerNode: limitPerNode) ?? ImmutableSampleTree.empty
     }
 
     /**

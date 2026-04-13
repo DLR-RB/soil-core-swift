@@ -96,7 +96,7 @@ extension HostedObservable: Receiver {
      - Note: This function is called automatically be the wrapped observable.
        It should not be called manually.
      */
-    public nonisolated func receive(_ tree: SampleTree, for path: Path) -> any Request {
+    public nonisolated func receive(_ tree: any SampleTree, for path: Path) -> any Request {
         connection.receive(tree, for: path)
     }
 }

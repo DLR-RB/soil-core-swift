@@ -15,7 +15,7 @@ public protocol ReceiverNode: Sendable {
        To wait until the receive is completed, await the returned request.
      */
     @discardableResult
-    func receive(_ tree: SampleTree) -> any Request
+    func receive(_ tree: any SampleTree) -> any Request
 }
 
 
@@ -52,6 +52,6 @@ extension ReceiverNode {
      */
     @discardableResult
     func receive(_ samples: [Sample]) -> any Request {
-        receive(SampleTree(samples: samples))
+        receive(ImmutableSampleTree(samples: samples))
     }
 }

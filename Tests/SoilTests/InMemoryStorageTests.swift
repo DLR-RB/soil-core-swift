@@ -15,9 +15,9 @@ struct InMemoryStorageTests {
         await storage.receive(value, for: path).wait()
 
         let stored = await storage.tree(for: path, depth: 0)
-        let sample = try #require(stored.current)
+        let sample = try #require(stored.newestSample)
         #expect(sample.value == value)
-        #expect(sample.timestamp.isVeryClose(to: time))
+        #expect(sample.isVeryClose(to: time))
         #expect(stored.children.isEmpty)
     }
 
@@ -32,9 +32,9 @@ struct InMemoryStorageTests {
         await storage.receive(value, for: path, at: time).wait()
 
         let stored = await storage.tree(for: path, depth: 0)
-        let sample = try #require(stored.current)
+        let sample = try #require(stored.newestSample)
         #expect(sample.value == value)
-        #expect(sample.timestamp.isVeryClose(to: time))
+        #expect(sample.isVeryClose(to: time))
         #expect(stored.children.isEmpty)
     }
 
@@ -54,9 +54,9 @@ struct InMemoryStorageTests {
         do {
             // Get current value
             let stored = await storage.tree(for: path, depth: 0)
-            let sample = try #require(stored.current)
+            let sample = try #require(stored.newestSample)
             #expect(sample.value == oldValue)
-            #expect(sample.timestamp.isVeryClose(to: oldTime))
+            #expect(sample.isVeryClose(to: oldTime))
             #expect(stored.children.isEmpty)
         }
 
@@ -66,18 +66,18 @@ struct InMemoryStorageTests {
             // Get current value
             let stored = await storage.currentTree(for: path, depth: 0)
             #expect(stored.samples.count == 1)
-            let sample = try #require(stored.current)
+            let sample = try #require(stored.newestSample)
             #expect(sample.value == newValue)
-            #expect(sample.timestamp.isVeryClose(to: newTime))
+            #expect(sample.isVeryClose(to: newTime))
             #expect(stored.children.isEmpty)
         }
 
         do {
             // Get old value
             let stored = await storage.tree(for: path, beforeOrAt: oldTime.addingTimeInterval(1), depth: 0)
-            let sample = try #require(stored.current)
+            let sample = try #require(stored.newestSample)
             #expect(sample.value == oldValue)
-            #expect(sample.timestamp.isVeryClose(to: oldTime))
+            #expect(sample.isVeryClose(to: oldTime))
             #expect(stored.children.isEmpty)
         }
 
@@ -94,7 +94,7 @@ struct InMemoryStorageTests {
         await storage.receive(value, for: path, at: time).wait()
 
         let stored = await storage.tree(for: path, depth: 0)
-        let sample = try #require(stored.current)
+        let sample = try #require(stored.newestSample)
         #expect(sample.value == value)
         #expect(sample.timestamp == time)
         #expect(stored.children.isEmpty)
@@ -106,15 +106,15 @@ struct InMemoryStorageTests {
 
         let now = Timestamp.current()
         do {
-            let cTree = SampleTree(value: .string("hello"), timestamp: now)
-            let fTree = SampleTree(value: .double(3.14), timestamp: now)
-            let bTree = SampleTree(children: ["c" : cTree, "f" : fTree])
-            let eTree = SampleTree(value: .path(["z", "x"]), timestamp: now)
-            let dTree = SampleTree(children: ["e" : eTree])
-            let aTree = SampleTree(value: .integer(123), timestamp: now, children: [
+            let cTree = ImmutableSampleTree(value: .string("hello"), timestamp: now)
+            let fTree = ImmutableSampleTree(value: .double(3.14), timestamp: now)
+            let bTree = ImmutableSampleTree(children: ["c" : cTree, "f" : fTree])
+            let eTree = ImmutableSampleTree(value: .path(["z", "x"]), timestamp: now)
+            let dTree = ImmutableSampleTree(children: ["e" : eTree])
+            let aTree = ImmutableSampleTree(value: .integer(123), timestamp: now, children: [
                 "d" : dTree
             ])
-            let tree = SampleTree(children: ["a" : aTree, "b" : bTree])
+            let tree = ImmutableSampleTree(children: ["a" : aTree, "b" : bTree])
             await storage.receive(tree, for: []).wait()
         }
 
@@ -124,9 +124,9 @@ struct InMemoryStorageTests {
             #expect(tree.samples.isEmpty)
 
             let a = try #require(tree.children["a"])
-            let aSample = try #require(a.current)
+            let aSample = try #require(a.newestSample)
             #expect(aSample.value == .integer(123))
-            #expect(aSample.timestamp.isVeryClose(to: now))
+            #expect(aSample.isVeryClose(to: now))
             #expect(a.children.count == 1)
 
             let d = try #require(a.children["d"])
@@ -134,9 +134,9 @@ struct InMemoryStorageTests {
             #expect(d.children.count == 1)
 
             let e = try #require(d.children["e"])
-            let eSample = try #require(e.current)
+            let eSample = try #require(e.newestSample)
             #expect(eSample.value == .path(["z", "x"]))
-            #expect(eSample.timestamp.isVeryClose(to: now))
+            #expect(eSample.isVeryClose(to: now))
             #expect(e.children.isEmpty)
 
             let b = try #require(tree.children["b"])
@@ -144,15 +144,15 @@ struct InMemoryStorageTests {
             #expect(b.children.count == 2)
 
             let c = try #require(b.children["c"])
-            let cSample = try #require(c.current)
+            let cSample = try #require(c.newestSample)
             #expect(cSample.value == .string("hello"))
-            #expect(cSample.timestamp.isVeryClose(to: now))
+            #expect(cSample.isVeryClose(to: now))
             #expect(c.children.isEmpty)
 
             let f = try #require(b.children["f"])
-            let fSample = try #require(f.current)
+            let fSample = try #require(f.newestSample)
             #expect(fSample.value == .double(3.14))
-            #expect(fSample.timestamp.isVeryClose(to: now))
+            #expect(fSample.isVeryClose(to: now))
             #expect(f.children.isEmpty)
         }
     }
@@ -173,9 +173,9 @@ struct InMemoryStorageTests {
             #expect(tree.samples.isEmpty)
 
             let a = try #require(tree.children["a"])
-            let aSample = try #require(a.current)
+            let aSample = try #require(a.newestSample)
             #expect(aSample.value == .integer(123))
-            #expect(aSample.timestamp.isVeryClose(to: now))
+            #expect(aSample.isVeryClose(to: now))
             #expect(a.children.count == 1)
 
             let d = try #require(a.children["d"])
@@ -183,9 +183,9 @@ struct InMemoryStorageTests {
             #expect(d.children.count == 1)
 
             let e = try #require(d.children["e"])
-            let eSample = try #require(e.current)
+            let eSample = try #require(e.newestSample)
             #expect(eSample.value == .path(["z", "x"]))
-            #expect(eSample.timestamp.isVeryClose(to: now))
+            #expect(eSample.isVeryClose(to: now))
             #expect(e.children.isEmpty)
 
             let b = try #require(tree.children["b"])
@@ -193,15 +193,15 @@ struct InMemoryStorageTests {
             #expect(b.children.count == 2)
 
             let c = try #require(b.children["c"])
-            let cSample = try #require(c.current)
+            let cSample = try #require(c.newestSample)
             #expect(cSample.value == .string("hello"))
-            #expect(cSample.timestamp.isVeryClose(to: now))
+            #expect(cSample.isVeryClose(to: now))
             #expect(c.children.isEmpty)
 
             let f = try #require(b.children["f"])
-            let fSample = try #require(f.current)
+            let fSample = try #require(f.newestSample)
             #expect(fSample.value == .double(3.14))
-            #expect(fSample.timestamp.isVeryClose(to: now))
+            #expect(fSample.isVeryClose(to: now))
             #expect(f.children.isEmpty)
         }
     }
@@ -228,9 +228,9 @@ struct InMemoryStorageTests {
             #expect(tree.samples.isEmpty)
 
             let a = try #require(tree.children["a"])
-            let aSample = try #require(a.current)
+            let aSample = try #require(a.newestSample)
             #expect(aSample.value == .integer(123))
-            #expect(aSample.timestamp.isVeryClose(to: now))
+            #expect(aSample.isVeryClose(to: now))
             #expect(a.children.isEmpty)
 
             let b = try #require(tree.children["b"])
@@ -250,15 +250,15 @@ struct InMemoryStorageTests {
             #expect(b.children.count == 2)
 
             let c = try #require(b.children["c"])
-            let cSample = try #require(c.current)
+            let cSample = try #require(c.newestSample)
             #expect(cSample.value == .string("hello"))
-            #expect(cSample.timestamp.isVeryClose(to: now))
+            #expect(cSample.isVeryClose(to: now))
             #expect(c.children.isEmpty)
 
             let f = try #require(b.children["f"])
-            let fSample = try #require(f.current)
+            let fSample = try #require(f.newestSample)
             #expect(fSample.value == .double(3.14))
-            #expect(fSample.timestamp.isVeryClose(to: now))
+            #expect(fSample.isVeryClose(to: now))
             #expect(f.children.isEmpty)
         }
     }
@@ -290,9 +290,9 @@ struct InMemoryStorageTests {
             #expect(tree.samples.isEmpty)
 
             let a = try #require(tree.children["a"])
-            let aSample = try #require(a.current)
+            let aSample = try #require(a.newestSample)
             #expect(aSample.value == .integer(123))
-            #expect(aSample.timestamp.isVeryClose(to: now))
+            #expect(aSample.isVeryClose(to: now))
             #expect(a.children.count == 1)
 
             let d = try #require(a.children["d"])
@@ -300,9 +300,9 @@ struct InMemoryStorageTests {
             #expect(d.children.count == 1)
 
             let e = try #require(d.children["e"])
-            let eSample = try #require(e.current)
+            let eSample = try #require(e.newestSample)
             #expect(eSample.value == .path(["z", "x"]))
-            #expect(eSample.timestamp.isVeryClose(to: now))
+            #expect(eSample.isVeryClose(to: now))
             #expect(e.children.isEmpty)
 
             let b = try #require(tree.children["b"])
@@ -310,53 +310,53 @@ struct InMemoryStorageTests {
             #expect(b.children.count == 2)
 
             let c = try #require(b.children["c"])
-            let cSample = try #require(c.current)
+            let cSample = try #require(c.newestSample)
             #expect(cSample.value == .string("hello"))
-            #expect(cSample.timestamp.isVeryClose(to: now))
+            #expect(cSample.isVeryClose(to: now))
             #expect(c.children.isEmpty)
 
             let f = try #require(b.children["f"])
-            let fSample = try #require(f.current)
+            let fSample = try #require(f.newestSample)
             #expect(fSample.value == .double(3.14))
-            #expect(fSample.timestamp.isVeryClose(to: now))
+            #expect(fSample.isVeryClose(to: now))
             #expect(f.children.isEmpty)
         }
         // Get old tree
         do {
             let tree = await storage.tree(for: [], beforeOrAt: queryTime)
-            #expect(tree.current == nil)
+            #expect(tree.newestSample == nil)
             #expect(tree.children.count == 2)
 
             let a = try #require(tree.children["a"])
-            let aSample = try #require(a.current)
+            let aSample = try #require(a.newestSample)
             #expect(aSample.value == .integer(234))
-            #expect(aSample.timestamp.isVeryClose(to: old))
+            #expect(aSample.isVeryClose(to: old))
             #expect(a.children.count == 1)
 
             let d = try #require(a.children["d"])
-            #expect(d.current == nil)
+            #expect(d.newestSample == nil)
             #expect(d.children.count == 1)
 
             let e = try #require(d.children["e"])
-            let eSample = try #require(e.current)
+            let eSample = try #require(e.newestSample)
             #expect(eSample.value == .path(["y", "w"]))
-            #expect(eSample.timestamp.isVeryClose(to: old))
+            #expect(eSample.isVeryClose(to: old))
             #expect(e.children.isEmpty)
 
             let b = try #require(tree.children["b"])
-            #expect(b.current == nil)
+            #expect(b.newestSample == nil)
             #expect(b.children.count == 2)
 
             let c = try #require(b.children["c"])
-            let cSample = try #require(c.current)
+            let cSample = try #require(c.newestSample)
             #expect(cSample.value == .string("there"))
-            #expect(cSample.timestamp.isVeryClose(to: old))
+            #expect(cSample.isVeryClose(to: old))
             #expect(c.children.isEmpty)
 
             let f = try #require(b.children["f"])
-            let fSample = try #require(f.current)
+            let fSample = try #require(f.newestSample)
             #expect(fSample.value == .double(42.1))
-            #expect(fSample.timestamp.isVeryClose(to: old))
+            #expect(fSample.isVeryClose(to: old))
             #expect(f.children.isEmpty)
         }
     }
@@ -387,9 +387,9 @@ struct InMemoryStorageTests {
             #expect(root.samples.isEmpty)
 
             let a = try #require(root.children["a"])
-            let aSample = try #require(a.current)
+            let aSample = try #require(a.newestSample)
             #expect(aSample.value == .integer(234))
-            #expect(aSample.timestamp.isVeryClose(to: old))
+            #expect(aSample.isVeryClose(to: old))
             #expect(a.children.count == 0)
 
             let b = try #require(root.children["b"])
@@ -399,9 +399,9 @@ struct InMemoryStorageTests {
 
         do {
             let a = await storage.tree(for: ["a"], beforeOrAt: queryTime, depth: 1)
-            let aSample = try #require(a.current)
+            let aSample = try #require(a.newestSample)
             #expect(aSample.value == .integer(234))
-            #expect(aSample.timestamp.isVeryClose(to: old))
+            #expect(aSample.isVeryClose(to: old))
             #expect(a.children.count == 1)
 
             let d = try #require(a.children["d"])
@@ -410,22 +410,22 @@ struct InMemoryStorageTests {
         }
 
         do {
-            let d: SampleTree = await storage.tree(for: ["a", "d"], beforeOrAt: queryTime, depth: 1)
+            let d = await storage.tree(for: ["a", "d"], beforeOrAt: queryTime, depth: 1)
             #expect(d.samples.isEmpty)
             #expect(d.children.count == 1)
 
-            let e: SampleTree = try #require(d.children["e"])
-            let eSample = try #require(e.current)
+            let e = try #require(d.children["e"])
+            let eSample = try #require(e.newestSample)
             #expect(eSample.value == .path(["y", "w"]))
-            #expect(eSample.timestamp.isVeryClose(to: old))
+            #expect(eSample.isVeryClose(to: old))
             #expect(e.children.isEmpty)
         }
 
         do {
             let e = await storage.tree(for: ["a", "d", "e"], beforeOrAt: queryTime, depth: 1)
-            let eSample = try #require(e.current)
+            let eSample = try #require(e.newestSample)
             #expect(eSample.value == .path(["y", "w"]))
-            #expect(eSample.timestamp.isVeryClose(to: old))
+            #expect(eSample.isVeryClose(to: old))
             #expect(e.children.isEmpty)
         }
 
@@ -435,15 +435,15 @@ struct InMemoryStorageTests {
             #expect(b.children.count == 2)
 
             let c = try #require(b.children["c"])
-            let cSample = try #require(c.current)
+            let cSample = try #require(c.newestSample)
             #expect(cSample.value == .string("there"))
-            #expect(cSample.timestamp.isVeryClose(to: old))
+            #expect(cSample.isVeryClose(to: old))
             #expect(c.children.isEmpty)
 
             let f = try #require(b.children["f"])
-            let fSample = try #require(f.current)
+            let fSample = try #require(f.newestSample)
             #expect(fSample.value == .double(42.1))
-            #expect(fSample.timestamp.isVeryClose(to: old))
+            #expect(fSample.isVeryClose(to: old))
             #expect(f.children.isEmpty)
         }
     }
