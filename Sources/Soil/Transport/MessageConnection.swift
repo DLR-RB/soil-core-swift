@@ -11,7 +11,7 @@ public protocol MessageConnection: Receiver, Connection, Sendable {
      - Note: The returned request does not wait for message delivery, only transmission.
      */
     @discardableResult
-    func send(message: Message) -> Request
+    func send(message: Message) -> any Request
 
     /**
      Set the receiver for messages produced by this connection.

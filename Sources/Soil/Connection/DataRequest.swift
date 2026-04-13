@@ -124,20 +124,20 @@ final class DataRequest {
                 return samples
             }
             // Only start given, so remove all after end (end is inclusive)
-            return samples.filter { $0.timestamp <= end }
+            return samples.filter { $0.time <= end }
         }
 
         guard let end else {
             // Only start given, so remove all before start (start is exclusive)
-            return samples.filter { $0.timestamp > start }
+            return samples.filter { $0.time > start }
         }
 
         guard start < end else {
             // Reverse order (start is exclusive, end is inclusive)
-            return samples.filter { $0.timestamp < start && $0.timestamp >= end }
+            return samples.filter { $0.time < start && $0.time >= end }
         }
         // "Normal" order (start is exclusive, end is inclusive)
-        return samples.filter { $0.timestamp > start && $0.timestamp <= end }
+        return samples.filter { $0.time > start && $0.time <= end }
     }
 
     /**

@@ -147,7 +147,7 @@ extension JsonSample: Encodable {
     func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try sample.value.encode(in: &container, valueKey: .value, typeKey: .type)
-        try container.encode(sample.timestamp.timeIntervalSince1970, forKey: .time)
+        try container.encodeIfPresent(sample.timestamp?.timeIntervalSince1970, forKey: .time)
     }
 }
 

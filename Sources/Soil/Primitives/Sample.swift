@@ -7,16 +7,20 @@ public struct Sample: Sendable {
     public let value: Value
 
     /// The timestamp of the value
-    public let timestamp: Timestamp
+    public let timestamp: Timestamp?
 
     /**
      Create a sample.
      - Parameter value: The contained value
      - Parameter date: The timestamp associated with the value.
      */
-    public init(value: Value, timestamp: Timestamp = .current()) {
+    public init(value: Value, timestamp: Timestamp? = nil) {
         self.value = value
         self.timestamp = timestamp
+    }
+
+    public var time: Timestamp {
+        timestamp ?? .current()
     }
 
     /**
@@ -36,7 +40,7 @@ extension Sample: Equatable {
 extension Sample: Comparable {
 
     public static func < (lhs: Sample, rhs: Sample) -> Bool {
-        lhs.timestamp < rhs.timestamp
+        lhs.time < rhs.time
     }
 }
 
@@ -50,7 +54,11 @@ extension Sample: Codable {
 
 extension Sample: CustomStringConvertible {
 
+    private var timeString: String? {
+        timestamp?.formatted(date: .numeric, time: .standard)
+    }
+
     public var description: String {
-        "\(value) (\(timestamp.formatted(date: .numeric, time: .standard)))"
+        "\(value) (\(timeString ?? "now"))"
     }
 }

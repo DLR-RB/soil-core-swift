@@ -213,10 +213,10 @@ private extension MutableSampleTree {
     private func selectDescending(from start: Timestamp, to end: Timestamp, limit: Int?) -> [Sample] {
         // The lower index of the subsequence is given by `start`
         // Start is inclusive, so we find the first index larger than or equal to `start`
-        let lowerIndex = samples.partitioningIndex { $0.timestamp >= start }
+        let lowerIndex = samples.partitioningIndex { $0.time >= start }
         // The higher index is given by `end`, but exclusive.
         // Since we need the index after the last included element, we select the first index larger than or equal to `end`
-        let higherIndex = samples.partitioningIndex { $0.timestamp >= end }
+        let higherIndex = samples.partitioningIndex { $0.time >= end }
         // Now we select the subrange in descending order, with the limit applied from the higher index
         return selectDescending(lowerIndex..<higherIndex, limit: limit)
     }
@@ -239,7 +239,7 @@ private extension MutableSampleTree {
     private func firstIndex(after date: Timestamp) -> Int {
         // Find the first index in the array where the sample date is after the given date
         // If all values are smaller than or equal to the given date, then the end index is returned
-        return samples.partitioningIndex { $0.timestamp > date }
+        return samples.partitioningIndex { $0.time > date }
     }
 
     /**
@@ -293,10 +293,10 @@ private extension MutableSampleTree {
         guard start < end else {
             // Reverse order requested
             // This case needs to be treated differently, due to start being exclusive and end inclusive
-            let startIndex = samples.partitioningIndex { $0.timestamp >= end }
+            let startIndex = samples.partitioningIndex { $0.time >= end }
             // The end index is given by `start`, but exclusive.
             // Since we need the index after the last included element, we select the first index larger than or equal to `start`
-            let endIndex = samples.partitioningIndex { $0.timestamp >= start }
+            let endIndex = samples.partitioningIndex { $0.time >= start }
             samples.removeSubrange(startIndex..<endIndex)
             return
         }

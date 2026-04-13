@@ -50,7 +50,7 @@ extension Receiver {
      - Parameter timestamp: The timestamp associated with the value
      */
     @discardableResult
-    public func receive(_ value: Value, for path: Path = [], at timestamp: Timestamp = .current()) -> any Request {
+    public func receive(_ value: Value, for path: Path = [], at timestamp: Timestamp? = nil) -> any Request {
         return receive(Sample(value: value, timestamp: timestamp), for: path)
     }
 

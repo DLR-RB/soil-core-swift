@@ -32,7 +32,7 @@ public final class SampleTree: Tree, Sendable {
      - Parameter timestamp: The optional timestamp associated with the value.
      - Parameter children: The child nodes of the tree, indexed by their path component.
      */
-    public init(value: Value, timestamp: Timestamp = .current(), children: [PathComponent : SampleTree] = [:]) {
+    public init(value: Value, timestamp: Timestamp? = nil, children: [PathComponent : SampleTree] = [:]) {
         self.samples = [.init(value: value, timestamp: timestamp)]
         self.children = children
     }

@@ -49,13 +49,20 @@ extension PrintReceiver: Receiver {
         return CompletedRequest()
     }
 
+    private func timeString(for sample: Sample) -> String {
+        guard let timestamp = sample.timestamp else {
+            return "now"
+        }
+        return df.string(from: timestamp)
+    }
+
     /**
      Print all samples of a tree, formatted using the path and date formatter
      */
     private func print(_ tree: SampleTree, for path: Path) {
         let pathString = pathFormatter.string(from: path)
         for sample in tree.samples {
-            Swift.print("\(prefix)\(pathString): \(sample.value) (\(df.string(from: sample.timestamp)))")
+            Swift.print("\(prefix)\(pathString): \(sample.value) (\(timeString(for: sample)))")
         }
         for (name, child) in tree.children {
             print(child, for: path + [name])
