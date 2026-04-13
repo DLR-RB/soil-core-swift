@@ -4,7 +4,10 @@ import PackageDescription
 let package = Package(
     name: "soil-swift",
     platforms: [
-        .macOS(.v13)
+        .macOS(.v13),
+        .iOS(.v15),
+        .tvOS(.v15),
+        .watchOS(.v8)
     ],
     products: [
         .library(
