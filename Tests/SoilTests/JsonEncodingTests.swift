@@ -6,19 +6,27 @@ import Foundation
 struct JsonEncodingTests {
 
     /// Round-trip assertion helper
-    private func assertRoundTrip(
-        _ message: Message
-    ) throws {
+    private func assertRoundTrip(_ message: Message) throws {
         let encoder = JsonEncoding()
 
         let data = try encoder.encode(message)
-        let decoded = try encoder.decode(data)
+        do {
+            let decoded = try encoder.decode(data)
 
-        #expect(decoded == message)
+            #expect(decoded == message)
+        } catch {
+            print(String(data: data, encoding: .utf8) ?? "Invalid encoding")
+            throw error
+        }
+    }
+
+    private func assertRoundTrip(_ messages: [Message]) throws {
+        for value in messages {
+            try assertRoundTrip(value)
+        }
     }
 
     // MARK: - Fixtures
-
 
     private func sample(
         _ time: TimeInterval,
@@ -60,69 +68,38 @@ struct JsonEncodingTests {
 
     @Test("Value.null")
     func valueNull() throws {
-        let message = Message(
-            type: .data,
-            path: ["null"],
-            value: .null
-        )
-
+        let message = Message.value(.null, for: ["null"])
         try assertRoundTrip(message)
     }
 
     @Test("Value.integer")
     func valueInteger() throws {
-        let message = Message(
-            type: .data,
-            path: ["int"],
-            value: .integer(123)
-        )
-
+        let message = Message.value(.integer(123), for: ["int"])
         try assertRoundTrip(message)
     }
 
     @Test("Value.double")
     func valueDouble() throws {
-        let message = Message(
-            type: .data,
-            path: ["double"],
-            value: .double(123.456)
-        )
-
+        let message = Message.value(.double(123.456), for: ["double"])
         try assertRoundTrip(message)
     }
 
     @Test("Value.string")
     func valueString() throws {
-        let message = Message(
-            type: .data,
-            path: ["string"],
-            value: .string("Hello JSON 🌍")
-        )
-
+        let message = Message.value(.string("Hello JSON 🌍"), for: ["string"])
         try assertRoundTrip(message)
     }
 
     @Test("Value.data")
     func valueData() throws {
         let data = Data([0x00, 0x01, 0xFE, 0xFF])
-
-        let message = Message(
-            type: .data,
-            path: ["blob"],
-            value: .data(data)
-        )
-
+        let message = Message.value(.data(data), for: ["blob"])
         try assertRoundTrip(message)
     }
 
     @Test("Value.path")
     func valuePath() throws {
-        let message = Message(
-            type: .data,
-            path: ["outer"],
-            value: .path(["inner", "leaf"])
-        )
-
+        let message = Message.value(.path(["inner", "leaf"]), for: ["outer"])
         try assertRoundTrip(message)
     }
 
@@ -130,31 +107,19 @@ struct JsonEncodingTests {
 
     @Test("Empty path")
     func emptyPath() throws {
-        let message = Message(
-            type: .data,
-            path: []
-        )
-
+        let message = Message(type: .data, path: [])
         try assertRoundTrip(message)
     }
 
     @Test("Deep path")
     func deepPath() throws {
-        let message = Message(
-            type: .data,
-            path: ["a","b","c","d","e","f","g"]
-        )
-
+        let message = Message(type: .data, path: ["a","b","c","d","e","f","g"])
         try assertRoundTrip(message)
     }
 
     @Test("Path with unicode")
     func unicodePath() throws {
-        let message = Message(
-            type: .data,
-            path: ["ä","測試","🚀"]
-        )
-
+        let message = Message(type: .data, path: ["ä","測試","🚀"])
         try assertRoundTrip(message)
     }
 
@@ -186,12 +151,11 @@ struct JsonEncodingTests {
 
     @Test("Single sample")
     func singleSample() throws {
-        let message = Message(
-            type: .data,
-            path: ["samples"],
-            samples: [
+        let message = Message.samples(
+            [
                 sample(1_700_000_000, .integer(1))
-            ]
+            ],
+            for: ["samples"]
         )
 
         try assertRoundTrip(message)
@@ -199,15 +163,14 @@ struct JsonEncodingTests {
 
     @Test("Multiple samples")
     func multipleSamples() throws {
-        let message = Message(
-            type: .data,
-            path: ["samples"],
-            samples: [
+        let message = Message.samples(
+            [
                 sample(1, .integer(1)),
                 sample(2, .double(2.5)),
                 sample(3, .string("three")),
                 sample(4, .null)
-            ]
+            ],
+            for: ["samples"]
         )
 
         try assertRoundTrip(message)
@@ -215,10 +178,9 @@ struct JsonEncodingTests {
 
     @Test("Empty samples array")
     func emptySamples() throws {
-        let message = Message(
-            type: .data,
-            path: ["samples"],
-            samples: []
+        let message = Message.samples(
+            [],
+            for: ["samples"]
         )
 
         try assertRoundTrip(message)
@@ -243,15 +205,17 @@ struct JsonEncodingTests {
 
     @Test("Fully populated message")
     func fullMessage() throws {
-        let message = Message(
-            type: .subscriptionInclusion,
-            path: ["full","message"],
-            value: .string("payload"),
-            time: Date(timeIntervalSince1970:1_700_000_000),
+        let tree = ImmutableSampleTree(
             samples: [
                 sample(10, .integer(10)),
                 sample(20, .integer(20))
-            ],
+            ]
+        )
+        let message = Message(
+            type: .subscriptionInclusion,
+            path: ["full","message"],
+            time: Date(timeIntervalSince1970:1_700_000_000),
+            data: tree,
             count: 2,
             depth: 1,
             end: Date(timeIntervalSince1970:1_700_000_100),
@@ -265,10 +229,11 @@ struct JsonEncodingTests {
 
     @Test("Large integers")
     func largeIntegers() throws {
+        let tree = ImmutableSampleTree(value: .integer(Int.max))
         let message = Message(
             type: .data,
             path: ["large"],
-            value: .integer(Int.max),
+            data: tree,
             count: Int.max,
             depth: Int.max,
             id: Int.max
@@ -279,10 +244,11 @@ struct JsonEncodingTests {
 
     @Test("Negative integers")
     func negativeIntegers() throws {
+        let tree = ImmutableSampleTree(value: .integer(Int.min))
         let message = Message(
             type: .data,
             path: ["negative"],
-            value: .integer(-123),
+            data: tree,
             count: -1,
             depth: -5,
             id: -999
@@ -293,10 +259,9 @@ struct JsonEncodingTests {
 
     @Test("High precision double")
     func precisionDouble() throws {
-        let message = Message(
-            type: .data,
-            path: ["precision"],
-            value: .double(0.1234567890123456)
+        let message = Message.value(
+            .double(0.1234567890123456),
+            for: ["precision"]
         )
 
         try assertRoundTrip(message)
@@ -308,12 +273,12 @@ struct JsonEncodingTests {
     func multipleMessages() throws {
         let messages: [Message] = [
             Message(type: .data, path: ["a"]),
-            Message(type: .request, path: ["b"], value: .integer(1)),
-            Message(type: .deletionRequest, path: ["c"], value: .null),
+            Message(type: .request, path: ["b"], data: ImmutableSampleTree(value: .integer(1))),
+            Message(type: .deletionRequest, path: ["c"], data : ImmutableSampleTree(value: .null)),
             Message(
                 type: .subscriptionDeletion,
                 path: ["d"],
-                samples: [sample(1, .integer(1))]
+                data: ImmutableSampleTree(sample: sample(1, .integer(1)))
             )
         ]
 
@@ -325,5 +290,26 @@ struct JsonEncodingTests {
 
             #expect(decoded == message)
         }
+    }
+
+    @Test("Various messages")
+    func testMessage() throws {
+        try assertRoundTrip([
+            .value(.null, for: ["a", "b"]),
+            .value(.integer(123), for: ["a", "b", "c"], at: .current()),
+            .value(.integer(234), for: []),
+            .samples([
+                .init(value: .integer(123), timestamp: .current().addingTimeInterval(-10000)),
+                .init(value: .double(3.14), timestamp: .current().addingTimeInterval(-9000))
+            ], for: ["zzz"]),
+            .include(["abc"], depth: 123, in: 234),
+            .include(["", "some"], in: 123),
+            .request(["Path"], to: .current(), depth: 0),
+            .request(["Path"]),
+            .request(["123"], from: .current().addingTimeInterval(-1000), to: .current(), limit: 100),
+            .request(["123", "456"]),
+            .exclude(["a", "a"], depth: 10, from: 234),
+            .exclude(["a", "a", "a"], from: 123)
+        ])
     }
 }

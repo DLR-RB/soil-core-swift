@@ -63,14 +63,6 @@ extension Sample: Comparable {
     }
 }
 
-extension Sample: Codable {
-
-    enum CodingKeys: Int, CodingKey {
-        case value = 0
-        case timestamp = 1
-    }
-}
-
 extension Sample: CustomStringConvertible {
 
     private var timeString: String? {

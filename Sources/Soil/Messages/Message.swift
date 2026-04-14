@@ -6,66 +6,6 @@
  */
 public struct Message: Sendable {
 
-    public struct ChildTree: Sendable {
-
-        /**
-         A value associated with the `path`.
-
-         Usage:
-         - Data message: The single value transmitted for a path
-
-         - Note: If `time` is set, then it represents the timestamp of the value,
-         otherwise the value is treated as a current time value.
-        */
-        public let value: Value?
-
-        /**
-         A (start) date.
-
-         Usage:
-         - Data message: Used together with `value` to indicate the timestamp (`nil` represents the current time).
-         - Request message: Used as the `start` date for the requested path.
-        */
-        public let time: Timestamp?
-
-        /**
-         The samples associated with the `path`.
-         Can be ommitted from messages if empty.
-
-         Usage:
-         - Data message: Used to transmit multiple samples for a path
-        */
-        public let samples: [Sample]
-
-        public let children: [String : ChildTree]
-
-        public init(value: Value? = nil, time: Timestamp? = nil, samples: [Sample] = [], children: [String : ChildTree] = [:]) {
-            self.value = value
-            self.time = time
-            self.samples = samples
-            self.children = children
-        }
-
-        public init(tree: any SampleTree) {
-            if tree.samples.count == 1 {
-                let sample = tree.samples[0]
-                self.value = sample.value
-                self.time = sample.timestamp
-                self.samples = []
-            } else {
-                self.value = nil
-                self.time = nil
-                self.samples = tree.samples
-            }
-            self.children = tree.children.mapValues(ChildTree.init)
-        }
-
-        var totalNumberOfSamples: Int {
-            let topCount = (value != nil ? 1 : 0) + samples.count
-            return children.values.reduce(topCount) { $0 + $1.totalNumberOfSamples }
-        }
-    }
-
     /// Indicate the message type (may be ommited for a data message)
     public let type: MessageType
 
@@ -82,26 +22,12 @@ public struct Message: Sendable {
     public let path: Path
 
     /**
-     A value associated with the `path`.
+     A data associated with the `path`.
 
      Usage:
-     - Data message: The single value transmitted for a path
-
-     - Note: If `time` is set, then it represents the timestamp of the value,
-       otherwise the value is treated as a current time value.
+     - Data message: The tree associated with the path
      */
-    public let value: Value?
-
-    /**
-     The samples associated with the `path`.
-     Can be ommitted from messages if empty.
-
-     Usage:
-     - Data message: Used to transmit multiple samples for a path
-     */
-    public let samples: [Sample]
-
-    public let children: [String : ChildTree]
+    public let data: any SampleTree
 
     /**
      A generic count or limit
@@ -161,13 +87,11 @@ public struct Message: Sendable {
      - Parameter end: The end date in history requests
      - Parameter id: The request or subscription id
      */
-    init(
+    public init(
         type: MessageType,
         path: Path,
-        value: Value? = nil,
         time: Timestamp? = nil,
-        samples: [Sample] = [],
-        children: [String : ChildTree] = [:],
+        data: any SampleTree = ImmutableSampleTree.empty,
         count: Int? = nil,
         depth: Int? = nil,
         end: Timestamp? = nil,
@@ -175,41 +99,12 @@ public struct Message: Sendable {
     ) {
         self.type = type
         self.path = path
-        self.value = value
-        self.samples = samples
-        self.children = children
+        self.data = data
         self.count = count
         self.depth = depth
         self.time = time
         self.end = end
         self.id = id
-    }
-
-    /// The sample in the message containing the value
-    var sample: Sample? {
-        guard let value else {
-            return nil
-        }
-        return .init(value: value, timestamp: time ?? .current())
-    }
-
-    /// Indicate if the message contains any samples
-    var hasSamples: Bool {
-        value != nil || !samples.isEmpty
-    }
-
-    /// All samples contained in the message (not necessarily sorted)
-    var allSamples: [Sample] {
-        guard let sample else {
-            return samples
-        }
-        // Note: Not sorted
-        return [sample] + samples
-    }
-
-    var totalNumberOfSamples: Int {
-        let topCount = (value != nil ? 1 : 0) + samples.count
-        return children.values.reduce(topCount) { $0 + $1.totalNumberOfSamples }
     }
 }
 
@@ -245,8 +140,7 @@ extension Message {
         .init(
             type: .data,
             path: path,
-            value: value,
-            time: timestamp,
+            data: ImmutableSampleTree(value: value, timestamp: timestamp),
             count: totalMessages,
             id: request)
     }
@@ -263,7 +157,7 @@ extension Message {
         .init(
             type: .data,
             path: path,
-            samples: samples,
+            data: ImmutableSampleTree(samples: samples),
             count: totalMessages,
             id: request)
     }
@@ -280,8 +174,7 @@ extension Message {
         .init(
             type: .data,
             path: path,
-            samples: tree.samples,
-            children: tree.children.mapValues(ChildTree.init),
+            data: tree,
             count: totalMessages,
             id: request)
     }
@@ -378,88 +271,6 @@ extension Message {
     }
 }
 
-// MARK: Encoding
-
-extension Message: Codable {
-
-    enum CodingKeys: Int, CodingKey {
-        case type = 0
-        case path = 1
-        case value = 2
-        case samples = 3
-        case count = 4
-        case depth = 5
-        case time = 6
-        case end = 7
-        case id = 8
-        case children = 9
-    }
-
-    public init(from decoder: any Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.type = try container.decodeIfPresent(MessageType.self, forKey: .type) ?? .data
-        self.path = try container.decodeIfPresent(Path.self, forKey: .path) ?? []
-        self.value = try container.decodeIfPresent(Value.self, forKey: .value)
-        self.samples = try container.decodeIfPresent([Sample].self, forKey: .samples) ?? []
-        self.children = try container.decodeIfPresent([String : ChildTree].self, forKey: .children) ?? [:]
-        self.count = try container.decodeIfPresent(Int.self, forKey: .count)
-        self.depth = try container.decodeIfPresent(Int.self, forKey: .depth)
-        self.time = try container.decodeIfPresent(Double.self, forKey: .time).map { Timestamp(timeIntervalSince1970: $0) }
-        self.end = try container.decodeIfPresent(Double.self, forKey: .end).map { Timestamp(timeIntervalSince1970: $0) }
-        self.id = try container.decodeIfPresent(Int.self, forKey: .id)
-    }
-
-    public func encode(to encoder: any Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        if type != .data {
-            try container.encode(type, forKey: .type)
-        }
-        try container.encode(path, forKey: .path)
-        try container.encodeIfPresent(value, forKey: .value)
-        if !samples.isEmpty {
-            try container.encode(samples, forKey: .samples)
-        }
-        if !children.isEmpty {
-            try container.encode(children, forKey: .children)
-        }
-        try container.encodeIfPresent(count, forKey: .count)
-        try container.encodeIfPresent(depth, forKey: .depth)
-        try container.encodeIfPresent(time?.timeIntervalSince1970, forKey: .time)
-        try container.encodeIfPresent(end?.timeIntervalSince1970, forKey: .end)
-        try container.encodeIfPresent(id, forKey: .id)
-    }
-}
-
-extension Message.ChildTree: Codable {
-
-    enum CodingKeys: Int, CodingKey {
-        case value = 2
-        case samples = 3
-        case time = 6
-        case children = 9
-    }
-
-    public init(from decoder: any Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.value = try container.decodeIfPresent(Value.self, forKey: .value)
-        self.time = try container.decodeIfPresent(Double.self, forKey: .time).map { Timestamp(timeIntervalSince1970: $0) }
-        self.samples = try container.decodeIfPresent([Sample].self, forKey: .samples) ?? []
-        self.children = try container.decodeIfPresent([String : Message.ChildTree].self, forKey: .children) ?? [:]
-    }
-
-    public func encode(to encoder: any Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encodeIfPresent(value, forKey: .value)
-        if !samples.isEmpty {
-            try container.encode(samples, forKey: .samples)
-        }
-        if !children.isEmpty {
-            try container.encode(children, forKey: .children)
-        }
-        try container.encodeIfPresent(time?.timeIntervalSince1970, forKey: .time)
-    }
-}
-
 // MARK: Equatable
 
 extension Message: Equatable {
@@ -467,14 +278,12 @@ extension Message: Equatable {
     public static func == (_ lhs: Message, _ rhs: Message) -> Bool {
         lhs.type == rhs.type &&
         lhs.path == rhs.path &&
-        lhs.value == rhs.value &&
-        lhs.samples == rhs.samples &&
-        lhs.children == rhs.children &&
         lhs.count == rhs.count &&
         lhs.depth == rhs.depth &&
         lhs.id == rhs.id &&
         compare(lhs.time, to: rhs.time) &&
-        compare(lhs.end, to: rhs.end)
+        compare(lhs.end, to: rhs.end) &&
+        lhs.data.isEqual(to: rhs.data)
     }
 }
 
@@ -486,14 +295,4 @@ private func compare(_ date: Timestamp?, to other: Timestamp?) -> Bool {
         return false
     }
     return date.distance(to: other) < 0.001
-}
-
-extension Message.ChildTree: Equatable {
-
-    public static func ==(_ lhs: Self, _ rhs: Self) -> Bool {
-        lhs.value == rhs.value &&
-        compare(lhs.time, to: rhs.time) &&
-        lhs.samples == rhs.samples &&
-        lhs.children == rhs.children
-    }
 }

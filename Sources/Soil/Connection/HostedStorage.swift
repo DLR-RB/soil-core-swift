@@ -47,12 +47,8 @@ public actor HostedStorage {
      */
     private func didReceive(data message: Message) async {
         // Note: We know that the message is a data message
-        let samples = message.allSamples
-        guard !samples.isEmpty else {
-            return
-        }
         // Schedule the insert
-        let request = storage.receive(samples, for: message.path)
+        let request = storage.receive(message.data, for: message.path)
 
         // Check if the request expects a response
         guard let id = message.id else {

@@ -40,4 +40,43 @@ final class MutableSampleTree: MutableTree {
     func insert(_ samples: [Sample], at path: Path) {
         findOrCreateNode(for: path).samples.append(contentsOf: samples)
     }
+
+    /**
+     Insert a tree into this tree.
+     - Parameter tree: The tree to add
+     - Parameter path: The path within this tree where the tree is added.
+     - Note: The samples are appended to existing samples without sorting.
+     */
+    func merge(_ tree: any SampleTree, at path: Path) {
+        findOrCreateNode(for: path).merge(tree)
+    }
+
+    /**
+     Insert a tree into this tree.
+     - Parameter tree: The tree to add
+     - Note: The samples are appended to existing samples without sorting.
+     */
+    func merge(_ tree: any SampleTree) {
+        samples.append(contentsOf: tree.samples)
+        let children = tree.children
+        for (name, child) in children {
+            let node = getOrCreate(child: name)
+            node.merge(child)
+        }
+    }
+
+    /**
+     Compute the path of the first node in the tree that has samples or more than one child,
+     and return this path and the sub-tree at this node.
+     */
+    func containedTree() -> (tree: MutableSampleTree, path: Path) {
+        var path = Path()
+        var current = self
+        while (current.samples.isEmpty && current.children.count == 1) {
+            let (name, child) = current.children.first!
+            current = child
+            path.append(name)
+        }
+        return (current, path)
+    }
 }

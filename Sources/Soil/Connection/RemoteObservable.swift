@@ -52,19 +52,13 @@ public actor RemoteObservable {
     private func didReceive(data message: Message) {
         // Note: We know that the message is a data message
 
-        let samples = message.allSamples
-
-        guard !samples.isEmpty else {
-            return
-        }
-
         // Check all subscriptions for matches
         for data in subscriptions.values {
             guard data.rules.isSubscribed(to: message.path) else {
                 return
             }
 
-            data.receiver.receive(message.allSamples, for: message.path)
+            data.receiver.receive(message.data, for: message.path)
         }
     }
 

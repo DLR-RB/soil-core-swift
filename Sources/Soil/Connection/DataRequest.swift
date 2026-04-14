@@ -19,8 +19,12 @@ final class DataRequest {
     /// The maximum number of samples per node
     let limit: Int?
 
-    /// The tree containing the received samples while waiting for more responses
-    let tree: MutableSampleTree = .init()
+    /**
+     The tree containing the received samples while waiting for more responses
+
+     - Note: The tree is constructed for the root path
+     */
+    private let tree: MutableSampleTree = .init()
 
     /// The continuation to execute when the request is completed or timed out
     let continuation: CheckedContinuation<SampleTree, Never>
@@ -62,7 +66,10 @@ final class DataRequest {
      */
     func finish() {
         timeout.cancel()
-        continuation.resume(returning: tree.tree)
+        // Here we need get the tree for the correct path,
+        // not the tree at the root
+        let tree = self.tree.existingNode(for: path)?.tree ?? ImmutableSampleTree()
+        continuation.resume(returning: tree)
     }
 
     /**
@@ -110,7 +117,8 @@ final class DataRequest {
         receivedMessages += 1
 
         // Insert the data into the tree
-        insert(response.allSamples, at: response.path)
+        // TODO: Limit the number of samples, and the date interval
+        tree.merge(response.data, at: response.path)
         return true
     }
 
@@ -138,25 +146,6 @@ final class DataRequest {
         }
         // "Normal" order (start is exclusive, end is inclusive)
         return samples.filter { $0.time > start && $0.time <= end }
-    }
-
-    /**
-     Add samples from a response to the tree containing the previously received data.
-     - Parameter samples: The samples to add
-     - Parameter path: The full path of the samples
-     - Note: Before insertion, the absolute path is converted to be relative to the requested path.
-     */
-    private func insert(_ samples: [Sample], at path: Path) {
-        let requestedSamples = limit(samples)
-        guard !requestedSamples.isEmpty else {
-            // No applicable samples remaining
-            return
-        }
-        // All paths in responses are absolute,
-        // so we need to remove the requested path to get the relative path
-        // within the response tree
-        let relativePath = path.removing(prefix: self.path)
-        tree.insert(samples, at: relativePath)
     }
 
     /**

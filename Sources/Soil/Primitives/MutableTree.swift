@@ -2,7 +2,7 @@
 /**
  An abstract tree that can be mutated.
  */
-protocol MutableTree: Tree {
+protocol MutableTree: Tree, AnyObject {
 
     /**
      The children of this tree node, indexed by their names
@@ -22,14 +22,25 @@ extension MutableTree {
     func findOrCreateNode(for path: Path) -> Self {
         var node = self
         for component in path {
-            if let child = node.children[component] {
-                node = child
-            } else {
-                let child = Self.init()
-                node.children[component] = child
-                node = child
-            }
+            node = node.getOrCreate(child: component)
         }
         return node
+    }
+
+    func createChild(named name: PathComponent) -> Self {
+        let child = Self.init()
+        children[name] = child
+        return child
+    }
+
+    func add(child: Self, named name: PathComponent) {
+        children[name] = child
+    }
+
+    func getOrCreate(child name: PathComponent) -> Self {
+        if let child = children[name] {
+            return child
+        }
+        return createChild(named: name)
     }
 }

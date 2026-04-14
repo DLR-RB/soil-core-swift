@@ -214,7 +214,7 @@ struct ComponentTests {
         // Subscription is echoed back, so both sides should have the same bytes sent and received
         do {
             // We don't know the exact number of decimals for the timestamp
-            let messageLength = "{\"path\":[\"a\",\"b\"],\"samples\":[{\"value\":[2,123],\"timestamp\":792080931}]}"
+            let messageLength = "{\"path\":[\"a\",\"b\"],\"value\":123,\"valueType\":2,\"time\":792080931}]}"
                 .data(using: .utf8)!.count + 4
             let r1 = await connection.one.receivedBytes
             let s1 = await connection.one.sentBytes
