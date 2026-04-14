@@ -2,7 +2,7 @@
 /**
  A path tree containing samples
  */
-public final class ImmutableSampleTree: SampleTree, Sendable {
+public struct ImmutableSampleTree: SampleTree, Sendable {
 
     /// The samples at this tree node
     public let samples: [Sample]

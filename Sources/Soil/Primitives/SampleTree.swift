@@ -78,4 +78,24 @@ extension SampleTree {
     public var totalNumberOfSamples: Int {
         children.values.reduce(samples.count) { $0 + $1.totalNumberOfSamples }
     }
+
+    public func isEqual(to other: any SampleTree) -> Bool {
+        guard samples == other.samples else {
+            return false
+        }
+        let one = children
+        let two = other.children
+        guard one.count == two.count else {
+            return false
+        }
+        for (name, child) in one {
+            guard let child2 = two[name] else {
+                return false
+            }
+            guard child.isEqual(to: child2) else {
+                return false
+            }
+        }
+        return true
+    }
 }

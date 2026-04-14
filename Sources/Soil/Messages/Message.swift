@@ -59,6 +59,11 @@ public struct Message: Sendable {
             }
             self.children = tree.children.mapValues(ChildTree.init)
         }
+
+        var totalNumberOfSamples: Int {
+            let topCount = (value != nil ? 1 : 0) + samples.count
+            return children.values.reduce(topCount) { $0 + $1.totalNumberOfSamples }
+        }
     }
 
     /// Indicate the message type (may be ommited for a data message)
@@ -200,6 +205,11 @@ public struct Message: Sendable {
         }
         // Note: Not sorted
         return [sample] + samples
+    }
+
+    var totalNumberOfSamples: Int {
+        let topCount = (value != nil ? 1 : 0) + samples.count
+        return children.values.reduce(topCount) { $0 + $1.totalNumberOfSamples }
     }
 }
 
