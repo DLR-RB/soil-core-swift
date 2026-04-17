@@ -2,27 +2,30 @@
 /**
  An enum indicating the primitive value types
  */
-public enum ValueType: Int, Sendable {
+public enum ValueType: String, Sendable {
 
     /// The absence of a value, represented as ``nil``
-    case null = 0
+    case null
 
     /// Unspecified binary data, represented as ``Data``
-    case data = 1
+    case data
 
     /// A natural number, represented as ``Int``
-    case integer = 2
+    case integer
 
     /// A decimal value, represented as ``Double``
-    case double = 3
+    case double
 
     /// A textual value, represented as ``String``
-    case string = 4
+    case string
 
     /// A path value, represented as `[String]`
-    case path = 5
+    case path
 }
 
-extension ValueType: Codable {
+extension ValueType: CustomStringConvertible {
 
+    public var description: String {
+        rawValue
+    }
 }

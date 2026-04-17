@@ -2,27 +2,26 @@
 /**
  The type of a message used to exchange data between components.
  */
-public enum MessageType: Int, Sendable, CaseIterable {
+public enum MessageType: String, Sendable, CaseIterable {
 
     /// A message containing one or more samples
-    case data = 0
+    case data = "data"
 
     /// A request to receive data
-    case request = 1
+    case request = "read"
 
     /// A request to delete data
-    case deletionRequest = 2
+    case deletionRequest = "delete"
 
     /// A request to include a path in a subscription
-    case subscriptionInclusion = 3
+    case subscriptionInclusion = "include"
 
     /// A request to exclude a path in a subscription
-    case subscriptionExclusion = 4
+    case subscriptionExclusion = "exclude"
 
     /// A request to delete a subscription
-    case subscriptionDeletion = 5
-}
+    case subscriptionDeletion = "clear"
 
-extension MessageType: Codable {
-
+    /// An acknowledgement for a request
+    //case acknowledgement = 6
 }

@@ -296,3 +296,38 @@ private func compare(_ date: Timestamp?, to other: Timestamp?) -> Bool {
     }
     return date.distance(to: other) < 0.001
 }
+
+// MARK: Description
+
+extension Message: CustomStringConvertible {
+
+    public var description: String {
+        var content: [String] = [
+            "type: \(type)"
+        ]
+
+        if !path.isEmpty {
+            content.append("path: \(path)")
+        }
+        if let count {
+            content.append("count: \(count)")
+        }
+        if let depth {
+            content.append("depth: \(depth)")
+        }
+        if let id {
+            content.append("id: \(id)")
+        }
+        if let time {
+            content.append("time: \(time)")
+        }
+        if let end {
+            content.append("end: \(end)")
+        }
+        if !data.isEmpty {
+            content.append("data:")
+            content.append(contentsOf: data.describe(indentLevel: 1))
+        }
+        return content.joined(separator: "\n")
+    }
+}

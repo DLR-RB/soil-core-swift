@@ -2,7 +2,7 @@
 /**
  A path tree containing samples
  */
-public protocol SampleTree: Sendable {
+public protocol SampleTree: CustomStringConvertible, Sendable {
 
     /// The samples at this tree node
     var samples: [Sample] { get }
@@ -97,5 +97,36 @@ extension SampleTree {
             }
         }
         return true
+    }
+}
+
+extension SampleTree {
+
+    public var description: String {
+        describe().joined(separator: "\n")
+    }
+
+    public func describe(indentLevel: Int = 0, indent: String = "  ") -> [String] {
+        let baseIndent = String(repeating: indent, count: indentLevel)
+        var result: [String] = []
+        let samples = samples
+        if !samples.isEmpty {
+            let sampleIndent = baseIndent + indent
+            result.append(baseIndent + "samples:")
+            for sample in samples {
+                result.append(sampleIndent + sample.description)
+            }
+        }
+        let children = children
+        if !children.isEmpty {
+            let childIndent = baseIndent + indent
+            result.append(baseIndent + "children:")
+            for (name, child) in children {
+                result.append(childIndent + name + ":")
+                result.append(contentsOf: child.describe(indentLevel: indentLevel + 2, indent: indent))
+            }
+        }
+
+        return result
     }
 }

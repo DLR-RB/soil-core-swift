@@ -312,4 +312,84 @@ struct JsonEncodingTests {
             .exclude(["a", "a", "a"], from: 123)
         ])
     }
+
+    // MARK: Standard messages
+
+    @Test("All fields set")
+    func testAllFieldsSet() throws {
+        let message = Message(
+            type: .data,
+            path: ["some", "path"],
+            time: .init(timeIntervalSince1970: 123),
+            data: ImmutableSampleTree(
+                samples: [
+                    Sample(value: .double(111), timeIntervalSince1970: 222.0),
+                    Sample(value: .integer(222), timeIntervalSince1970: 333)
+                ],
+                children: [
+                    "child" : ImmutableSampleTree(sample: Sample(value: .string("333"), timeIntervalSince1970: 444)),
+                    "other" : ImmutableSampleTree(samples: [
+                        Sample(value: .data(Data(repeating: 42, count: 3)), timeIntervalSince1970: 555),
+                        Sample(value: .path(["link", "there"]), timeIntervalSince1970: 666),
+                        Sample(value: .null, timeIntervalSince1970: 777)
+                    ])
+                    ]
+                ),
+            count: 234,
+            depth: 345,
+            end: .init(timeIntervalSince1970: 456),
+            id: 567)
+        let raw = """
+        {
+            "type": "data",
+            "path": ["some", "path"],
+            "time": 123.0,
+            "samples": [
+                {
+                    "value": 111.0,
+                    "time": 222.0
+                },
+                {
+                    "value": 222,
+                    "valueType": "integer",
+                    "time": 333.0
+                }
+            ],
+            "children": {
+                "child": {
+                    "value": "333",
+                    "time": 444
+                },
+                "other": {
+                    "samples": [
+                        {
+                            "value": "Kioq",
+                            "valueType": "data",
+                            "time": 555.0
+                        },
+                        {
+                            "value": ["link", "there"],
+                            "time": 666.0
+                        },
+                        {
+                            "value": null,
+                            "time": 777.0
+                        }
+                    ]
+                }
+            },
+            "count": 234,
+            "depth": 345,
+            "end": 456.0,
+            "id": 567
+        }
+        """
+
+        let encoded = raw.data(using: .utf8)!
+
+        let encoder = JsonEncoding()
+        let decoded = try encoder.decode(encoded)
+
+        #expect(decoded == message)
+    }
 }

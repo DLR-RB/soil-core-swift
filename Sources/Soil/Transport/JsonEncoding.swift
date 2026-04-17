@@ -101,7 +101,15 @@ extension JsonMessage: Decodable {
 
     init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        let type = try container.decodeIfPresent(MessageType.self, forKey: .type) ?? .data
+        let type: MessageType
+        if let rawType = try container.decodeIfPresent(String.self, forKey: .type) {
+            guard let t = MessageType(rawValue: rawType) else {
+                throw DecodingError.typeMismatch(MessageType.self, .init(codingPath: [], debugDescription: "Unknown message type: \(rawType)"))
+            }
+            type = t
+        } else {
+            type = .data
+        }
         let path = try container.decodeIfPresent(Path.self, forKey: .path) ?? []
         let count = try container.decodeIfPresent(Int.self, forKey: .count)
         let depth = try container.decodeIfPresent(Int.self, forKey: .depth)
@@ -270,7 +278,10 @@ private extension Value {
     }
 
     static func decode(from container: KeyedDecodingContainer<JsonMessage.CodingKeys>) throws -> Value {
-        if let type = try container.decodeIfPresent(ValueType.self, forKey: .valueType) {
+        if let rawType = try container.decodeIfPresent(String.self, forKey: .valueType) {
+            guard let type = ValueType(rawValue: rawType) else {
+                throw DecodingError.valueNotFound(ValueType.self, .init(codingPath: [], debugDescription: "Unknown value type: \(rawType)", underlyingError: nil))
+            }
             switch type {
                 case .null: return .null
                 case .data:
