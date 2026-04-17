@@ -14,14 +14,17 @@ public actor DecodedConnection {
     /// The receiver getting decoded messages
     private weak var receiver: (any MessageReceiver)?
 
+    private var log: Logger?
+
     /**
      Wrap a binary connection with an encoding.
      - Parameter connection: The binary connection to apply the encoding to
      - Parameter encoding: The encoding used for the binary connection.
      */
-    public init(wrapping connection: any EncodedMessageConnection, encoding: any MessageEncoding) async {
+    public init(wrapping connection: any EncodedMessageConnection, encoding: any MessageEncoding, logger: Logger? = nil) async {
         self.connection = connection
         self.encoding = encoding
+        self.log = logger
 
         await connection.setReceiver(self)
     }
@@ -33,6 +36,7 @@ public actor DecodedConnection {
      */
     public func didReceive(encodedMessage data: Data) async {
         guard let receiver else {
+            log?.warning("No receiver for message")
             return
         }
 
@@ -41,7 +45,7 @@ public actor DecodedConnection {
         do {
             message = try encoding.decode(data)
         } catch {
-            // TODO: Propagate error
+            log?.error("Failed to decode message: \(error)")
             return
         }
 
@@ -60,7 +64,7 @@ public actor DecodedConnection {
         do {
             data = try encoding.encode(message)
         } catch {
-            // TODO: Propagate error
+            log?.error("Failed to encode message: \(error)")
             return
         }
         await connection.send(message: data).wait()
