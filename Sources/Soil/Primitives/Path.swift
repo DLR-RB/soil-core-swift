@@ -12,7 +12,7 @@ extension Path {
      - Parameter prefix: The path to check as the prefix
      - Returns: `true`, if this path starts with the prefix path
      */
-    func hasPrefix(_ prefix: Path) -> Bool {
+    public func hasPrefix(_ prefix: Path) -> Bool {
         // A prefix can only match if the path is at least as the prefix
         guard self.count >= prefix.count else { return false }
         for index in 0..<prefix.count {
@@ -29,11 +29,41 @@ extension Path {
      - Parameter prefix: The path to remove as the prefix
      - Returns: The path without the given prefix.
      */
-    func removing(prefix: Path) -> Path {
+    public func removing(prefix: Path) -> Path {
         guard hasPrefix(prefix) else {
             return self
         }
         return Array(self[prefix.count...])
+    }
+
+    /**
+     Determine the maximum prefix that the path shares with another path
+     - Parameter other: The second path to determine the common prefix
+     - Returns: The prefix matching both paths
+     */
+    public func commonPrefix(with other: Path) -> Path {
+        let maxIndex = Swift.min(other.count, count)
+        var common: Path = []
+        for index in 0..<maxIndex {
+            if self[index] != other[index] {
+                break
+            }
+            common.append(self[index])
+        }
+        return common
+    }
+
+    /**
+     Compute the prefix of the path in common with a given path,
+     and return the remaining relative paths.
+     - Parameter other: The second path to determine the common prefix
+     - Returns: The prefix matching both paths, and the remaining subpaths
+     */
+    public func extractCommonPrefix(with other: Path) -> (prefix: Path, remainder: Path, otherRemainer: Path) {
+        let prefix = commonPrefix(with: other)
+        let remainder = Array(dropFirst(prefix.count))
+        let otherRemainder = Array(other.dropFirst(prefix.count))
+        return (prefix, remainder, otherRemainder)
     }
 }
 

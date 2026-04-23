@@ -391,5 +391,7 @@ struct JsonEncodingTests {
         let decoded = try encoder.decode(encoded)
 
         #expect(decoded == message)
+
+        try assertRoundTrip(message)
     }
 }

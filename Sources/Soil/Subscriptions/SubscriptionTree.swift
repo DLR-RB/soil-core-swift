@@ -40,11 +40,7 @@ final class SubscriptionTree {
         return children.values.reduce(numberOfRules) { $0 + $1.numberOfRules }
     }
 
-    /**
-     Check if there is any rule registered for the subscription.
-     - Parameter subscription: The id of the subscription to check
-     - Returns: `true`, if one or more subscription rules exist for the id
-     */
+    /** Indicate if there is any rule registered for the subscription */
     var hasSubscriptionRulesInTree: Bool {
         if hasRules {
             return true
@@ -196,6 +192,89 @@ final class SubscriptionTree {
     // MARK: Subscription queries
 
     /**
+     Use the subscriptions to remove all excluded parts of a tree.
+     - Parameter tree: The original tree to strip
+     - Parameter path: The path of the tree in relation to the subscription tree
+     - Returns: The reduced tree, if any inclusion rules match.
+     */
+    func reduce(_ tree: any SampleTree, for path: Path) -> (any SampleTree)? {
+        let nodes = allNodes(for: path)
+        // Note: The path nodes always include at least the root node
+        return nodes.last!.reduce(tree, parents: nodes)
+    }
+
+    /**
+     Get all nodes along a path, including dummy nodes if needed
+
+     - Parameter path: The path for which to collect the nodes
+     - Note: A single dummy node is added multiple times if needed,
+       so the nodes must not be modified while used.
+     */
+    private func allNodes(for path: Path) -> [SubscriptionTree] {
+        let nodes = existingNodes(for: path)
+        let missingCount = path.count - nodes.count
+        if missingCount == 0 {
+            return nodes
+        }
+        return nodes + .init(repeating: .init(), count: missingCount)
+    }
+
+    /**
+     Use the subscriptions to remove all excluded parts of a tree.
+     - Parameter tree: The original tree to strip
+     - Parameter parents: The nodes above this node in the subscription tree.
+     - Returns: The reduced tree, if any samples or children remain after reduction.
+
+     The samples of the tree root are included in the result,
+     if either the current node as a suitable rule, or if a parent node matches.
+     The children are included if their subscriptions match, which also consider the rules of this node.
+     */
+    func reduce(_ tree: any SampleTree, parents: [SubscriptionTree] = []) -> (any SampleTree)? {
+        let childrenAreSubscribed = isSubscribed(parentNodes: parents, depth: 1)
+        let childParents =  parents + [self]
+        let reduced: [String : any SampleTree] = tree.children.reduce(into: [:]) { (dict, child) in
+            guard let subscriptionRuleChild = children[child.key] else {
+                // No rules for child, so use only the ones of the current node
+                if childrenAreSubscribed {
+                    dict[child.key] = child.value
+                }
+                return
+            }
+            dict[child.key] = subscriptionRuleChild.reduce(child.value, parents: childParents)
+        }
+
+        let samples = isSubscribed(parentNodes: parents, depth: 0) ? tree.samples : []
+        if samples.isEmpty && reduced.isEmpty {
+            return nil
+        }
+
+        return ImmutableSampleTree(
+            samples: samples,
+            children: reduced
+        )
+    }
+
+    /**
+     Check if the current node or parent nodes have a matching subscription for a given depth below this node.
+     - Parameter parentNodes: The nodes above this node in the subscription tree.
+     - Parameter depth: The depth below this node to check
+     - Returns: `true`, if the depth is included in the subscription
+
+     If no applicable rule exists for the current node, then the parent node is checked.
+     This process repeats until the tree root is reached.
+     */
+    private func isSubscribed(parentNodes: [SubscriptionTree], depth: Int) -> Bool {
+        if let isIncluded = isIncluded(depth: depth) {
+            return isIncluded
+        }
+        guard let parent = parentNodes.last else {
+            // No parent nodes, so not included
+            return false
+        }
+        return parent.isSubscribed(parentNodes: parentNodes.dropLast(), depth: depth + 1)
+    }
+
+    /**
      Check if a path is covered by the inclusions in the tree.
 
      The function first finds all existing nodes along the path,
@@ -242,16 +321,16 @@ final class SubscriptionTree {
     private func isIncluded(depth: Int) -> Bool? {
         // Find the smallest depth that includes the given depth
         // Smaller depths take precedence, so we can ignore the rest, as well as all rules that don't apply
-        guard let inclusionDepth = inclusions.first(where: { $0 >= depth }) else {
+        guard let inclusionDepth = inclusions.first(where: { $0.largerEqual(depth) }) else {
             // No inclusion, check if excluded
             // It's excluded if any exclusion rule is applicable (rule depth bigger or equal to path depth)
-            if exclusions.contains(where: { $0 >= depth }) {
+            if exclusions.contains(where: { $0.largerEqual(depth) }) {
                 return false
             }
             // Neither included nor excluded
             return nil
         }
-        guard let exclusionDepth = exclusions.first(where: { $0 >= depth }) else {
+        guard let exclusionDepth = exclusions.first(where: { $0.largerEqual(depth) }) else {
             // No exclusion, so it's included
             return true
         }
