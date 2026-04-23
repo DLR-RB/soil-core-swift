@@ -195,7 +195,7 @@ struct ComponentTests {
 
         do {
             // Expected bytes: 2 (sync) + 2 (len) + message
-            let messageLength = "{\"type\":3,\"depth\":0,\"id\":1,\"path\":[\"a\",\"b\"]}".data(using: .utf8)!.count
+            let messageLength = "{\"type\":\"include\",\"depth\":0,\"id\":1,\"path\":[\"a\",\"b\"]}".data(using: .utf8)!.count
             let rCount = await connection.one.receivedBytes
             #expect(rCount == messageLength + 4)
             #expect(await connection.one.sentBytes == 0)
@@ -214,15 +214,17 @@ struct ComponentTests {
         // Subscription is echoed back, so both sides should have the same bytes sent and received
         do {
             // We don't know the exact number of decimals for the timestamp
-            let messageLength = "{\"path\":[\"a\",\"b\"],\"value\":123,\"valueType\":2,\"time\":792080931}]}"
+            let messageLength = "{\"path\":[\"a\",\"b\"],\"value\":123,\"valueType\":\"integer\",\"time\":792080931}]}"
                 .data(using: .utf8)!.count + 4
             let r1 = await connection.one.receivedBytes
             let s1 = await connection.one.sentBytes
             let r2 = await connection.two.receivedBytes
             let s2 = await connection.two.sentBytes
 
-            #expect(r1 >= messageLength && r1 <= messageLength + 9)
-            #expect(r2 >= messageLength && r2 <= messageLength + 9)
+            #expect(r1 >= messageLength)
+            #expect(r1 <= messageLength + 9)
+            #expect(r2 >= messageLength)
+            #expect(r2 <= messageLength + 9)
             #expect(r1 == s2)
             #expect(r2 == s1)
             await connection.resetCounters()

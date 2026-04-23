@@ -212,7 +212,9 @@ final class SubscriptionTree {
      */
     private func allNodes(for path: Path) -> [SubscriptionTree] {
         let nodes = existingNodes(for: path)
-        let missingCount = path.count - nodes.count
+        // We always include the root node, so we expect one more node than
+        // the number of path elements
+        let missingCount = path.count + 1 - nodes.count
         if missingCount == 0 {
             return nodes
         }
