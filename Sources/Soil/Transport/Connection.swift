@@ -9,6 +9,7 @@ public protocol Connection: Sendable {
 
     /**
      * Close the connection
+     - Returns: A request to optionally wait for closure.
      */
     @discardableResult
     func close() -> Request

@@ -30,7 +30,7 @@ final class DataRequest {
     let continuation: CheckedContinuation<SampleTree, Never>
 
     /// The timeout task to cancel if the request is completed before timing out
-    let timeout: Task<Void, Never>
+    private let timeout: Task<Void, Never>
 
     /// The expected number of response messages, extracted from received responses
     var expectedMessages: Int?

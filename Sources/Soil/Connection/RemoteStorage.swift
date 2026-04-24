@@ -40,25 +40,6 @@ public actor RemoteStorage {
     }
 
     /**
-     The id used for the most recent request
-
-     This id is always incremented for the next request,
-     so that the first request of the component has id `1`.
-     */
-    private var lastRequestId = 0
-
-    /**
-     Get the request id for the component.
-
-     The request id is incremented from 1,
-     while a connection to the component is active.
-     */
-    private func nextRequestId() -> Int {
-        lastRequestId += 1
-        return lastRequestId
-    }
-
-    /**
      Create a task that times out after a given interval.
      - Parameter seconds: The number of seconds to wait before the timeout function is called.
      - Parameter id: The id of the request that timed out
@@ -68,7 +49,9 @@ public actor RemoteStorage {
         Task { [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
 
-            guard !Task.isCancelled, let self else { return }
+            guard !Task.isCancelled, let self else {
+                return
+            }
             await self.reachedTimeout(forRequest: id)
         }
     }
@@ -88,7 +71,7 @@ public actor RemoteStorage {
      All samples are returned when the request completes or times out.
      */
     private func tree(for path: Path, from start: Timestamp?, to end: Timestamp?, depth: Int?, limit: Int?) async -> SampleTree {
-        let id = nextRequestId()
+        let id = requests.nextId()
         // Send the request message to the remote
         // If it's not delivered, then the timeout will be triggered
         send(.request(path, from: start, to: end, limit: limit, depth: depth, id: id))

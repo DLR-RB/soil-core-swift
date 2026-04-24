@@ -10,8 +10,6 @@ struct SubscriptionTreeTests {
         let tree = SubscriptionTree()
         let path = ["a", "b", "c"]
 
-        tree.printExtendedDescription()
-
         #expect(!tree.hasSubscriptionRulesInTree)
         #expect(tree.isEmpty)
         #expect(!tree.isSubscribed(to: path))
@@ -168,8 +166,6 @@ struct SubscriptionTreeTests {
         #expect(tree.isSubscribed(to: path))
 
         tree.deleteRules(at: path, depth: nil)
-
-        tree.printExtendedDescription()
 
         #expect(!tree.hasSubscriptionRulesInTree)
         #expect(tree.isEmpty)

@@ -98,6 +98,23 @@ extension SampleTree {
         }
         return true
     }
+
+    /**
+     Compute the path of the first node in the tree that has samples or more than one child,
+     and return this path and the sub-tree at this node.
+     */
+    func containedTree() -> (path: Path, tree: any SampleTree) {
+        var path = Path()
+        var current: any SampleTree = self
+        // If there are samples, then we need to directly return the tree
+        // If there is more than one child, or no children, the return the entire tree, which may contain samples
+        while (current.samples.isEmpty && current.children.count == 1) {
+            let (name, child) = current.children.first!
+            current = child
+            path.append(name)
+        }
+        return (path, current)
+    }
 }
 
 extension SampleTree {

@@ -12,6 +12,29 @@ final class RemoteDataRequests {
     /// The currently active requests, indexed by their id
     private var activeRequests: [Int : DataRequest] = [:]
 
+    // MARK: Ids
+
+    /**
+     The id used for the most recent request
+
+     This id is always incremented for the next request,
+     so that the first request of the component has id `1`.
+     */
+    private(set) var lastRequestId = 0
+
+    /**
+     Get the next request id for the component.
+
+     The request id is incremented from 1,
+     while a connection to the component is active.
+     */
+    func nextId() -> Int {
+        lastRequestId += 1
+        return lastRequestId
+    }
+
+    // MARK: Requests
+
     /**
      Add an active request.
      - Parameter request: The new request
