@@ -14,14 +14,19 @@ public actor DecodedStream {
     /// The receiver getting decoded messages
     private weak var receiver: (any EncodedMessageReceiver)?
 
+    /// The logger to receive encoding errors
+    private var log: (any Logger)?
+
     /**
      Wrap a binary stream with framing.
      - Parameter stream: The binary stream to apply the framing to
      - Parameter encoding: The framing used for the stream
+     - Parameter logger: The logger for encoding errors
      */
-    public init(wrapping stream: any StreamConnection, framing: any StreamFraming) async {
+    public init(wrapping stream: any StreamConnection, framing: any StreamFraming, logger: (any Logger)? = nil) async {
         self.framing = framing
         self.stream = stream
+        self.log = logger
 
         await stream.setReceiver(self)
     }
@@ -37,7 +42,7 @@ public actor DecodedStream {
         do {
             bytes = try await framing.encodeForStream(Array(message))
         } catch {
-            // TODO: Propagate error
+            log?.error("Failed to decode from stream: \(error)")
             return
         }
         await stream.send(bytes: bytes).wait()
