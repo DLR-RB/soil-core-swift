@@ -68,6 +68,42 @@ extension SampleTree {
         samples.max()
     }
 
+    /**
+     The sample at this node with the closest timestamp before the current time.
+
+     If samples exist without a timestamp set, then the first one is returned
+     */
+    public var currentSample: Sample? {
+        let now = Timestamp.current()
+        var result: Sample? = nil
+        for sample in samples {
+            guard let timestamp = sample.timestamp else {
+                // If a sample has no timestamp, then it is treated as the current time
+                return sample
+            }
+            if timestamp > now {
+                // Samples in the future are skipped
+                continue
+            }
+            if let previous = result?.timestamp, previous > timestamp {
+                // No value selected previously, or already closer to now
+                continue
+            }
+            // Closer match found
+            result = sample
+        }
+        return result
+    }
+
+    /**
+     The value of the sample at this node with the closest timestamp before the current time.
+
+     If samples exist without a timestamp set, then the value of the first match is returned
+     */
+    public var currentValue: Value? {
+        currentSample?.value
+    }
+
     /// Count the number of nodes in this tree that contain samples
     public var numberOfNodesWithSamples: Int {
         // Count this node if it has samples, and sum up the trees of all children
