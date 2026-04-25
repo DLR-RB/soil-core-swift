@@ -56,7 +56,7 @@ public actor RemoteObservable {
         for data in subscriptions.values {
             // Reduce the received tree according to the subscription rules
             guard let reduced = data.rules.reduce(message.data, for: message.path) else {
-                return
+                continue
             }
             // Note: We don't wait for subscription receiver requests
             data.receiver.receive(reduced, for: message.path)
