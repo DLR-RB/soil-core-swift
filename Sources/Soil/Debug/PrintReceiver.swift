@@ -44,6 +44,7 @@ extension PrintReceiver: Receiver {
      - Parameter path: The path of the root node of the provided tree
      - Returns: A request handle, to optionally wait until the data is printed.
      */
+    @discardableResult
     public func receive(_ tree: any SampleTree, for path: Path) -> any Request {
         print(tree, for: path)
         return CompletedRequest()
