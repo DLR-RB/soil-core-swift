@@ -76,7 +76,7 @@ extension Receiver {
        To wait until the receive is completed, await the returned request.
      */
     @discardableResult
-    func receive(_ samples: [Sample], for path: Path = []) -> any Request {
+    public func receive(_ samples: [Sample], for path: Path = []) -> any Request {
         let tree = ImmutableSampleTree(samples: samples)
         return receive(tree, for: path)
     }
