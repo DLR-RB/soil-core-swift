@@ -14,7 +14,7 @@ public actor HostedObservableStorage {
     private let storage: HostedStorage
 
     /// The connection to the remote
-    public var connection: Connection {
+    public var connection: any MessageConnection {
         observable.connection
     }
 
@@ -31,11 +31,6 @@ public actor HostedObservableStorage {
 
         // Receive messages in this class, and redistribute to the parts
         await connection.setReceiver(self)
-    }
-
-    /// The number of subscriptions currently registered by the component
-    public func numberOfSubscriptions() async -> Int {
-        await observable.numberOfSubscriptions
     }
 }
 

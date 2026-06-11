@@ -85,24 +85,20 @@ struct ComponentTests {
         let connectionToClient = await connection.two.apply(encoding: JsonEncoding())
         let remoteConnectionToClient = await HostedObservable(hosting: remoteStorage, through: connectionToClient)
 
-        #expect(await remoteConnectionToClient.numberOfSubscriptions == 0)
-
         let connectionToRemote = await connection.one.apply(encoding: JsonEncoding())
         let clientConnectionToRemote = await RemoteObservable(connection: connectionToRemote)
         let clientStorage = InMemoryStorage()
 
-        let subscription = await clientConnectionToRemote.subscribe(clientStorage)
+        await clientConnectionToRemote.setReceiver(clientStorage).wait()
 
         let path = ["a", "b"]
         let now = Timestamp.current()
-        await subscription.include(path, depth: 0).wait()
+        await clientConnectionToRemote.include(path, depth: 0).wait()
 
         // Check delivery of subscription message
         #expect(await connection.one.sentMessages == 1)
         #expect(await connection.two.receivedMessages == 1)
         await connection.resetCounters()
-
-        #expect(await remoteConnectionToClient.numberOfSubscriptions == 1)
 
         await remoteStorage.receive(.integer(123), for: path, at: now).wait()
 
@@ -118,6 +114,8 @@ struct ComponentTests {
             #expect(sample.value == .integer(123))
             #expect(sample.isVeryClose(to: now))
         }
+
+        await remoteConnectionToClient.connection.close()
     }
 
     @Test("Echo subscribed")
@@ -128,26 +126,22 @@ struct ComponentTests {
         let connectionToLocal = await DecodedConnection(wrapping: connection.one, encoding: JsonEncoding())
         let remoteConnectionToLocal = await HostedObservableStorage(host: remoteStorage, through: connectionToLocal)
 
-        #expect(await remoteConnectionToLocal.numberOfSubscriptions() == 0)
-
         let localStorage = InMemoryStorage()
         let connectionToRemote = await DecodedConnection(wrapping: connection.two, encoding: JsonEncoding())
         let localConnectionToRemote = await RemoteObservableStorage(connection: connectionToRemote)
 
-        let subscription = await localConnectionToRemote.subscribe(localStorage)
+        await localConnectionToRemote.setReceiver(localStorage).wait()
 
         // Subscribe to the target path
         let path = ["a", "b"]
         let now = Timestamp.current()
-        await subscription.include(path, depth: 0).wait()
+        await localConnectionToRemote.include(path, depth: 0).wait()
 
         #expect(await connection.one.receivedMessages == 1)
         #expect(await connection.one.sentMessages == 0)
         #expect(await connection.two.receivedMessages == 0)
         #expect(await connection.two.sentMessages == 1)
         await connection.resetCounters()
-
-        #expect(await remoteConnectionToLocal.numberOfSubscriptions() == 1)
 
         // Send data to the remote
         await localConnectionToRemote.receive(.integer(123), for: path, at: now).wait()
@@ -169,6 +163,8 @@ struct ComponentTests {
             #expect(sample.value == .integer(123))
             #expect(sample.isVeryClose(to: now))
         }
+
+        await remoteConnectionToLocal.connection.close()
     }
 
     @Test("Byte stream communication")
@@ -180,22 +176,21 @@ struct ComponentTests {
         let remoteConnectionToLocal = await HostedObservableStorage(host: remoteStorage, through: connectionToLocal)
 
         #expect(await remoteConnectionToLocal.connection.isOpen())
-        #expect(await remoteConnectionToLocal.numberOfSubscriptions() == 0)
 
         let localStorage = InMemoryStorage()
         let connectionToRemote =  await connection.two.apply(framing: SyncByteLengthFraming()).apply(encoding: JsonEncoding())
         let localConnectionToRemote = await RemoteObservableStorage(connection: connectionToRemote)
 
-        let subscription = await localConnectionToRemote.subscribe(localStorage)
+        await localConnectionToRemote.setReceiver(localStorage).wait()
 
         // Subscribe to the target path
         let path = ["a", "b"]
         let now = Timestamp.current()
-        await subscription.include(path, depth: 0).wait()
+        await localConnectionToRemote.include(path, depth: 0).wait()
 
         do {
             // Expected bytes: 2 (sync) + 2 (len) + message
-            let messageLength = "{\"type\":\"include\",\"depth\":0,\"id\":1,\"path\":[\"a\",\"b\"]}".data(using: .utf8)!.count
+            let messageLength = "{\"type\":\"include\",\"depth\":0,\"path\":[\"a\",\"b\"]}".data(using: .utf8)!.count
             let rCount = await connection.one.receivedBytes
             #expect(rCount == messageLength + 4)
             #expect(await connection.one.sentBytes == 0)
@@ -204,8 +199,6 @@ struct ComponentTests {
             #expect(sCount == messageLength + 4)
             await connection.resetCounters()
         }
-
-        #expect(await remoteConnectionToLocal.numberOfSubscriptions() == 1)
 
         // Send data to the remote (connection two)
         await localConnectionToRemote.receive(.integer(123), for: path, at: now).wait()

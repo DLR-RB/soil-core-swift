@@ -26,7 +26,7 @@ struct JsonEncodingTests {
         }
     }
 
-    // MARK: - Fixtures
+    // MARK: Fixtures
 
     private func sample(
         _ time: TimeInterval,
@@ -38,7 +38,7 @@ struct JsonEncodingTests {
         )
     }
 
-    // MARK: - Minimal
+    // MARK: Minimal
 
     @Test("Minimal message")
     func minimal() throws {
@@ -50,7 +50,7 @@ struct JsonEncodingTests {
         try assertRoundTrip(message)
     }
 
-    // MARK: - MessageType Coverage
+    // MARK: MessageType Coverage
 
     @Test("All MessageType values")
     func messageTypes() throws {
@@ -64,7 +64,7 @@ struct JsonEncodingTests {
         }
     }
 
-    // MARK: - Value Cases
+    // MARK: Value Cases
 
     @Test("Value.null")
     func valueNull() throws {
@@ -103,7 +103,7 @@ struct JsonEncodingTests {
         try assertRoundTrip(message)
     }
 
-    // MARK: - Path Edge Cases
+    // MARK: Path Edge Cases
 
     @Test("Empty path")
     func emptyPath() throws {
@@ -123,7 +123,7 @@ struct JsonEncodingTests {
         try assertRoundTrip(message)
     }
 
-    // MARK: - Timestamps
+    // MARK: Timestamps
 
     @Test("Primary timestamp")
     func primaryTimestamp() throws {
@@ -147,7 +147,7 @@ struct JsonEncodingTests {
         try assertRoundTrip(message)
     }
 
-    // MARK: - Samples
+    // MARK: Samples
 
     @Test("Single sample")
     func singleSample() throws {
@@ -186,7 +186,7 @@ struct JsonEncodingTests {
         try assertRoundTrip(message)
     }
 
-    // MARK: - Numeric Optionals
+    // MARK: Numeric Optionals
 
     @Test("Count / depth / id")
     func numericOptionals() throws {
@@ -201,7 +201,7 @@ struct JsonEncodingTests {
         try assertRoundTrip(message)
     }
 
-    // MARK: - Fully Populated
+    // MARK: Fully Populated
 
     @Test("Fully populated message")
     func fullMessage() throws {
@@ -225,7 +225,7 @@ struct JsonEncodingTests {
         try assertRoundTrip(message)
     }
 
-    // MARK: - Edge Values
+    // MARK: Edge Values
 
     @Test("Large integers")
     func largeIntegers() throws {
@@ -267,7 +267,7 @@ struct JsonEncodingTests {
         try assertRoundTrip(message)
     }
 
-    // MARK: - Batch Round-Trip
+    // MARK: Batch Round-Trip
 
     @Test("Multiple messages round-trip")
     func multipleMessages() throws {
@@ -302,14 +302,14 @@ struct JsonEncodingTests {
                 .init(value: .integer(123), timestamp: .current().addingTimeInterval(-10000)),
                 .init(value: .double(3.14), timestamp: .current().addingTimeInterval(-9000))
             ], for: ["zzz"]),
-            .include(["abc"], depth: 123, in: 234),
-            .include(["", "some"], in: 123),
+            .include(["abc"], depth: 123),
+            .include(["", "some"]),
             .request(["Path"], to: .current(), depth: 0),
             .request(["Path"]),
             .request(["123"], from: .current().addingTimeInterval(-1000), to: .current(), limit: 100),
             .request(["123", "456"]),
-            .exclude(["a", "a"], depth: 10, from: 234),
-            .exclude(["a", "a", "a"], from: 123)
+            .exclude(["a", "a"], depth: 10),
+            .exclude(["a", "a", "a"])
         ])
     }
 

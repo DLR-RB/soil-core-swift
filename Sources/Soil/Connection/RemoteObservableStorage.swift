@@ -58,12 +58,79 @@ extension RemoteObservableStorage: MessageReceiver {
 extension RemoteObservableStorage: Observable {
 
     /**
-     Create a subscription for a receiver
-     - Parameter receiver: The receiver of data matching the subscription
-     - Returns: The subscription for the receiver
+     Set the receiver for subscription data
+     - Parameter receiver: The receiver of data matching the subscription rules
+     - Returns: A request to optionally wait for completion
      */
-    public func subscribe(_ receiver: any Receiver) async -> Subscription {
-        await observable.subscribe(receiver)
+    @discardableResult
+    public nonisolated func setReceiver(_ receiver: (any Receiver)?) -> any Request {
+        observable.setReceiver(receiver)
+    }
+
+    /**
+     Get the receiver for matching data.
+     - Returns: The receiver, if set
+     */
+    public func getReceiver() async -> (any Receiver)? {
+        await observable.getReceiver()
+    }
+
+    /**
+     Include a path in the subscription.
+     - Parameter path: The path to include
+     - Parameter depth: The depth of the inclusion (nil indicates the full sub-tree)
+     - Returns: A request to wait for completion of the inclusion
+     */
+    @discardableResult
+    public nonisolated func include(_ path: Path, depth: Int?) -> any Request {
+        AsyncRequest {
+            await self.observable.include(path, depth: depth).wait()
+        }
+    }
+
+    /**
+     Exclude a path from the subscription.
+     - Parameter path: The path to exclude
+     - Parameter depth: The depth of the exclusion (nil indicates the full sub-tree)
+     - Returns: A request to wait for completion of the exclusion
+     */
+    @discardableResult
+    public nonisolated func exclude(_ path: Path, depth: Int?) -> any Request {
+        AsyncRequest {
+            await self.observable.exclude(path, depth: depth).wait()
+        }
+    }
+
+    /**
+     Delete subscription rules at a path with a given depth
+     - Parameter path: The path for which to delete rules
+     - Parameter depth: The depth of the deletion
+     - Returns: A request to wait for completion of the deletion
+     */
+    @discardableResult
+    public nonisolated func deleteRules(at path: Path, depth: Int?) -> any Request {
+        AsyncRequest {
+            await self.observable.deleteRules(at: path, depth: depth).wait()
+        }
+    }
+
+    /**
+     Check if a particular path is covered by the current subscription rules.
+     - Parameter path: The path to check against the subscription rules
+     - Returns: `true`, if the path matches
+     */
+    public func isSubscribed(to path: Path) async -> Bool {
+        await observable.isSubscribed(to: path)
+    }
+
+    /**
+     Use the subscription rules to remove all excluded parts of a tree.
+     - Parameter tree: The original tree to strip
+     - Parameter path: The path of the tree in relation to the subscription tree
+     - Returns: The reduced tree, if any inclusion rules match, otherwise `null`
+     */
+    public func reduce(_ tree: any SampleTree, at path: Path) async -> (any SampleTree)? {
+        await observable.reduce(tree, at: path)
     }
 }
 

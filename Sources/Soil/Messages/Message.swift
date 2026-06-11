@@ -2,7 +2,7 @@
 /**
  A message to transmit between components.
 
- This structure implements all three message types (see ``MessageType``) in a single message through optional properties.
+ This structure implements all message types (see ``MessageType``) in a single message through optional properties.
  */
 public struct Message: Sendable {
 
@@ -227,32 +227,29 @@ extension Message {
      Create a subscription request.
      - Parameter path: The path to subscribe to.
      - Parameter depth: The number of levels below the path to subscribe to.
-     - Parameter subscription: The id of the subscription.
      - Note: The message type will be set to `subscriptionInclusion`
      */
-    public static func include(_ path: Path, depth: Int? = nil, in subscription: Int) -> Self {
-        subscriptionRequest(.subscriptionInclusion, on: subscription, for: path, with: depth)
+    public static func include(_ path: Path, depth: Int? = nil) -> Self {
+        subscriptionRequest(.subscriptionInclusion, for: path, with: depth)
     }
 
     /**
      Create a request for an exclusion from a subscription.
      - Parameter path: The path to exclude.
      - Parameter depth: The number of levels below the path to exclude.
-     - Parameter subscription: The id of the subscription.
      - Note: The message type will be set to `subscriptionExclusion`
      */
-    public static func exclude(_ path: Path, depth: Int? = nil, from subscription: Int) -> Self {
-        subscriptionRequest(.subscriptionExclusion, on: subscription, for: path, with: depth)
+    public static func exclude(_ path: Path, depth: Int? = nil) -> Self {
+        subscriptionRequest(.subscriptionExclusion, for: path, with: depth)
     }
 
     /**
      Create a request to delete a subscription.
      - Parameter path: The path for which to delete subscription rules
-     - Parameter subscription: The id of the subscription to delete
      - Note: The message type will be set to `subscriptionDeletion`
      */
-    public static func deleteRules(at path: Path, depth: Int? = nil, for subscription: Int) -> Self {
-        subscriptionRequest(.subscriptionDeletion, on: subscription, for: path, with: depth)
+    public static func deleteRules(at path: Path, depth: Int? = nil) -> Self {
+        subscriptionRequest(.subscriptionDeletion, for: path, with: depth)
     }
 
     /**
@@ -260,14 +257,12 @@ extension Message {
      - Parameter type: The message type to set
      - Parameter path: The path to include, exclud, or delete.
      - Parameter depth: The number of levels below the path to include/exclude/delete.
-     - Parameter subscription: The id of the subscription to modify
      */
-    public static func subscriptionRequest(_ type: MessageType, on subscription: Int, for path: Path, with depth: Int? = nil) -> Self {
+    public static func subscriptionRequest(_ type: MessageType, for path: Path, with depth: Int? = nil) -> Self {
         .init(
             type: type,
             path: path,
-            depth: depth,
-            id: subscription)
+            depth: depth)
     }
 }
 

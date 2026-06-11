@@ -10,9 +10,6 @@ public actor HostedObservable {
     /// The connection over which the observable is exposed
     public let connection: any MessageConnection
 
-    /// The subscriptions of the connecting component
-    private var subscriptions: [Int : Subscription] = [:]
-
     /**
      Create hosting for an observable over a connection.
      - Parameter observable: The component to expose
@@ -24,6 +21,7 @@ public actor HostedObservable {
 
         // Register to receive messages from the component
         await connection.setReceiver(self)
+        observable.setReceiver(self)
     }
 
     // MARK: Subscription message handling
@@ -33,36 +31,16 @@ public actor HostedObservable {
      - Parmaeter request: The received subscription request message
      */
     private func didReceive(subscriptionRequest request: Message) async {
-        let subscription = await subscription(id: request.id ?? 0)
         switch request.type {
             case .subscriptionInclusion:
-                subscription.include(request.path, depth: request.depth)
+                observable.include(request.path, depth: request.depth)
             case .subscriptionDeletion:
-                subscription.exclude(request.path, depth: request.depth)
+                observable.exclude(request.path, depth: request.depth)
             case.subscriptionExclusion:
-                subscription.deleteRules(at: request.path, depth: request.depth)
+                observable.deleteRules(at: request.path, depth: request.depth)
             default:
                 break // Non-subscription requests handled elsewhere
         }
-    }
-
-    /**
-     Get or create a subscription object for a subscription id.
-     - Parameter id: The id of the subscription
-     - Returns: An existing or new subscription for the id
-     */
-    private func subscription(id: Int) async -> Subscription {
-        if let subscription = subscriptions[id] {
-            return subscription
-        }
-        let created = await observable.subscribe(self)
-        subscriptions[id] = created
-        return created
-    }
-
-    /// The number of subscriptions currently registered by the component
-    public var numberOfSubscriptions: Int {
-        subscriptions.count
     }
 }
 

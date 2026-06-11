@@ -13,11 +13,11 @@ struct SubscriptionTests {
 
         let receiver = InMemoryStorage()
 
-        let subscription = await observable.subscribe(receiver)
+        await observable.setReceiver(receiver).wait()
 
         let path = ["a", "b"]
         let now = Timestamp.current()
-        await subscription.include(path, depth: 0).wait()
+        await observable.include(path, depth: 0).wait()
 
         await observable.receive(.integer(123), for: path, at: now).wait()
 

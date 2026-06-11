@@ -7,9 +7,10 @@ public actor ObservableStorage {
     private let storage: any Storage
 
     /// The subscriptions, indexed by their id
-    private var subscriptions: [Int : StorageSubscription] = [:]
+    private let subscriptions = SubscriptionTree()
 
-    private var lastId = 0
+    /// Subscription data receiver
+    private var receiver: (any Receiver)?
 
     public init(wrapping storage: any Storage) {
         self.storage = storage
@@ -24,42 +25,105 @@ public actor ObservableStorage {
         // works as expected
         await storage.receive(tree, for: path).wait()
 
-        // Notify the subscriptions, but don't wait for each one to complete
-        for subscription in subscriptions.values {
-            guard await subscription.isSubscribed(to: path) else {
-                continue
-            }
-            // Don't wait for completion here
-            await subscription.receive(tree, for: path)
-        }
+        // Forward the data to the subscription receiver, if needed
+        await distribute(tree: tree, path: path)
     }
 
-    private func nextId() -> Int {
-        lastId += 1
-        return lastId
+    private func includeInternal(_ path: Path, depth: Int?) {
+        subscriptions.include(path, depth: depth)
     }
 
-    private func cancel(subscription id: Int) {
-        subscriptions[id] = nil
+    private func excludeInternal(_ path: Path, depth: Int?) {
+        subscriptions.exclude(path, depth: depth)
+    }
+
+    private func deleteRulesInternal(_ path: Path, depth: Int?) {
+        subscriptions.deleteRules(at: path, depth: depth)
     }
 }
 
 extension ObservableStorage: Observable {
 
     /**
-     Create a subscription for a receiver
-     - Parameter receiver: The receiver of data matching the subscription
-     - Returns: The subscription for the receiver
+     Set the receiver for subscription data
+     - Parameter receiver: The receiver of data matching the subscription rules
+     - Returns: A request to optionally wait for completion
      */
-    public func subscribe(_ receiver: any Receiver) -> Subscription {
-        let id = nextId()
-        let subscription = StorageSubscription(receiver: receiver) {
-            Task {
-                await self.cancel(subscription: id)
-            }
+    @discardableResult
+    public nonisolated func setReceiver(_ receiver: (any Receiver)?) -> any Request {
+        AsyncRequest {
+            await self.setReceiverSynchronized(receiver)
         }
-        subscriptions[id] = subscription
-        return subscription
+    }
+
+    private func setReceiverSynchronized(_ receiver: (any Receiver)?) {
+        self.receiver = receiver
+    }
+
+    /**
+     Get the receiver for matching data.
+     - Returns: The receiver, if set
+     */
+    public func getReceiver() -> (any Receiver)? {
+        receiver
+    }
+
+    /**
+     Include a path in the subscription.
+     - Parameter path: The path to include
+     - Parameter depth: The depth of the inclusion (nil indicates the full sub-tree)
+     - Returns: A request to wait for completion of the inclusion
+     */
+    @discardableResult
+    public nonisolated func include(_ path: Path, depth: Int?) -> any Request {
+        AsyncRequest {
+            await self.includeInternal(path, depth: depth)
+        }
+    }
+
+    /**
+     Exclude a path from the subscription.
+     - Parameter path: The path to exclude
+     - Parameter depth: The depth of the exclusion (nil indicates the full sub-tree)
+     - Returns: A request to wait for completion of the exclusion
+     */
+    @discardableResult
+    public nonisolated func exclude(_ path: Path, depth: Int?) -> any Request {
+        AsyncRequest {
+            await self.excludeInternal(path, depth: depth)
+        }
+    }
+
+    /**
+     Delete subscription rules at a path with a given depth
+     - Parameter path: The path for which to delete rules
+     - Parameter depth: The depth of the deletion
+     - Returns: A request to wait for completion of the deletion
+     */
+    @discardableResult
+    public nonisolated func deleteRules(at path: Path, depth: Int?) -> any Request {
+        AsyncRequest {
+            await self.deleteRulesInternal(path, depth: depth)
+        }
+    }
+
+    /**
+     Check if a particular path is covered by the current subscription rules.
+     - Parameter path: The path to check against the subscription rules
+     - Returns: `true`, if the path matches
+     */
+    public func isSubscribed(to path: Path) -> Bool {
+        subscriptions.isSubscribed(to: path)
+    }
+
+    /**
+     Use the subscription rules to remove all excluded parts of a tree.
+     - Parameter tree: The original tree to strip
+     - Parameter path: The path of the tree in relation to the subscription tree
+     - Returns: The reduced tree, if any inclusion rules match, otherwise `null`
+     */
+    public func reduce(_ tree: any SampleTree, at path: Path) -> (any SampleTree)? {
+        subscriptions.reduce(tree, for: path)
     }
 }
 
