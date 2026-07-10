@@ -75,7 +75,7 @@ actor RemoteDataCollector {
      */
     private func didComplete(batch id: Int, with tree: any SampleTree, at path: Path) {
         activeBatches[id] = nil
-        receiver.receive(tree, for: path)
+        receiver.accept(tree, for: path)
     }
 
     /// The number of currently active batches
@@ -106,7 +106,7 @@ extension RemoteDataCollector: MessageReceiver {
         }
         guard let id = message.id else {
             // No batch id, so we just forward the message data
-            receiver.receive(message.data, for: message.path)
+            receiver.accept(message.data, for: message.path)
             return
         }
 

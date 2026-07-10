@@ -23,7 +23,7 @@ public actor ObservableStorage {
 
         // Store the data, wait for completion so that the receive of this class
         // works as expected
-        await storage.receive(tree, for: path).wait()
+        await storage.accept(tree, for: path).wait()
 
         // Forward the data to the subscription receiver, if needed
         await distribute(tree: tree, path: path)
@@ -135,7 +135,7 @@ extension ObservableStorage: Storage {
      - Parameter path: The path associated with the samples
      */
     @discardableResult
-    public nonisolated func receive(_ tree: any SampleTree, for path: Path) -> Request {
+    public nonisolated func accept(_ tree: any SampleTree, for path: Path) -> Request {
         AsyncRequest {
             await self.receiveInternal(tree, for: path)
         }

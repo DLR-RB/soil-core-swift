@@ -93,7 +93,7 @@ public struct HierarchicalLogger: Logger {
             guard level >= effectiveLevel else {
                 return
             }
-            self.logNode.receive(.string(message), for: [level.description], at: .current())
+            self.logNode.accept(.string(message), for: [level.description], at: .current())
         }
     }
 

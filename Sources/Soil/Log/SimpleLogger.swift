@@ -145,6 +145,6 @@ public final class SimpleLogger: Logger {
     // MARK: Helper
 
     private func write(_ level: LogLevel, _ message: String) -> any Request {
-        receiver.receive(.string(message), for: path + [level.description], at: .current())
+        receiver.accept(.string(message), for: path + [level.description], at: .current())
     }
 }

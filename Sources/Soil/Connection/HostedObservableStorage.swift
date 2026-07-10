@@ -75,8 +75,8 @@ extension HostedObservableStorage: Storage {
      - SeeAlso: ``commit(_:for:)``
      */
     @discardableResult
-    public nonisolated func receive(_ tree: any SampleTree, for path: Path) -> any Request {
-        storage.receive(tree, for: path)
+    public nonisolated func accept(_ tree: any SampleTree, for path: Path) -> any Request {
+        storage.accept(tree, for: path)
     }
 
     /**

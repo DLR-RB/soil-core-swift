@@ -48,7 +48,7 @@ public actor HostedStorage {
     private func didReceive(data message: Message) async {
         // Note: We know that the message is a data message
         // Schedule the insert
-        let request = storage.receive(message.data, for: message.path)
+        let request = storage.accept(message.data, for: message.path)
 
         // Check if the request expects a response
         guard let id = message.id else {
@@ -170,8 +170,8 @@ extension HostedStorage: Storage {
      - SeeAlso: ``commit(_:for:)``
      */
     @discardableResult
-    public nonisolated func receive(_ tree: any SampleTree, for path: Path) -> any Request {
-        storage.receive(tree, for: path)
+    public nonisolated func accept(_ tree: any SampleTree, for path: Path) -> any Request {
+        storage.accept(tree, for: path)
     }
 
     /**

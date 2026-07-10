@@ -27,7 +27,7 @@ private final class TestStorage: Storage {
 
     nonisolated(unsafe) var logged: (path: Path, sample: Sample)?
 
-    func receive(_ tree: any SampleTree, for path: Path) -> any Request {
+    func accept(_ tree: any SampleTree, for path: Path) -> any Request {
         guard let sample = tree.samples.first else {
             return CompletedRequest()
         }

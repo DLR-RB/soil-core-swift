@@ -28,7 +28,7 @@ public protocol Receiver: Sendable {
        To wait until the receive is completed, await the returned request.
      */
     @discardableResult
-    func receive(_ tree: any SampleTree, for path: Path) -> any Request
+    func accept(_ tree: any SampleTree, for path: Path) -> any Request
 }
 
 extension Receiver {
@@ -39,8 +39,8 @@ extension Receiver {
      - Returns: A request to wait for completion.
      */
     @discardableResult
-    public func receive(_ tree: any SampleTree) -> any Request {
-        receive(tree, for: [])
+    public func accept(_ tree: any SampleTree) -> any Request {
+        accept(tree, for: [])
     }
 
     /**
@@ -50,8 +50,8 @@ extension Receiver {
      - Parameter timestamp: The timestamp associated with the value
      */
     @discardableResult
-    public func receive(_ value: Value, for path: Path = [], at timestamp: Timestamp? = nil) -> any Request {
-        return receive(Sample(value: value, timestamp: timestamp), for: path)
+    public func accept(_ value: Value, for path: Path = [], at timestamp: Timestamp? = nil) -> any Request {
+        return accept(Sample(value: value, timestamp: timestamp), for: path)
     }
 
     /**
@@ -60,8 +60,8 @@ extension Receiver {
      - Parameter path: The path of the value.
      */
     @discardableResult
-    public func receive(_ sample: Sample, for path: Path = []) -> any Request {
-        receive([sample], for: path)
+    public func accept(_ sample: Sample, for path: Path = []) -> any Request {
+        accept([sample], for: path)
     }
 
     /**
@@ -76,8 +76,8 @@ extension Receiver {
        To wait until the receive is completed, await the returned request.
      */
     @discardableResult
-    public func receive(_ samples: [Sample], for path: Path = []) -> any Request {
+    public func accept(_ samples: [Sample], for path: Path = []) -> any Request {
         let tree = ImmutableSampleTree(samples: samples)
-        return receive(tree, for: path)
+        return accept(tree, for: path)
     }
 }

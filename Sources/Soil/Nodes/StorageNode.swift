@@ -70,8 +70,8 @@ extension StorageNode: Receiver {
        To wait until the receive is completed, await the returned request.
      */
     @discardableResult
-    public func receive(_ tree: any SampleTree, for path: Path) -> any Request {
-        storage.receive(tree, for: self.path + path)
+    public func accept(_ tree: any SampleTree, for path: Path) -> any Request {
+        storage.accept(tree, for: self.path + path)
     }
 }
 
@@ -95,7 +95,7 @@ extension StorageNode: AnyStorageNode {
 
     @discardableResult
     public func setNull() -> any Request {
-        storage.receive(Value.null, for: path)
+        storage.accept(Value.null, for: path)
     }
 
     /**
@@ -129,7 +129,7 @@ extension StorageNode: StringStorageNode {
      */
     @discardableResult
     public func set(_ value: String) -> any Request {
-        storage.receive(.string(value), for: path)
+        storage.accept(.string(value), for: path)
     }
 
     /**
@@ -152,7 +152,7 @@ extension StorageNode: IntStorageNode {
      */
     @discardableResult
     public func set(_ value: Int) -> any Request {
-        storage.receive(.integer(value), for: path)
+        storage.accept(.integer(value), for: path)
     }
 
     /**
@@ -175,7 +175,7 @@ extension StorageNode: DoubleStorageNode {
      */
     @discardableResult
     public func set(_ value: Double) -> any Request {
-        storage.receive(.double(value), for: path)
+        storage.accept(.double(value), for: path)
     }
 
     /**
@@ -198,7 +198,7 @@ extension StorageNode: DataStorageNode {
      */
     @discardableResult
     public func set(_ value: Data) -> any Request {
-        storage.receive(.data(value), for: path)
+        storage.accept(.data(value), for: path)
     }
 
     /**
@@ -221,7 +221,7 @@ extension StorageNode: PathStorageNode {
      */
     @discardableResult
     public func set(_ value: Path) -> any Request {
-        storage.receive(.path(value), for: path)
+        storage.accept(.path(value), for: path)
     }
 
     /**

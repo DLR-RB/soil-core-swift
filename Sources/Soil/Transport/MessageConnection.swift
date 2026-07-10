@@ -34,7 +34,7 @@ extension MessageConnection {
        To wait until the receive is completed, await the returned request.
      */
     @discardableResult
-    public func receive(_ tree: any SampleTree, for path: Path) -> any Request {
+    public func accept(_ tree: any SampleTree, for path: Path) -> any Request {
         send(message: .tree(tree, for: path))
     }
 }

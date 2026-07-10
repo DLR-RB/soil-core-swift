@@ -15,7 +15,7 @@ public protocol ReceiverNode: Sendable {
        To wait until the receive is completed, await the returned request.
      */
     @discardableResult
-    func receive(_ tree: any SampleTree) -> any Request
+    func accept(_ tree: any SampleTree) -> any Request
 }
 
 
@@ -27,8 +27,8 @@ extension ReceiverNode {
      - Parameter timestamp: The timestamp associated with the value
      */
     @discardableResult
-    public func receive(_ value: Value, at timestamp: Timestamp? = nil) -> any Request {
-        return receive(Sample(value: value, timestamp: timestamp))
+    public func accept(_ value: Value, at timestamp: Timestamp? = nil) -> any Request {
+        return accept(Sample(value: value, timestamp: timestamp))
     }
 
     /**
@@ -36,8 +36,8 @@ extension ReceiverNode {
      - Parameter sample: The timestamped value to store.
      */
     @discardableResult
-    public func receive(_ sample: Sample) -> any Request {
-        receive([sample])
+    public func accept(_ sample: Sample) -> any Request {
+        accept([sample])
     }
 
     /**
@@ -51,7 +51,7 @@ extension ReceiverNode {
        To wait until the receive is completed, await the returned request.
      */
     @discardableResult
-    func receive(_ samples: [Sample]) -> any Request {
-        receive(ImmutableSampleTree(samples: samples))
+    func accept(_ samples: [Sample]) -> any Request {
+        accept(ImmutableSampleTree(samples: samples))
     }
 }

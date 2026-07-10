@@ -11,7 +11,7 @@ struct StorageTests {
         let pathA = ["a", "b", "c"]
         let now = Timestamp.current()
 
-        await storage.receive(.integer(123), for: pathA, at: now).wait()
+        await storage.accept(.integer(123), for: pathA, at: now).wait()
 
         let storedPathA = await storage.currentSample(for: pathA)
         #expect(storedPathA != nil)
@@ -28,9 +28,9 @@ struct StorageTests {
 
         let now = Timestamp.current()
 
-        await storage.receive(.integer(123), for: ["a", "b", "c"], at: now).wait()
-        await storage.receive(.double(3.14), for: ["a", "b", "d"], at: now).wait()
-        await storage.receive(.string("some"), for: ["a", "e"], at: now).wait()
+        await storage.accept(.integer(123), for: ["a", "b", "c"], at: now).wait()
+        await storage.accept(.double(3.14), for: ["a", "b", "d"], at: now).wait()
+        await storage.accept(.string("some"), for: ["a", "e"], at: now).wait()
 
         do {
             let tree = await storage.tree(for: ["a"], depth: nil)
@@ -69,7 +69,7 @@ struct StorageTests {
             let b = ImmutableSampleTree(children: ["c" : c, "d" : d])
             let e = ImmutableSampleTree(value: .string("some"), timestamp: now)
             let a = ImmutableSampleTree(children: ["b" : b, "e" : e])
-            await storage.receive(a, for: ["a"]).wait()
+            await storage.accept(a, for: ["a"]).wait()
         }
 
         do {
@@ -153,7 +153,7 @@ struct StorageTests {
         }
 
         let first = Timestamp.current()
-        await storage.receive(.integer(123), for: [], at: first).wait()
+        await storage.accept(.integer(123), for: [], at: first).wait()
         do {
             let one = await storage.samples(for: [], from: nil, to: nil, limit: nil)
             try #require(one.count == 1)
@@ -174,7 +174,7 @@ struct StorageTests {
         }
 
         let second = first.addingTimeInterval(1.0)
-        await storage.receive(.integer(234), for: [], at: second).wait()
+        await storage.accept(.integer(234), for: [], at: second).wait()
         do {
             let two = await storage.samples(for: [], from: nil, to: nil, limit: nil)
             try #require(two.count == 2)
@@ -219,7 +219,7 @@ struct StorageTests {
             Sample(value: .integer(123 + $0), timestamp: now.addingTimeInterval(Double($0)))
         }
         for sample in samples {
-            await storage.receive(sample.value, for: [], at: sample.timestamp).wait()
+            await storage.accept(sample.value, for: [], at: sample.timestamp).wait()
         }
 
         let history = await storage.samples(for: [])

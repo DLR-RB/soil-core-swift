@@ -152,8 +152,8 @@ extension RemoteObservableStorage: Storage {
        The data does not actually need to be stored when the function returns, and should return as fast as possible.
      */
     @discardableResult
-    public nonisolated func receive(_ tree: any SampleTree, for path: Path) -> Request {
-        storage.receive(tree, for: path)
+    public nonisolated func accept(_ tree: any SampleTree, for path: Path) -> Request {
+        storage.accept(tree, for: path)
     }
 
     /**

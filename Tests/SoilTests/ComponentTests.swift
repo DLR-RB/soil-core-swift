@@ -17,7 +17,7 @@ struct ComponentTests {
         // Send value to bob
         let now = Timestamp.current()
         let path = ["a", "b"]
-        await connectedRemote.receive(.integer(123), for: path, at: now).wait()
+        await connectedRemote.accept(.integer(123), for: path, at: now).wait()
 
         #expect(await connection.one.sentMessages == 1)
         #expect(await connection.two.receivedMessages == 1)
@@ -100,7 +100,7 @@ struct ComponentTests {
         #expect(await connection.two.receivedMessages == 1)
         await connection.resetCounters()
 
-        await remoteStorage.receive(.integer(123), for: path, at: now).wait()
+        await remoteStorage.accept(.integer(123), for: path, at: now).wait()
 
         // Message should be transmitted to the client
         try await Task.sleep(for: .seconds(0.1))
@@ -144,7 +144,7 @@ struct ComponentTests {
         await connection.resetCounters()
 
         // Send data to the remote
-        await localConnectionToRemote.receive(.integer(123), for: path, at: now).wait()
+        await localConnectionToRemote.accept(.integer(123), for: path, at: now).wait()
         try await Task.sleep(for: .seconds(0.1))
 
         let rCount = await connection.one.receivedMessages
@@ -201,7 +201,7 @@ struct ComponentTests {
         }
 
         // Send data to the remote (connection two)
-        await localConnectionToRemote.receive(.integer(123), for: path, at: now).wait()
+        await localConnectionToRemote.accept(.integer(123), for: path, at: now).wait()
         try await Task.sleep(for: .seconds(0.01))
 
         // Subscription is echoed back, so both sides should have the same bytes sent and received

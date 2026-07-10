@@ -19,7 +19,7 @@ struct SubscriptionTests {
         let now = Timestamp.current()
         await observable.include(path, depth: 0).wait()
 
-        await observable.receive(.integer(123), for: path, at: now).wait()
+        await observable.accept(.integer(123), for: path, at: now).wait()
 
         try await Task.sleep(for: .seconds(0.1))
 

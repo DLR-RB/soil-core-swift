@@ -104,16 +104,7 @@ extension Provider {
      - Parameter depth: The number of levels in the sub-tree to include
      - Returns: The sample containing the current values of the requested sub-tree.
      */
-    public func currentTree(for path: Path = [], depth: Int?) async -> any SampleTree {
+    public func currentTree(for path: Path = [], depth: Int? = nil) async -> any SampleTree {
         await tree(for: path, from: nil, to: .current(), depth: depth, limitPerNode: 1)
-    }
-
-    /**
-     Get the current values of a path, including all sub-paths
-     - Parameter path: The requested path
-     - Returns: The sample containing the current values of the requested sub-tree.
-     */
-    public func currentTree(for path: Path = []) async -> any SampleTree {
-        await currentTree(for: path, depth: nil)
     }
 }

@@ -21,7 +21,7 @@ private actor TestReceiver: Receiver {
 
     private var last: (any SampleTree, Path)?
 
-    nonisolated func receive(_ tree: any SampleTree, for path: Path) -> any Request {
+    nonisolated func accept(_ tree: any SampleTree, for path: Path) -> any Request {
         AsyncRequest {
             await self.store(tree, for: path)
         }

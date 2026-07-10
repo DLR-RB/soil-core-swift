@@ -42,7 +42,7 @@ public actor RemoteObservable {
             return
         }
         // Note: We don't wait for subscription receiver requests
-        receiver.receive(reduced, for: message.path)
+        receiver.accept(reduced, for: message.path)
     }
 
     /**

@@ -31,17 +31,6 @@ public actor InMemoryStorage {
     }
 
     /**
-     Save the samples at a path.
-
-     This function searches for the correct node in the tree, and inserts the samples.
-     - Parameter samples: The samples to store.
-     - Parameter path: The path of the samples.
-     */
-    private func receiveInternal(_ samples: [Sample], for path: Path) {
-        root.findOrCreateNode(for: path).save(samples)
-    }
-
-    /**
      Delete data from the storage.
 
      The function searches for the correct node in the tree,
@@ -322,7 +311,7 @@ extension InMemoryStorage: Storage {
      - Returns: The request, if the caller wants to wait for completion
      */
     @discardableResult
-    public nonisolated func receive(_ tree: any SampleTree, for path: Path) -> Request {
+    public nonisolated func accept(_ tree: any SampleTree, for path: Path) -> Request {
         AsyncRequest {
             await self.receiveInternal(tree, for: path)
         }

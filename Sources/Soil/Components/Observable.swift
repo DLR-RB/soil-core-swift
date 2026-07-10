@@ -102,6 +102,6 @@ extension Observable {
             return
         }
 
-        await receiver.receive(subscribedTree, for: subscribedPath).wait()
+        await receiver.accept(subscribedTree, for: subscribedPath).wait()
     }
 }

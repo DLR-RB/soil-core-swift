@@ -25,5 +25,5 @@ To create a very simple component that connects to a WebSocket interface to send
 let socket = await WebSocket(url: "192.168.1.32", port: 80)
     .apply(encoding: JsonEncoding())
 
-let transmitter = connection.receive(.integer(123), for: ["my", "value"])
+connection.receive(.integer(123), for: ["my", "value"])
 ```

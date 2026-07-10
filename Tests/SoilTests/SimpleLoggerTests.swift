@@ -7,7 +7,7 @@ private final class TestReceiver: Receiver {
 
     nonisolated(unsafe) var logged: (path: Path, sample: Sample)?
 
-    func receive(_ tree: SampleTree, for path: Path) -> any Request {
+    func accept(_ tree: SampleTree, for path: Path) -> any Request {
         if let sample = tree.samples.first {
             logged = (path, sample)
         }

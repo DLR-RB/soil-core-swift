@@ -12,7 +12,7 @@ struct InMemoryStorageTests {
         let time = Timestamp.current()
         let path = ["a", "b", "c"]
 
-        await storage.receive(value, for: path).wait()
+        await storage.accept(value, for: path).wait()
 
         let stored = await storage.tree(for: path, depth: 0)
         let sample = try #require(stored.newestSample)
@@ -29,7 +29,7 @@ struct InMemoryStorageTests {
         let time = Timestamp.current()
         let path = ["a", "b", "c"]
 
-        await storage.receive(value, for: path, at: time).wait()
+        await storage.accept(value, for: path, at: time).wait()
 
         let stored = await storage.tree(for: path, depth: 0)
         let sample = try #require(stored.newestSample)
@@ -49,7 +49,7 @@ struct InMemoryStorageTests {
         let oldValue = Value.integer(234)
         let oldTime = newTime.addingTimeInterval(-10)
 
-        await storage.receive(oldValue, for: path, at: oldTime).wait()
+        await storage.accept(oldValue, for: path, at: oldTime).wait()
 
         do {
             // Get current value
@@ -60,7 +60,7 @@ struct InMemoryStorageTests {
             #expect(stored.children.isEmpty)
         }
 
-        await storage.receive(newValue, for: path, at: newTime).wait()
+        await storage.accept(newValue, for: path, at: newTime).wait()
 
         do {
             // Get current value
@@ -91,7 +91,7 @@ struct InMemoryStorageTests {
         let time = Timestamp.current()
         let path: Path = []
 
-        await storage.receive(value, for: path, at: time).wait()
+        await storage.accept(value, for: path, at: time).wait()
 
         let stored = await storage.tree(for: path, depth: 0)
         let sample = try #require(stored.newestSample)
@@ -115,7 +115,7 @@ struct InMemoryStorageTests {
                 "d" : dTree
             ])
             let tree = ImmutableSampleTree(children: ["a" : aTree, "b" : bTree])
-            await storage.receive(tree, for: []).wait()
+            await storage.accept(tree, for: []).wait()
         }
 
         do {
@@ -162,10 +162,10 @@ struct InMemoryStorageTests {
         let storage = InMemoryStorage()
 
         let now = Timestamp.current()
-        await storage.receive(.integer(123), for: ["a"], at: now).wait()
-        await storage.receive(.string("hello"), for: ["b", "c"], at: now).wait()
-        await storage.receive(.path(["z", "x"]), for: ["a", "d", "e"], at: now).wait()
-        await storage.receive(.double(3.14), for: ["b", "f"], at: now).wait()
+        await storage.accept(.integer(123), for: ["a"], at: now).wait()
+        await storage.accept(.string("hello"), for: ["b", "c"], at: now).wait()
+        await storage.accept(.path(["z", "x"]), for: ["a", "d", "e"], at: now).wait()
+        await storage.accept(.double(3.14), for: ["b", "f"], at: now).wait()
 
         do {
             let tree = await storage.tree(for: [])
@@ -211,10 +211,10 @@ struct InMemoryStorageTests {
         let storage = InMemoryStorage()
 
         let now = Timestamp.current()
-        await storage.receive(.integer(123), for: ["a"], at: now).wait()
-        await storage.receive(.string("hello"), for: ["b", "c"], at: now).wait()
-        await storage.receive(.path(["z", "x"]), for: ["a", "d", "e"], at: now).wait()
-        await storage.receive(.double(3.14), for: ["b", "f"], at: now).wait()
+        await storage.accept(.integer(123), for: ["a"], at: now).wait()
+        await storage.accept(.string("hello"), for: ["b", "c"], at: now).wait()
+        await storage.accept(.path(["z", "x"]), for: ["a", "d", "e"], at: now).wait()
+        await storage.accept(.double(3.14), for: ["b", "f"], at: now).wait()
 
         do {
             let tree = await storage.tree(for: [], depth: 0)
@@ -273,14 +273,14 @@ struct InMemoryStorageTests {
 
         // Store old and new values in mixed order
         do {
-            await storage.receive(.string("there"), for: ["b", "c"], at: old).wait()
-            await storage.receive(.integer(123), for: ["a"], at: now).wait()
-            await storage.receive(.string("hello"), for: ["b", "c"], at: now).wait()
-            await storage.receive(.integer(234), for: ["a"], at: old).wait()
-            await storage.receive(.double(42.1), for: ["b", "f"], at: old).wait()
-            await storage.receive(.path(["z", "x"]), for: ["a", "d", "e"], at: now).wait()
-            await storage.receive(.path(["y", "w"]), for: ["a", "d", "e"], at: old).wait()
-            await storage.receive(.double(3.14), for: ["b", "f"], at: now).wait()
+            await storage.accept(.string("there"), for: ["b", "c"], at: old).wait()
+            await storage.accept(.integer(123), for: ["a"], at: now).wait()
+            await storage.accept(.string("hello"), for: ["b", "c"], at: now).wait()
+            await storage.accept(.integer(234), for: ["a"], at: old).wait()
+            await storage.accept(.double(42.1), for: ["b", "f"], at: old).wait()
+            await storage.accept(.path(["z", "x"]), for: ["a", "d", "e"], at: now).wait()
+            await storage.accept(.path(["y", "w"]), for: ["a", "d", "e"], at: old).wait()
+            await storage.accept(.double(3.14), for: ["b", "f"], at: now).wait()
         }
 
         // Get current tree
@@ -371,14 +371,14 @@ struct InMemoryStorageTests {
 
         // Store old and new values in mixed order
         do {
-            await storage.receive(.string("there"), for: ["b", "c"], at: old).wait()
-            await storage.receive(.integer(123), for: ["a"], at: now).wait()
-            await storage.receive(.string("hello"), for: ["b", "c"], at: now).wait()
-            await storage.receive(.integer(234), for: ["a"], at: old).wait()
-            await storage.receive(.double(42.1), for: ["b", "f"], at: old).wait()
-            await storage.receive(.path(["z", "x"]), for: ["a", "d", "e"], at: now).wait()
-            await storage.receive(.path(["y", "w"]), for: ["a", "d", "e"], at: old).wait()
-            await storage.receive(.double(3.14), for: ["b", "f"], at: now).wait()
+            await storage.accept(.string("there"), for: ["b", "c"], at: old).wait()
+            await storage.accept(.integer(123), for: ["a"], at: now).wait()
+            await storage.accept(.string("hello"), for: ["b", "c"], at: now).wait()
+            await storage.accept(.integer(234), for: ["a"], at: old).wait()
+            await storage.accept(.double(42.1), for: ["b", "f"], at: old).wait()
+            await storage.accept(.path(["z", "x"]), for: ["a", "d", "e"], at: now).wait()
+            await storage.accept(.path(["y", "w"]), for: ["a", "d", "e"], at: old).wait()
+            await storage.accept(.double(3.14), for: ["b", "f"], at: now).wait()
         }
 
         do {
@@ -458,7 +458,7 @@ struct InMemoryStorageTests {
         }
         do {
             for sample in values {
-                await storage.receive(sample.value, for: ["a"], at: sample.timestamp).wait()
+                await storage.accept(sample.value, for: ["a"], at: sample.timestamp).wait()
             }
         }
 
@@ -471,7 +471,7 @@ struct InMemoryStorageTests {
         // Test shuffled insert
         do {
             for sample in values.shuffled() {
-                await storage.receive(sample.value, for: ["b"], at: sample.timestamp).wait()
+                await storage.accept(sample.value, for: ["b"], at: sample.timestamp).wait()
             }
         }
 
@@ -491,7 +491,7 @@ struct InMemoryStorageTests {
         }
 
         for sample in values.shuffled() {
-            await storage.receive(sample.value, for: path, at: sample.timestamp).wait()
+            await storage.accept(sample.value, for: path, at: sample.timestamp).wait()
         }
         return (storage, start, path)
     }
