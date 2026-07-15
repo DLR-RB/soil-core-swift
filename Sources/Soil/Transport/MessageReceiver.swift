@@ -8,5 +8,6 @@ public protocol MessageReceiver: AnyObject, Sendable {
      Process a received message.
      - Parameter message: The message to receive
      */
-    func didReceive(message: Message) async
+    @discardableResult
+    func accept(message: Message) -> any Request
 }

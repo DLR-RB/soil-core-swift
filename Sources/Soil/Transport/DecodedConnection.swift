@@ -34,7 +34,7 @@ public actor DecodedConnection {
 
      Attempts to decode the message contained in the data and forwards it to the message connection.
      */
-    public func didReceive(encodedMessage data: Data) async {
+    private func didReceive(encodedMessage data: Data) async {
         guard let receiver else {
             log?.warning("No receiver for message")
             return
@@ -50,7 +50,7 @@ public actor DecodedConnection {
         }
 
         // Forward the decoded message to the component connection
-        await receiver.didReceive(message: message)
+        await receiver.accept(message: message).wait()
     }
 
     /**
@@ -73,6 +73,17 @@ public actor DecodedConnection {
 
 extension DecodedConnection: EncodedMessageReceiver {
 
+    /**
+     Process binary messages received over the connection.
+
+     Attempts to decode the message contained in the data and forwards it to the message connection.
+     */
+    @discardableResult
+    public nonisolated func accept(encodedMessage data: Data) -> any Request {
+        AsyncRequest {
+            await self.didReceive(encodedMessage: data)
+        }
+    }
 }
 
 extension DecodedConnection: MessageConnection {

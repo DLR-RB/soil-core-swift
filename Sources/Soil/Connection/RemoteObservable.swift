@@ -66,10 +66,13 @@ extension RemoteObservable: MessageReceiver {
      - Parameter message: The message received over the connection
      - Note: This function is called automatically by the connection, and should not be called manually.
      */
-    public func didReceive(message: Message) {
+    @discardableResult
+    public nonisolated func accept(message: Message) -> any Request {
         switch message.type {
         case .data:
-            didReceive(data: message)
+            return AsyncRequest {
+                await self.didReceive(data: message)
+            }
         case .request:
             break
         case .deletionRequest:
@@ -77,6 +80,7 @@ extension RemoteObservable: MessageReceiver {
         case .subscriptionInclusion, .subscriptionDeletion, .subscriptionExclusion:
             break
         }
+        return CompletedRequest()
     }
 }
 

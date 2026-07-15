@@ -6,7 +6,14 @@ private actor TestMessageReceiver: MessageReceiver {
 
     private var count = 0
 
-    func didReceive(message: Message) async {
+    @discardableResult
+    public nonisolated func accept(message: Message) -> any Request {
+        AsyncRequest {
+            await self.didReceive(message: message)
+        }
+    }
+
+    private func didReceive(message: Message) {
         count += 1
     }
 

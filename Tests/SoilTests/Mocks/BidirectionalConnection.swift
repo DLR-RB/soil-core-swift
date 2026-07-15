@@ -35,8 +35,8 @@ final class BidirectionalConnection {
         init() { }
 
         func sendToRemote(_ data: Data) async {
-            await remote?.didReceive(encodedMessage: data)
             sentMessages += 1
+            await remote?.accept(encodedMessage: data).wait()
         }
 
         nonisolated func send(message data: Data) -> any Request {
@@ -64,9 +64,16 @@ final class BidirectionalConnection {
             self.remote = remote
         }
 
-        func didReceive(encodedMessage data: Data) async {
-            await receiver?.didReceive(encodedMessage: data)
+        @discardableResult
+        nonisolated func accept(encodedMessage data: Data) -> any Request {
+            AsyncRequest {
+                await self.didReceive(encodedMessage: data)
+            }
+        }
+
+        private func didReceive(encodedMessage data: Data) async {
             receivedMessages += 1
+            await receiver?.accept(encodedMessage: data).wait()
         }
 
         func resetCounters() {

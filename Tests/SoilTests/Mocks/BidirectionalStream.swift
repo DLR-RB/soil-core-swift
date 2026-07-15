@@ -35,7 +35,7 @@ final class BidirectionalStream {
         init() { }
 
         func sendToRemote(_ bytes: [UInt8]) async {
-            await remote?.didReceive(bytes: bytes)
+            await remote?.accept(bytes: bytes).wait()
             sentBytes += bytes.count
         }
 
@@ -65,8 +65,14 @@ final class BidirectionalStream {
             self.remote = remote
         }
 
-        func didReceive(bytes: [UInt8]) async {
-            await receiver?.didReceive(bytes: bytes)
+        public nonisolated func accept(bytes: [UInt8]) -> any Request {
+            AsyncRequest {
+                await self.didReceive(bytes: bytes)
+            }
+        }
+
+        private func didReceive(bytes: [UInt8]) async {
+            await receiver?.accept(bytes: bytes).wait()
             receivedBytes += bytes.count
         }
 

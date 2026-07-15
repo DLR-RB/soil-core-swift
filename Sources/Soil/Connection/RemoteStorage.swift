@@ -101,17 +101,23 @@ extension RemoteStorage: MessageReceiver {
      - Parameter message: The message received over the connection
      - Note: This function is called automatically by the connection, and should not be called manually.
      */
-    public func didReceive(message: Message) {
+    @discardableResult
+    public nonisolated func accept(message: Message) -> any Request {
         switch message.type {
         case .data:
             // Pass the request to the handler, which checks if the message
             // matches an active request
-            requests.didReceive(message)
+            AsyncRequest {
+                await self.didReceive(data: message)
+            }
         case .request, .deletionRequest, .subscriptionInclusion, .subscriptionDeletion, .subscriptionExclusion:
-            break
+            CompletedRequest()
         }
     }
 
+    private func didReceive(data: Message) {
+        requests.didReceive(data)
+    }
 }
 
 // MARK: Storage

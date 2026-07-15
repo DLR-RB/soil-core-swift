@@ -137,7 +137,14 @@ extension HostedStorage: MessageReceiver {
      - Parameter message: The message received over the connection.
      - Note: This function is called automatically by the connection, and should not be called manually.
      */
-    public func didReceive(message: Message) async {
+    @discardableResult
+    public nonisolated func accept(message: Message) -> any Request {
+        AsyncRequest {
+            await self.didReceive(message: message)
+        }
+    }
+
+    private func didReceive(message: Message) async {
         switch message.type {
         case .data:
             await didReceive(data: message)

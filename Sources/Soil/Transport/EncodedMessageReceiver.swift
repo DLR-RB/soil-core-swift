@@ -11,5 +11,6 @@ public protocol EncodedMessageReceiver: AnyObject, Sendable {
      Each call to this function contains exactly the bytes of one encoded message.
      - Parameter data: The encoded message to process
      */
-    func didReceive(encodedMessage data: Data) async
+    @discardableResult
+    func accept(encodedMessage data: Data) -> any Request
 }

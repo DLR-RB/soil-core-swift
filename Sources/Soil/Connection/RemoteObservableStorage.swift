@@ -38,17 +38,20 @@ extension RemoteObservableStorage: MessageReceiver {
      - Parameter message: The message received over the connection
      - Note: This function is called automatically by the connection, and should not be called manually.
      */
-    public func didReceive(message: Message) async {
+    @discardableResult
+    public nonisolated func accept(message: Message) -> any Request {
         switch message.type {
         case .data:
-            await storage.didReceive(message: message)
-            await observable.didReceive(message: message)
+            AsyncRequest {
+                await self.storage.accept(message: message).wait()
+                await self.observable.accept(message: message).wait()
+            }
         case .request:
-            await storage.didReceive(message: message)
+            storage.accept(message: message)
         case .deletionRequest:
-            await storage.didReceive(message: message)
+            storage.accept(message: message)
         case .subscriptionInclusion, .subscriptionDeletion, .subscriptionExclusion:
-            await observable.didReceive(message: message)
+            observable.accept(message: message)
         }
     }
 }

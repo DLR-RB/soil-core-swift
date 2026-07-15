@@ -46,12 +46,13 @@ extension HostedObservableStorage: MessageReceiver {
      - Parameter message: The message received over the connection.
      - Note: This function is called automatically be the connection, and should not be called manually.
      */
-    public func didReceive(message: Message) async {
+    @discardableResult
+    public nonisolated func accept(message: Message) -> any Request {
         switch message.type {
         case .data, .request, .deletionRequest:
-            await storage.didReceive(message: message)
+            storage.accept(message: message)
         case .subscriptionInclusion, .subscriptionExclusion, .subscriptionDeletion:
-            await observable.didReceive(message: message)
+            observable.accept(message: message)
         }
     }
 }

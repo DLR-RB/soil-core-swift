@@ -287,7 +287,14 @@ extension DataMessageSplitter: MessageReceiver {
      - Note: This message is called automatically by the connection, and should not be called manually.
      - Parameter message: The received message
      */
-    public func didReceive(message: Message) async {
+    @discardableResult
+    public nonisolated func accept(message: Message) -> any Request {
+        AsyncRequest {
+            await self.didReceive(message: message)
+        }
+    }
+
+    private func didReceive(message: Message) async {
         guard let receiver else {
             if shouldWarnAboutMissingReceiver {
                 log?.warning("No receiver for message")
@@ -296,6 +303,6 @@ extension DataMessageSplitter: MessageReceiver {
             return
         }
         shouldWarnAboutMissingReceiver = true // Reset flag
-        await receiver.didReceive(message: message)
+        await receiver.accept(message: message).wait()
     }
 }

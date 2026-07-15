@@ -10,5 +10,6 @@ public protocol StreamReceiver: AnyObject, Sendable {
      Each call to this function can contain an arbitrary number of bytes.
      - Parameter bytes: The received bytes to process
      */
-    func didReceive(bytes: [UInt8]) async
+    @discardableResult
+    func accept(bytes: [UInt8]) -> any Request
 }

@@ -109,7 +109,14 @@ extension RemoteDataCollector: MessageReceiver {
      Process a received data message, which may update an existing batch, or create a new one.
      - Parameter message: The received data message
      */
-    func didReceive(message: Message) {
+    @discardableResult
+    public nonisolated func accept(message: Message) -> any Request {
+        AsyncRequest {
+            await self.didReceive(message: message)
+        }
+    }
+
+    private func didReceive(message: Message) {
         guard message.type == .data else {
             // Not a data message, so we ignore it
             return

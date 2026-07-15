@@ -57,7 +57,13 @@ extension DecodedStream: StreamReceiver {
      Each call to this function can contain an arbitrary number of bytes.
      - Parameter bytes: The received bytes to process
      */
-    public func didReceive(bytes: [UInt8]) async {
+    public nonisolated func accept(bytes: [UInt8]) -> any Request {
+        AsyncRequest {
+            await self.didReceive(bytes: bytes)
+        }
+    }
+
+    private func didReceive(bytes: [UInt8]) async {
         let messages = await framing.processStreamBytes(bytes)
         if messages.isEmpty {
             return
@@ -66,7 +72,7 @@ extension DecodedStream: StreamReceiver {
             return
         }
         for message in messages {
-            await receiver.didReceive(encodedMessage: Data(message))
+            await receiver.accept(encodedMessage: Data(message)).wait()
         }
     }
 }
