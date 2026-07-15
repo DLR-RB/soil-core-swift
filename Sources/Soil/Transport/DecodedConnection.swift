@@ -8,8 +8,8 @@ public actor DecodedConnection {
     /// The encoding to use for the messages
     private let encoding: any MessageEncoding
 
-    /// The binary connection over which encoded messages are exchanged
-    private let connection: any EncodedMessageConnection
+    /// The binary connection over which frames are exchanged
+    private let connection: any FrameConnection
 
     /// The receiver getting decoded messages
     private weak var receiver: (any MessageReceiver)?
@@ -21,7 +21,7 @@ public actor DecodedConnection {
      - Parameter connection: The binary connection to apply the encoding to
      - Parameter encoding: The encoding used for the binary connection.
      */
-    public init(wrapping connection: any EncodedMessageConnection, encoding: any MessageEncoding, logger: Logger? = nil) async {
+    public init(wrapping connection: any FrameConnection, encoding: any MessageEncoding, logger: Logger? = nil) async {
         self.connection = connection
         self.encoding = encoding
         self.log = logger
@@ -34,7 +34,7 @@ public actor DecodedConnection {
 
      Attempts to decode the message contained in the data and forwards it to the message connection.
      */
-    private func didReceive(encodedMessage data: Data) async {
+    private func didReceive(frame data: Data) async {
         guard let receiver else {
             log?.warning("No receiver for message")
             return
@@ -71,7 +71,7 @@ public actor DecodedConnection {
     }
 }
 
-extension DecodedConnection: EncodedMessageReceiver {
+extension DecodedConnection: FrameReceiver {
 
     /**
      Process binary messages received over the connection.
@@ -79,9 +79,9 @@ extension DecodedConnection: EncodedMessageReceiver {
      Attempts to decode the message contained in the data and forwards it to the message connection.
      */
     @discardableResult
-    public nonisolated func accept(encodedMessage data: Data) -> any Request {
+    public nonisolated func accept(frame data: Data) -> any Request {
         AsyncRequest {
-            await self.didReceive(encodedMessage: data)
+            await self.didReceive(frame: data)
         }
     }
 }

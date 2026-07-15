@@ -1,9 +1,9 @@
 import Foundation
 
 /**
- A connection to a component that transmits and receives encoded messages.
+ A connection to a component that transmits and receives frames.
  */
-public protocol EncodedMessageConnection: Connection, EncodedMessageDistributor, Sendable {
+public protocol FrameConnection: Connection, FrameDistributor, Sendable {
 
     /**
      Send a message to the component via the underlying transport layer.
@@ -15,7 +15,7 @@ public protocol EncodedMessageConnection: Connection, EncodedMessageDistributor,
     func send(message: Data) -> any Request
 }
 
-extension EncodedMessageConnection {
+extension FrameConnection {
 
     /**
      Convert this connection to a message connection using the provided encoding

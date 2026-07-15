@@ -1,6 +1,6 @@
 
 /**
- A connection to a component that transmits and receives encoded messages.
+ A connection to a component that transmits and receives frames.
  */
 public protocol StreamConnection: Connection, StreamDistributor, Sendable {
 
@@ -17,12 +17,12 @@ public protocol StreamConnection: Connection, StreamDistributor, Sendable {
 extension StreamConnection {
 
     /**
-     Convert this stream to an encoded message connection using the provided framing.
-     - Parameter framing: The framing to use for encoded messages transmitted over the stream.
+     Convert this stream to a frame connection using the provided framing.
+     - Parameter framing: The framing to use for frames transmitted over the stream.
      - Parameter logger: The logger for encoding errors
-     - Returns: The encoded message connection using the framing over the stream.
+     - Returns: The frame connection using the framing over the stream.
      */
-    public func apply(framing: any StreamFraming, logger: (any Logger)? = nil) async -> EncodedMessageConnection {
+    public func apply(framing: any StreamFraming, logger: (any Logger)? = nil) async -> FrameConnection {
         await DecodedStream(wrapping: self, framing: framing, logger: logger)
     }
 }

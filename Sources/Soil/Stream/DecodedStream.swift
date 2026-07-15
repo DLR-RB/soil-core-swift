@@ -1,7 +1,7 @@
 import Foundation
 
 /**
- Apply framing to a binary stream connection to create an encoded message connection.
+ Apply framing to a binary stream connection to create a frame connection.
  */
 public actor DecodedStream {
 
@@ -12,7 +12,7 @@ public actor DecodedStream {
     private let stream: StreamConnection
 
     /// The receiver getting decoded messages
-    private weak var receiver: (any EncodedMessageReceiver)?
+    private weak var receiver: (any FrameReceiver)?
 
     /// The logger to receive encoding errors
     private var log: (any Logger)?
@@ -72,12 +72,12 @@ extension DecodedStream: StreamReceiver {
             return
         }
         for message in messages {
-            await receiver.accept(encodedMessage: Data(message)).wait()
+            await receiver.accept(frame: Data(message)).wait()
         }
     }
 }
 
-extension DecodedStream: EncodedMessageConnection {
+extension DecodedStream: FrameConnection {
 
     /**
      Send a message to the component via the underlying transport layer.
@@ -93,24 +93,24 @@ extension DecodedStream: EncodedMessageConnection {
     }
 }
 
-extension DecodedStream: EncodedMessageDistributor {
+extension DecodedStream: FrameDistributor {
 
     /**
      Set the receiver for messages produced by this connection.
      - Parameter receiver: The receiver of the messages coming in over this connection.
      */
     @discardableResult
-    public nonisolated func setReceiver(_ receiver: (any EncodedMessageReceiver)?) -> any Request {
+    public nonisolated func setReceiver(_ receiver: (any FrameReceiver)?) -> any Request {
         AsyncRequest {
             await self.set(receiver: receiver)
         }
     }
 
-    private func set(receiver: (any EncodedMessageReceiver)?) {
+    private func set(receiver: (any FrameReceiver)?) {
         self.receiver = receiver
     }
 
-    public func getReceiver() async -> (any EncodedMessageReceiver)? {
+    public func getReceiver() async -> (any FrameReceiver)? {
         receiver
     }
 }

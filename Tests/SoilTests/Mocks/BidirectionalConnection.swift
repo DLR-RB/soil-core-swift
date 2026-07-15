@@ -2,7 +2,7 @@ import Foundation
 import Soil
 
 /**
- A test class that simulates an encoded message connection between two components
+ A test class that simulates a frame connection between two components
  */
 final class BidirectionalConnection {
 
@@ -23,11 +23,11 @@ final class BidirectionalConnection {
         await two.resetCounters()
     }
 
-    actor Connection: EncodedMessageConnection, EncodedMessageReceiver {
+    actor Connection: FrameConnection, FrameReceiver {
 
-        private weak var receiver: EncodedMessageReceiver?
+        private weak var receiver: FrameReceiver?
 
-        private weak var remote: EncodedMessageReceiver?
+        private weak var remote: FrameReceiver?
 
         var sentMessages = 0
         var receivedMessages = 0
@@ -36,7 +36,7 @@ final class BidirectionalConnection {
 
         func sendToRemote(_ data: Data) async {
             sentMessages += 1
-            await remote?.accept(encodedMessage: data).wait()
+            await remote?.accept(frame: data).wait()
         }
 
         nonisolated func send(message data: Data) -> any Request {
@@ -46,34 +46,34 @@ final class BidirectionalConnection {
         }
 
         @discardableResult
-        nonisolated func setReceiver(_ receiver: (any EncodedMessageReceiver)?) -> any Request {
+        nonisolated func setReceiver(_ receiver: (any FrameReceiver)?) -> any Request {
             AsyncRequest {
                 await self.set(receiver: receiver)
             }
         }
 
-        private func set(receiver: (any EncodedMessageReceiver)?) {
+        private func set(receiver: (any FrameReceiver)?) {
             self.receiver = receiver
         }
 
-        func getReceiver() async -> (any EncodedMessageReceiver)? {
+        func getReceiver() async -> (any FrameReceiver)? {
             receiver
         }
 
-        fileprivate func setRemote(_ remote: EncodedMessageReceiver) async {
+        fileprivate func setRemote(_ remote: FrameReceiver) async {
             self.remote = remote
         }
 
         @discardableResult
-        nonisolated func accept(encodedMessage data: Data) -> any Request {
+        nonisolated func accept(frame data: Data) -> any Request {
             AsyncRequest {
-                await self.didReceive(encodedMessage: data)
+                await self.didReceive(frame: data)
             }
         }
 
-        private func didReceive(encodedMessage data: Data) async {
+        private func didReceive(frame data: Data) async {
             receivedMessages += 1
-            await receiver?.accept(encodedMessage: data).wait()
+            await receiver?.accept(frame: data).wait()
         }
 
         func resetCounters() {
