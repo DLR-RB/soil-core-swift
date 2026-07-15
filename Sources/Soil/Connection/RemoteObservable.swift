@@ -22,7 +22,7 @@ public actor RemoteObservable {
         self.subscriptions = .init()
 
         // Register to receive messages from the component
-        await connection.setReceiver(self)
+        await connection.setReceiver(self).wait()
     }
 
     // MARK: Transport layer interaction
@@ -82,19 +82,20 @@ extension RemoteObservable: MessageReceiver {
 
 // MARK: Observable
 
-extension RemoteObservable: Observable {
+extension RemoteObservable: Distributor {
 
     /**
      Set the receiver for subscription data
      - Parameter receiver: The receiver of data matching the subscription rules
      */
-    public nonisolated func setReceiver(_ receiver: Receiver?) -> Request {
+    @discardableResult
+    public nonisolated func setReceiver(_ receiver: (any Receiver)?) -> any Request {
         AsyncRequest {
-            await self.setReceiverSynchronized(receiver)
+            await self.set(receiver: receiver)
         }
     }
 
-    private func setReceiverSynchronized(_ receiver: Receiver?) async {
+    private func set(receiver: (any Receiver)?) {
         self.receiver = receiver
     }
 
@@ -102,9 +103,12 @@ extension RemoteObservable: Observable {
      Get the receiver for matching data.
      - Returns: The receiver, if set
      */
-    public func getReceiver() -> Receiver? {
-        return receiver
+    public func getReceiver() -> (any Receiver)? {
+        receiver
     }
+}
+
+extension RemoteObservable: Observable {
 
     /**
      Internal function called by a subscription object to include a path in a subscription.

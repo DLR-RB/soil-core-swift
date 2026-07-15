@@ -135,7 +135,7 @@ extension ObservableStorage: Storage {
      - Parameter path: The path associated with the samples
      */
     @discardableResult
-    public nonisolated func accept(_ tree: any SampleTree, for path: Path) -> Request {
+    public nonisolated func accept(_ tree: any SampleTree, for path: Path) -> any Request {
         AsyncRequest {
             await self.receiveInternal(tree, for: path)
         }
@@ -174,7 +174,7 @@ extension ObservableStorage: Storage {
      - Returns: A request that can be used to wait until completion
      */
     @discardableResult
-    public nonisolated func delete(path: Path, from start: Timestamp?, to end: Timestamp?, depth: Int?) -> Request {
+    public nonisolated func delete(path: Path, from start: Timestamp?, to end: Timestamp?, depth: Int?) -> any Request {
         storage.delete(path: path, from: start, to: end, depth: depth)
     }
 }

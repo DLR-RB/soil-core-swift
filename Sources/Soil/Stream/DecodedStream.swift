@@ -28,7 +28,7 @@ public actor DecodedStream {
         self.stream = stream
         self.log = logger
 
-        await stream.setReceiver(self)
+        await stream.setReceiver(self).wait()
     }
 
     /**
@@ -80,18 +80,32 @@ extension DecodedStream: EncodedMessageConnection {
      - Note: The returned request does not wait for message delivery, only transmission.
      */
     @discardableResult
-    public nonisolated func send(message: Data) -> Request {
+    public nonisolated func send(message: Data) -> any Request {
         AsyncRequest {
             await self.send(message)
         }
     }
+}
+
+extension DecodedStream: EncodedMessageDistributor {
 
     /**
      Set the receiver for messages produced by this connection.
      - Parameter receiver: The receiver of the messages coming in over this connection.
      */
-    public func setReceiver(_ receiver: any EncodedMessageReceiver) {
+    @discardableResult
+    public nonisolated func setReceiver(_ receiver: (any EncodedMessageReceiver)?) -> any Request {
+        AsyncRequest {
+            await self.set(receiver: receiver)
+        }
+    }
+
+    private func set(receiver: (any EncodedMessageReceiver)?) {
         self.receiver = receiver
+    }
+
+    public func getReceiver() async -> (any EncodedMessageReceiver)? {
+        receiver
     }
 }
 
@@ -102,7 +116,7 @@ extension DecodedStream: Connection {
     }
 
     @discardableResult
-    public nonisolated func close() -> Request {
+    public nonisolated func close() -> any Request {
         stream.close()
     }
 

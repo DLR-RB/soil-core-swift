@@ -12,7 +12,7 @@ public protocol Connection: Sendable {
      - Returns: A request to optionally wait for closure.
      */
     @discardableResult
-    func close() -> Request
+    func close() -> any Request
 
     /**
      * Execute a closure when the connection is closed

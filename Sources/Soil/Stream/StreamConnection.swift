@@ -2,7 +2,7 @@
 /**
  A connection to a component that transmits and receives encoded messages.
  */
-public protocol StreamConnection: Connection, Sendable {
+public protocol StreamConnection: Connection, StreamDistributor, Sendable {
 
     /**
      Send a message to the component via the underlying transport layer.
@@ -11,13 +11,7 @@ public protocol StreamConnection: Connection, Sendable {
      - Note: The returned request does not wait for message delivery, only transmission.
      */
     @discardableResult
-    func send(bytes: [UInt8]) -> Request
-
-    /**
-     Set the receiver for encoded messages from this connection.
-     - Parameter receiver: The receiver of the encoded messages coming in over this connection.
-     */
-    func setReceiver(_ receiver: any StreamReceiver) async
+    func send(bytes: [UInt8]) -> any Request
 }
 
 extension StreamConnection {

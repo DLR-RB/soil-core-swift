@@ -26,7 +26,7 @@ public actor DecodedConnection {
         self.encoding = encoding
         self.log = logger
 
-        await connection.setReceiver(self)
+        await connection.setReceiver(self).wait()
     }
 
     /**
@@ -84,18 +84,32 @@ extension DecodedConnection: MessageConnection {
      - Note: The returned request does not wait for message delivery, only transmission.
      */
     @discardableResult
-    public nonisolated func send(message: Message) -> Request {
+    public nonisolated func send(message: Message) -> any Request {
         AsyncRequest {
             await self.send(message)
         }
     }
+}
+
+extension DecodedConnection: MessageDistributor {
 
     /**
      Set the receiver for messages produced by this connection.
      - Parameter receiver: The receiver of the messages coming in over this connection.
      */
-    public func setReceiver(_ receiver: any MessageReceiver) {
+    @discardableResult
+    public nonisolated func setReceiver(_ receiver: (any MessageReceiver)?) -> any Request {
+        AsyncRequest {
+            await self.set(receiver: receiver)
+        }
+    }
+
+    private func set(receiver: (any MessageReceiver)?) async {
         self.receiver = receiver
+    }
+
+    public func getReceiver() async -> (any MessageReceiver)? {
+        receiver
     }
 }
 
@@ -106,7 +120,7 @@ extension DecodedConnection: Connection {
     }
 
     @discardableResult
-    public nonisolated func close() -> Request {
+    public nonisolated func close() -> any Request {
         connection.close()
     }
 

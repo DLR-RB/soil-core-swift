@@ -10,21 +10,7 @@
  - Notifier: Suggests limited agency of clients, 'notification' suggests only events, not complete data
  - Publisher: Not clear that observers request which data to receive
  */
-public protocol Observable: Sendable {
-
-    /**
-     Set the receiver for subscription data
-     - Parameter receiver: The receiver of data matching the subscription rules
-     - Returns: A request to optionally wait for completion
-     */
-    @discardableResult
-    func setReceiver(_ receiver: Receiver?) -> Request
-
-    /**
-     Get the receiver for matching data.
-     - Returns: The receiver, if set
-     */
-    func getReceiver() async -> Receiver?
+public protocol Observable: Distributor, Sendable {
 
     /**
      Include a path in the subscription.
@@ -33,7 +19,7 @@ public protocol Observable: Sendable {
      - Returns: A request to wait for completion of the inclusion
      */
     @discardableResult
-    func include(_ path: Path, depth: Int?) -> Request
+    func include(_ path: Path, depth: Int?) -> any Request
 
     /**
      Exclude a path from the subscription.
@@ -42,7 +28,7 @@ public protocol Observable: Sendable {
      - Returns: A request to wait for completion of the exclusion
      */
     @discardableResult
-    func exclude(_ path: Path, depth: Int?) -> Request
+    func exclude(_ path: Path, depth: Int?) -> any Request
 
     /**
      Delete subscription rules at a path with a given depth
@@ -51,7 +37,7 @@ public protocol Observable: Sendable {
      - Returns: A request to wait for completion of the deletion
      */
     @discardableResult
-    func deleteRules(at path: Path, depth: Int?) -> Request
+    func deleteRules(at path: Path, depth: Int?) -> any Request
 
     /**
      Check if a particular path is covered by the current subscription rules.

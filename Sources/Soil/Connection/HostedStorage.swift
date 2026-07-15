@@ -25,7 +25,7 @@ public actor HostedStorage {
         self.connection = connection
 
         // Register to receive messages from the component
-        await connection.setReceiver(self)
+        await connection.setReceiver(self).wait()
     }
 
     /**

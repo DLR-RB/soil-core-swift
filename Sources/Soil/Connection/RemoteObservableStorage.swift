@@ -25,7 +25,7 @@ public actor RemoteObservableStorage {
         observable = await .init(connection: connection)
         storage = await .init(connection: connection)
 
-        await connection.setReceiver(self)
+        await connection.setReceiver(self).wait()
     }
 }
 
@@ -55,7 +55,7 @@ extension RemoteObservableStorage: MessageReceiver {
 
 // MARK: Observable
 
-extension RemoteObservableStorage: Observable {
+extension RemoteObservableStorage: Distributor {
 
     /**
      Set the receiver for subscription data
@@ -74,6 +74,9 @@ extension RemoteObservableStorage: Observable {
     public func getReceiver() async -> (any Receiver)? {
         await observable.getReceiver()
     }
+}
+
+extension RemoteObservableStorage: Observable {
 
     /**
      Include a path in the subscription.
@@ -152,7 +155,7 @@ extension RemoteObservableStorage: Storage {
        The data does not actually need to be stored when the function returns, and should return as fast as possible.
      */
     @discardableResult
-    public nonisolated func accept(_ tree: any SampleTree, for path: Path) -> Request {
+    public nonisolated func accept(_ tree: any SampleTree, for path: Path) -> any Request {
         storage.accept(tree, for: path)
     }
 
@@ -190,7 +193,7 @@ extension RemoteObservableStorage: Storage {
      - Parameter depth: The number of levels to include for deletion below the given path
      */
     @discardableResult
-    public nonisolated func delete(path: Path, from start: Timestamp?, to end: Timestamp?, depth: Int?) -> Request {
+    public nonisolated func delete(path: Path, from start: Timestamp?, to end: Timestamp?, depth: Int?) -> any Request {
         storage.delete(path: path, from: start, to: end, depth: depth)
     }
 }

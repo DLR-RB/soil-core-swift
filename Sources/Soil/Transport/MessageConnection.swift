@@ -2,7 +2,7 @@
 /**
  A connection to a component via a transport layer
  */
-public protocol MessageConnection: Receiver, Connection, Sendable {
+public protocol MessageConnection: Receiver, Connection, MessageDistributor, Sendable {
 
     /**
      Send a message to the component via the underlying transport layer.
@@ -12,12 +12,6 @@ public protocol MessageConnection: Receiver, Connection, Sendable {
      */
     @discardableResult
     func send(message: Message) -> any Request
-
-    /**
-     Set the receiver for messages produced by this connection.
-     - Parameter receiver: The receiver of the messages coming in over this connection.
-     */
-    func setReceiver(_ receiver: MessageReceiver) async
 }
 
 // MARK: Receiver

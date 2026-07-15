@@ -21,7 +21,7 @@ public final class SimpleLogger: Logger {
     private let path: Path
 
     /// The receiver to which the log messages are forwarded to
-    private let receiver: Receiver
+    private let receiver: any Receiver
 
     /**
      The stored log level for this logger

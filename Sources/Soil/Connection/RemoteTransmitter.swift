@@ -22,21 +22,25 @@ public actor RemoteTransmitter {
         self.batches = .init(receiver: receiver, batchTimeout: batchTimeout)
 
         // Register to receive messages from the component
-        await connection.setReceiver(batches)
+        await connection.setReceiver(batches).wait()
     }
+}
+
+extension RemoteTransmitter: Distributor {
 
     /**
      Set the receiver for data received over the connection.
      - Parameter receiver: The receiver of the data coming in over this connection.
      */
-    public func setReceiver(_ receiver: any Receiver) async {
-        await batches.setReceiver(receiver)
+    @discardableResult
+    public nonisolated func setReceiver(_ receiver: (any Receiver)?) -> any Request {
+        batches.setReceiver(receiver)
     }
 
     /**
      Get the receiver of incoming messages of this connection.
      */
-    public func getReceiver() async -> any Receiver {
-        return await batches.getReceiver()
+    public func getReceiver() async -> (any Receiver)? {
+        await batches.getReceiver()
     }
 }

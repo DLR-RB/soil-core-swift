@@ -9,7 +9,7 @@ actor RemoteDataCollector {
     private let batchTimeout: UInt64
 
     /// The receiver injesting updates from the remote component
-    private var receiver: any Receiver
+    private var receiver: (any Receiver)?
 
     /// The currently tracked batches, indexed by their id
     private var activeBatches: [Int : IncompleteReceivedTree] = [:]
@@ -17,24 +17,9 @@ actor RemoteDataCollector {
     /**
      Create a handler to manage messages.
      */
-    init(receiver: any Receiver, batchTimeout: TimeInterval) {
+    init(receiver: (any Receiver)?, batchTimeout: TimeInterval) {
         self.receiver = receiver
         self.batchTimeout = UInt64(batchTimeout * 1_000_000_000)
-    }
-
-    /**
-     Set the receiver for data received over the connection.
-     - Parameter receiver: The receiver of the data coming in over this connection.
-     */
-    public func setReceiver(_ receiver: any Receiver) {
-        self.receiver = receiver
-    }
-
-    /**
-     Get the receiver of incoming messages of this connection.
-     */
-    public func getReceiver() -> any Receiver {
-        return receiver
     }
 
     /**
@@ -75,7 +60,7 @@ actor RemoteDataCollector {
      */
     private func didComplete(batch id: Int, with tree: any SampleTree, at path: Path) {
         activeBatches[id] = nil
-        receiver.accept(tree, for: path)
+        receiver?.accept(tree, for: path)
     }
 
     /// The number of currently active batches
@@ -93,6 +78,31 @@ actor RemoteDataCollector {
     }
 }
 
+extension RemoteDataCollector: Distributor {
+
+    /**
+     Set the receiver for data received over the connection.
+     - Parameter receiver: The receiver of the data coming in over this connection.
+     */
+    @discardableResult
+    public nonisolated func setReceiver(_ receiver: (any Receiver)?) -> any Request {
+        AsyncRequest {
+            await self.set(receiver: receiver)
+        }
+    }
+
+    private func set(receiver: (any Receiver)?) {
+        self.receiver = receiver
+    }
+
+    /**
+     Get the receiver of incoming messages of this connection.
+     */
+    public func getReceiver() -> (any Receiver)? {
+        return receiver
+    }
+}
+
 extension RemoteDataCollector: MessageReceiver {
 
     /**
@@ -106,7 +116,7 @@ extension RemoteDataCollector: MessageReceiver {
         }
         guard let id = message.id else {
             // No batch id, so we just forward the message data
-            receiver.accept(message.data, for: message.path)
+            receiver?.accept(message.data, for: message.path)
             return
         }
 

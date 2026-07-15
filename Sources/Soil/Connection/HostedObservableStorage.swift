@@ -30,7 +30,7 @@ public actor HostedObservableStorage {
         self.storage = await .init(hosting: observable, through: connection)
 
         // Receive messages in this class, and redistribute to the parts
-        await connection.setReceiver(self)
+        await connection.setReceiver(self).wait()
     }
 }
 

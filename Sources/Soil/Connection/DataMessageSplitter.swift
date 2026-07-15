@@ -117,7 +117,7 @@ public actor DataMessageSplitter {
      */
     public init(wrapping connection: MessageConnection) async {
         self.connection = connection
-        await connection.setReceiver(self)
+        await connection.setReceiver(self).wait()
     }
 
     // MARK: Sending
@@ -221,13 +221,27 @@ extension DataMessageSplitter: MessageConnection {
             await self.send(message)
         }
     }
+}
+
+extension DataMessageSplitter: MessageDistributor {
 
     /**
      Set the receiver for messages coming in over this connection.
      - Parameter receiver: The receiver of incoming messages.
      */
-    public func setReceiver(_ receiver: any MessageReceiver) {
+    @discardableResult
+    public nonisolated func setReceiver(_ receiver: (any MessageReceiver)?) -> any Request {
+        AsyncRequest {
+            await self.set(receiver: receiver)
+        }
+    }
+
+    private func set(receiver: (any MessageReceiver)?) async {
         self.receiver = receiver
+    }
+
+    public func getReceiver() async -> (any MessageReceiver)? {
+        receiver
     }
 }
 

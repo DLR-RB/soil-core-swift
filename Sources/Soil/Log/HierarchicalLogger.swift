@@ -16,7 +16,7 @@ public struct HierarchicalLogger: Logger {
     public static let defaultLevel: LogLevel = .warning
 
     /// The parent logger from which the log level is inherited
-    private let parent: Logger?
+    private let parent: (any Logger)?
 
     /// The tree node to write log entries
     private let logNode: StorageNode
@@ -24,7 +24,7 @@ public struct HierarchicalLogger: Logger {
     /// The tree node to write the log level
     private let levelNode: any StringStorageNode
 
-    public init(parent: Logger? = nil, node: StorageNode) {
+    public init(parent: (any Logger)? = nil, node: StorageNode) {
         self.parent = parent
         self.logNode = node
         self.levelNode = node.child(named: "level")

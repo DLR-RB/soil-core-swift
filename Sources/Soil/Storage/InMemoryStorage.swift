@@ -311,7 +311,7 @@ extension InMemoryStorage: Storage {
      - Returns: The request, if the caller wants to wait for completion
      */
     @discardableResult
-    public nonisolated func accept(_ tree: any SampleTree, for path: Path) -> Request {
+    public nonisolated func accept(_ tree: any SampleTree, for path: Path) -> any Request {
         AsyncRequest {
             await self.receiveInternal(tree, for: path)
         }
@@ -351,7 +351,7 @@ extension InMemoryStorage: Storage {
      - Returns: A request that can be used to wait until completion
      */
     @discardableResult
-    public nonisolated func delete(path: Path, from start: Timestamp?, to end: Timestamp?, depth: Int?) -> Request {
+    public nonisolated func delete(path: Path, from start: Timestamp?, to end: Timestamp?, depth: Int?) -> any Request {
         AsyncRequest {
             await self.deleteInternal(path: path, from: start, to: end, depth: depth)
         }

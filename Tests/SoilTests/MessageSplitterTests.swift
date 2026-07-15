@@ -62,7 +62,7 @@ struct MessageSplitterTests {
         let connection = await connections.one.apply(encoding: JsonEncoding())
         let receivingConnection = await connections.two.apply(encoding: JsonEncoding())
         let receiver = TestMessageReceiver()
-        await receivingConnection.setReceiver(receiver)
+        await receivingConnection.setReceiver(receiver).wait()
 
         let splitter = await DataMessageSplitter(wrapping: connection)
 
@@ -107,6 +107,6 @@ struct MessageSplitterTests {
         #expect(received.tree.isEqual(to: tree))
 
         // Use variable to prevent warning
-        await combiner.setReceiver(receiver)
+        await combiner.setReceiver(receiver).wait()
     }
 }

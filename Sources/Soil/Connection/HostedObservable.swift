@@ -20,8 +20,8 @@ public actor HostedObservable {
         self.connection = connection
 
         // Register to receive messages from the component
-        await connection.setReceiver(self)
-        observable.setReceiver(self)
+        await connection.setReceiver(self).wait()
+        await observable.setReceiver(self).wait()
     }
 
     // MARK: Subscription message handling

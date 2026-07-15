@@ -39,14 +39,25 @@ final class BidirectionalConnection {
             sentMessages += 1
         }
 
-        nonisolated func send(message data: Data) -> Request {
+        nonisolated func send(message data: Data) -> any Request {
             AsyncRequest {
                 await self.sendToRemote(data)
             }
         }
 
-        func setReceiver(_ receiver: EncodedMessageReceiver) async {
+        @discardableResult
+        nonisolated func setReceiver(_ receiver: (any EncodedMessageReceiver)?) -> any Request {
+            AsyncRequest {
+                await self.set(receiver: receiver)
+            }
+        }
+
+        private func set(receiver: (any EncodedMessageReceiver)?) {
             self.receiver = receiver
+        }
+
+        func getReceiver() async -> (any EncodedMessageReceiver)? {
+            receiver
         }
 
         fileprivate func setRemote(_ remote: EncodedMessageReceiver) async {
@@ -67,7 +78,8 @@ final class BidirectionalConnection {
             true
         }
 
-        nonisolated func close() -> Request {
+        @discardableResult
+        nonisolated func close() -> any Request {
             CompletedRequest()
         }
 

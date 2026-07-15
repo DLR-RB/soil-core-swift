@@ -25,7 +25,7 @@ public actor RemoteStorage {
         self.requestTimeout = requestTimeout
 
         // Register to receive messages from the component
-        await connection.setReceiver(self)
+        await connection.setReceiver(self).wait()
     }
 
     /**
@@ -132,7 +132,7 @@ extension RemoteStorage: Storage {
        The data does not actually need to be stored when the function returns, and should return as fast as possible.
      */
     @discardableResult
-    public nonisolated func accept(_ tree: any SampleTree, for path: Path) -> Request {
+    public nonisolated func accept(_ tree: any SampleTree, for path: Path) -> any Request {
         connection.accept(tree, for: path)
     }
 
@@ -170,7 +170,7 @@ extension RemoteStorage: Storage {
      - Parameter depth: The number of levels to include for deletion below the given path
      */
     @discardableResult
-    public nonisolated func delete(path: Path, from start: Timestamp?, to end: Timestamp?, depth: Int?) -> Request {
+    public nonisolated func delete(path: Path, from start: Timestamp?, to end: Timestamp?, depth: Int?) -> any Request {
         // TODO: Track deletion requests
         let message = Message.delete(path, from: start, to: end, depth: depth, id: nil)
         return connection.send(message: message)

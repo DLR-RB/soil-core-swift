@@ -39,14 +39,26 @@ final class BidirectionalStream {
             sentBytes += bytes.count
         }
 
-        nonisolated func send(bytes: [UInt8]) -> Request {
+        @discardableResult
+        nonisolated func send(bytes: [UInt8]) -> any Request {
             AsyncRequest {
                 await self.sendToRemote(bytes)
             }
         }
 
-        func setReceiver(_ receiver: StreamReceiver) async {
+        @discardableResult
+        nonisolated func setReceiver(_ receiver: (any StreamReceiver)?) -> any Request {
+            AsyncRequest {
+                await self.set(receiver: receiver)
+            }
+        }
+
+        private func set(receiver: (any StreamReceiver)?) {
             self.receiver = receiver
+        }
+
+        func getReceiver() -> (any StreamReceiver)? {
+            receiver
         }
 
         fileprivate func setRemote(_ remote: StreamReceiver) async {
@@ -67,7 +79,8 @@ final class BidirectionalStream {
             true
         }
 
-        nonisolated func close() -> Request {
+        @discardableResult
+        nonisolated func close() -> any Request {
             CompletedRequest()
         }
 
