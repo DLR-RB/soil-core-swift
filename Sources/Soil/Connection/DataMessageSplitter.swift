@@ -26,21 +26,28 @@ private final class MessageSequence {
     /**
      Update the expected message count from a batch message.
      */
-    func update(count: Int?) {
-        guard let count else {
-            return
+    private func update(count: Int?) {
+        if let count, count > total {
+            total = count
         }
-        guard count > total else {
-            return
+    }
+
+    private func didReceiveMessage() {
+        received += 1
+        // Ensure that the sequence is marked as complete,
+        // if more messages are received than expected
+        if received > total {
+            total = received
         }
-        total = count
     }
 
     /**
      Add the contents of a batch message
      */
     func add(message: Message) {
+        update(count: message.count)
         add(tree: message.data, path: message.path)
+        didReceiveMessage()
     }
 
     /**
@@ -145,7 +152,6 @@ public actor DataMessageSplitter {
         // Waiting is needed to calculate the new total number of messages,
         // which will be different from the `count` previously in the messages
         let sequence = createOrGet(request: message.id)
-        sequence.update(count: message.count)
         sequence.add(message: message)
 
         guard sequence.isComplete else {

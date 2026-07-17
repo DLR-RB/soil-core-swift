@@ -79,6 +79,52 @@ struct MessageSplitterTests {
         #expect(count == 4)
     }
 
+    @Test("Send multiple messages with request")
+    func sendMultipleMessages() async throws {
+        let tree = ImmutableSampleTree(
+            samples: [.init(value: .string("a"), timeIntervalSince1970: 1)],
+            children: [
+                "b" : ImmutableSampleTree(
+                    samples: [.init(value: .string("b"), timeIntervalSince1970: 2)],
+                    children: [
+                        "c" : ImmutableSampleTree(value: .string("c"), timestamp: .init(timeIntervalSince1970: 3))
+                    ]
+                ),
+                "d" : ImmutableSampleTree(value: .string("d"), timestamp: .init(timeIntervalSince1970: 4))
+            ]
+        )
+
+        let connections = await BidirectionalConnection()
+        // Create the connection that sends the batched messages
+        let connection = await connections.one.apply(encoding: JsonEncoding())
+        let splitter = await DataMessageSplitter(wrapping: connection)
+
+        // Create the receiver that recombines them
+        let receivingConnection = await connections.two.apply(encoding: JsonEncoding())
+        let receiver = TestReceiver()
+        let combiner = await RemoteTransmitter(receiver: receiver, connection: receivingConnection, batchTimeout: 1.5)
+
+        // Send the samples of A
+        let path = ["xyz"]
+        let treeA = ImmutableSampleTree(samples: tree.samples)
+        await splitter.send(message: .tree(treeA, for: path, inResponseTo: 123, totalMessages: 3)).wait()
+
+        // Send the tree at B, including C
+        await splitter.send(message: .tree(tree.children["b"]!, for: path + ["b"], inResponseTo: 123, totalMessages: 3)).wait()
+
+        // Send D
+        await splitter.send(message: .tree(tree.children["d"]!, for: path + ["d"], inResponseTo: 123, totalMessages: 3)).wait()
+
+        let count = await receiver.getCount()
+        #expect(count == 1)
+        let received = try #require(await receiver.getLast())
+        #expect(received.path == path)
+        #expect(received.tree.isEqual(to: tree))
+
+        // Use variable to prevent warning
+        await combiner.setReceiver(receiver).wait()
+    }
+
     @Test("Receive messages as single tree")
     func recombineMessages() async throws {
         let tree = ImmutableSampleTree(
@@ -106,7 +152,6 @@ struct MessageSplitterTests {
         let path = ["xyz"]
         await splitter.send(message: .tree(tree, for: path)).wait()
 
-        try await Task.sleep(nanoseconds: 1000_000_000)
         let count = await receiver.getCount()
         #expect(count == 1)
         let received = try #require(await receiver.getLast())
