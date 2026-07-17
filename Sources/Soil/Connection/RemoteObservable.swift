@@ -84,7 +84,7 @@ extension RemoteObservable: MessageReceiver {
     }
 }
 
-// MARK: Observable
+// MARK: Distributor
 
 extension RemoteObservable: Distributor {
 
@@ -111,6 +111,8 @@ extension RemoteObservable: Distributor {
         receiver
     }
 }
+
+// MARK: Observable
 
 extension RemoteObservable: Observable {
 
