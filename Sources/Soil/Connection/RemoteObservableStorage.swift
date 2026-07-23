@@ -79,6 +79,10 @@ extension RemoteObservableStorage: Distributor {
     }
 }
 
+extension RemoteObservableStorage: ObservableStorage {
+
+}
+
 extension RemoteObservableStorage: Observable {
 
     /**

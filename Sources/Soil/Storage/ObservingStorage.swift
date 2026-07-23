@@ -2,7 +2,7 @@
 /**
  A wrapper to make a storage observable
  */
-public actor ObservableStorage {
+public actor ObservingStorage: ObservableStorage {
 
     private let storage: any Storage
 
@@ -42,7 +42,7 @@ public actor ObservableStorage {
     }
 }
 
-extension ObservableStorage: Observable {
+extension ObservingStorage: Observable {
 
     /**
      Set the receiver for subscription data
@@ -127,7 +127,7 @@ extension ObservableStorage: Observable {
     }
 }
 
-extension ObservableStorage: Storage {
+extension ObservingStorage: Storage {
 
     /**
      Receive a tree for a path.

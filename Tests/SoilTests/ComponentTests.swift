@@ -81,7 +81,7 @@ struct ComponentTests {
     func testRemoteObservable() async throws {
         let connection = await BidirectionalConnection()
 
-        let remoteStorage = ObservableStorage(wrapping: InMemoryStorage())
+        let remoteStorage = ObservingStorage(wrapping: InMemoryStorage())
         let connectionToClient = await connection.two.apply(encoding: JsonEncoding())
         let remoteConnectionToClient = await HostedObservable(hosting: remoteStorage, through: connectionToClient)
 
@@ -122,7 +122,7 @@ struct ComponentTests {
     func testSubscribeAndEcho() async throws {
         let connection = await BidirectionalConnection()
 
-        let remoteStorage = ObservableStorage(wrapping: InMemoryStorage())
+        let remoteStorage = ObservingStorage(wrapping: InMemoryStorage())
         let connectionToLocal = await DecodedConnection(wrapping: connection.one, encoding: JsonEncoding())
         let remoteConnectionToLocal = await HostedObservableStorage(host: remoteStorage, through: connectionToLocal)
 
@@ -171,7 +171,7 @@ struct ComponentTests {
     func testByteStream() async throws {
         let connection = await BidirectionalStream()
 
-        let remoteStorage = ObservableStorage(wrapping: InMemoryStorage())
+        let remoteStorage = ObservingStorage(wrapping: InMemoryStorage())
         let connectionToLocal = await connection.one.apply(framing: SyncByteLengthFraming()).apply(encoding: JsonEncoding())
         let remoteConnectionToLocal = await HostedObservableStorage(host: remoteStorage, through: connectionToLocal)
 

@@ -9,7 +9,7 @@ struct SubscriptionTests {
     @Test("Exact path")
     func subscribeToExactPath() async throws {
         let storage = InMemoryStorage()
-        let observable = ObservableStorage(wrapping: storage)
+        let observable = ObservingStorage(wrapping: storage)
 
         let receiver = InMemoryStorage()
 
