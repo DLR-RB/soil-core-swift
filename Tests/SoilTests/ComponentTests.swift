@@ -190,7 +190,7 @@ struct ComponentTests {
 
         do {
             // Expected bytes: 2 (sync) + 2 (len) + message
-            let messageLength = "{\"type\":\"include\",\"depth\":0,\"path\":[\"a\",\"b\"]}".data(using: .utf8)!.count
+            let messageLength = "{\"message\":\"include\",\"depth\":0,\"path\":[\"a\",\"b\"]}".data(using: .utf8)!.count
             let rCount = await connection.one.receivedBytes
             #expect(rCount == messageLength + 4)
             #expect(await connection.one.sentBytes == 0)
@@ -207,7 +207,7 @@ struct ComponentTests {
         // Subscription is echoed back, so both sides should have the same bytes sent and received
         do {
             // We don't know the exact number of decimals for the timestamp
-            let messageLength = "{\"path\":[\"a\",\"b\"],\"value\":123,\"valueType\":\"integer\",\"time\":792080931}]}"
+            let messageLength = "{\"path\":[\"a\",\"b\"],\"value\":123,\"type\":\"integer\",\"time\":792080931}]}"
                 .data(using: .utf8)!.count + 4
             let r1 = await connection.one.receivedBytes
             let s1 = await connection.one.sentBytes

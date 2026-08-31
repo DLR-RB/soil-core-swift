@@ -58,10 +58,10 @@ private struct JsonMessage {
 extension JsonMessage: Encodable {
 
     enum CodingKeys: String, CodingKey {
-        case type
+        case message
         case path
         case value
-        case valueType
+        case type
         case samples
         case count
         case depth
@@ -76,7 +76,7 @@ extension JsonMessage: Encodable {
         var container = encoder.container(keyedBy: CodingKeys.self)
         // Only encode message type if not a data message
         if message.type != .data {
-            try container.encode(message.type.rawValue, forKey: .type)
+            try container.encode(message.type.rawValue, forKey: .message)
         }
         // If the path is absent, then it defaults to an empty path
         if !message.path.isEmpty {
@@ -102,7 +102,7 @@ extension JsonMessage: Decodable {
     init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let type: MessageType
-        if let rawType = try container.decodeIfPresent(String.self, forKey: .type) {
+        if let rawType = try container.decodeIfPresent(String.self, forKey: .message) {
             guard let t = MessageType(rawValue: rawType) else {
                 throw DecodingError.typeMismatch(MessageType.self, .init(codingPath: [], debugDescription: "Unknown message type: \(rawType)"))
             }
@@ -264,7 +264,7 @@ private extension Value {
     func encode(in container: inout KeyedEncodingContainer<JsonMessage.CodingKeys>) throws {
         let type = self.type
         switch type {
-            case .data, .integer: try container.encode(type.rawValue, forKey: .valueType)
+            case .data, .integer: try container.encode(type.rawValue, forKey: .type)
             default: break
         }
         switch self {
@@ -278,7 +278,7 @@ private extension Value {
     }
 
     static func decode(from container: KeyedDecodingContainer<JsonMessage.CodingKeys>) throws -> Value {
-        if let rawType = try container.decodeIfPresent(String.self, forKey: .valueType) {
+        if let rawType = try container.decodeIfPresent(String.self, forKey: .type) {
             guard let type = ValueType(rawValue: rawType) else {
                 throw DecodingError.valueNotFound(ValueType.self, .init(codingPath: [], debugDescription: "Unknown value type: \(rawType)", underlyingError: nil))
             }

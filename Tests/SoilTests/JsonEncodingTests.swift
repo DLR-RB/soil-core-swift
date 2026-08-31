@@ -341,7 +341,7 @@ struct JsonEncodingTests {
             id: 567)
         let raw = """
         {
-            "type": "data",
+            "message": "data",
             "path": ["some", "path"],
             "time": 123.0,
             "samples": [
@@ -351,7 +351,7 @@ struct JsonEncodingTests {
                 },
                 {
                     "value": 222,
-                    "valueType": "integer",
+                    "type": "integer",
                     "time": 333.0
                 }
             ],
@@ -364,7 +364,7 @@ struct JsonEncodingTests {
                     "samples": [
                         {
                             "value": "Kioq",
-                            "valueType": "data",
+                            "type": "data",
                             "time": 555.0
                         },
                         {
