@@ -11,8 +11,9 @@ public actor PrintingMessageConnection: MessageConnection {
     /**
      Wrap a connection to print all messages.
      */
-    public init(connection: any MessageConnection) {
+    public init(connection: any MessageConnection) async {
         self.connection = connection
+        await connection.setReceiver(self).wait()
     }
 
     public nonisolated func send(message: Message) -> any Request {
