@@ -2,7 +2,7 @@
 /**
  A message connection that prints all incoming and outgoing messages
  */
-actor PrintingMessageConnection: MessageConnection {
+public actor PrintingMessageConnection: MessageConnection {
 
     private let connection: any MessageConnection
 
@@ -15,7 +15,7 @@ actor PrintingMessageConnection: MessageConnection {
         self.connection = connection
     }
 
-    nonisolated func send(message: Message) -> any Request {
+    public nonisolated func send(message: Message) -> any Request {
         print("Out: \(message)")
         return connection.send(message: message)
     }
@@ -23,22 +23,22 @@ actor PrintingMessageConnection: MessageConnection {
 
 extension PrintingMessageConnection: Connection {
 
-    func isOpen() async -> Bool {
+    public func isOpen() async -> Bool {
         await connection.isOpen()
     }
 
-    nonisolated func close() -> any Request {
+    public nonisolated func close() -> any Request {
         connection.close()
     }
 
-    func onClose(perform block: @escaping @Sendable () -> Void) async {
+    public func onClose(perform block: @escaping @Sendable () -> Void) async {
         await connection.onClose(perform: block)
     }
 }
 
 extension PrintingMessageConnection: MessageDistributor {
 
-    nonisolated func setReceiver(_ receiver: (any MessageReceiver)?) -> any Request {
+    public nonisolated func setReceiver(_ receiver: (any MessageReceiver)?) -> any Request {
         AsyncRequest {
             await self.setReceiverInternal(receiver)
         }
@@ -48,14 +48,14 @@ extension PrintingMessageConnection: MessageDistributor {
         self.receiver = receiver
     }
 
-    func getReceiver() async -> (any MessageReceiver)? {
+    public func getReceiver() async -> (any MessageReceiver)? {
         return self.receiver
     }
 }
 
 extension PrintingMessageConnection: MessageReceiver {
 
-    nonisolated func accept(message: Message) -> any Request {
+    public nonisolated func accept(message: Message) -> any Request {
         AsyncRequest {
             await self.acceptInternal(message: message)
         }
