@@ -264,7 +264,7 @@ private extension Value {
     func encode(in container: inout KeyedEncodingContainer<JsonMessage.CodingKeys>) throws {
         let type = self.type
         switch type {
-            case .data, .integer: try container.encode(type.rawValue, forKey: .type)
+            case .data, .integer, .map, .list: try container.encode(type.rawValue, forKey: .type)
             default: break
         }
         switch self {
@@ -274,45 +274,179 @@ private extension Value {
             case .string(let value): try container.encode(value, forKey: .value)
             case .data(let value): try container.encode(value, forKey: .value)
             case .path(let value): try container.encode(value, forKey: .value)
+            case .list(let value): try container.encode(ListElement(values: value), forKey: .value)
+            case .map(let value): try container.encode(MapElement(values: value), forKey: .value)
+        }
+    }
+
+    func encode(in container: inout UnkeyedEncodingContainer) throws {
+        try container.encode(type.rawValue)
+        switch self {
+            case .null: try container.encodeNil()
+            case .integer(let value): try container.encode(value)
+            case .double(let value): try container.encode(value)
+            case .string(let value): try container.encode(value)
+            case .data(let value): try container.encode(value)
+            case .path(let value): try container.encode(value)
+            case .list(let value): try container.encode(ListElement(values: value))
+            case .map(let value): try container.encode(MapElement(values: value))
         }
     }
 
     static func decode(from container: KeyedDecodingContainer<JsonMessage.CodingKeys>) throws -> Value {
-        if let rawType = try container.decodeIfPresent(String.self, forKey: .type) {
-            guard let type = ValueType(rawValue: rawType) else {
-                throw DecodingError.valueNotFound(ValueType.self, .init(codingPath: [], debugDescription: "Unknown value type: \(rawType)", underlyingError: nil))
+        guard let rawType = try container.decodeIfPresent(String.self, forKey: .type) else {
+            // No type information, so try to detect it
+            if try container.decodeNil(forKey: .value) {
+                return .null
             }
-            switch type {
-                case .null: return .null
-                case .data:
-                    let value = try container.decode(Data.self, forKey: .value)
-                    return .data(value)
-                case .integer:
-                    let value = try container.decode(Int.self, forKey: .value)
-                    return .integer(value)
-                case .double:
-                    let value = try container.decode(Double.self, forKey: .value)
-                    return .double(value)
-                case .string:
-                    let value = try container.decode(String.self, forKey: .value)
-                    return .string(value)
-                case .path:
-                    let value = try container.decode(Path.self, forKey: .value)
-                    return .path(value)
+            if let value = try? container.decode(Double.self, forKey: .value) {
+                return .double(value)
             }
+            if let value = try? container.decode(String.self, forKey: .value) {
+                return .string(value)
+            }
+            let value = try container.decode(Path.self, forKey: .value)
+            return .path(value)
         }
 
-        // No type information, so try to detect it
-        if try container.decodeNil(forKey: .value) {
-            return .null
+        guard let type = ValueType(rawValue: rawType) else {
+            throw DecodingError.valueNotFound(ValueType.self, .init(codingPath: [], debugDescription: "Unknown value type: \(rawType)", underlyingError: nil))
         }
-        if let value = try? container.decode(Double.self, forKey: .value) {
-            return .double(value)
+
+        switch type {
+            case .null: return .null
+            case .data:
+                let value = try container.decode(Data.self, forKey: .value)
+                return .data(value)
+            case .integer:
+                let value = try container.decode(Int.self, forKey: .value)
+                return .integer(value)
+            case .double:
+                let value = try container.decode(Double.self, forKey: .value)
+                return .double(value)
+            case .string:
+                let value = try container.decode(String.self, forKey: .value)
+                return .string(value)
+            case .path:
+                let value: Path
+                do {
+                    value = try container.decode(Path.self, forKey: .value)
+                } catch {
+                    let single = try container.decode(String.self, forKey: .value)
+                    value = [single]
+                }
+                return .path(value)
+            case .list:
+                let value = try container.decode(ListElement.self, forKey: .value)
+                return .list(value.values)
+            case .map:
+                let value = try container.decode(MapElement.self, forKey: .value)
+                return .map(value.values)
         }
-        if let value = try? container.decode(String.self, forKey: .value) {
-            return .string(value)
+    }
+
+    static func decode(from container: inout UnkeyedDecodingContainer, rawType: String?) throws -> Value {
+        guard let rawType else {
+            // No type information, so try to detect it
+            if try container.decodeNil() {
+                return .null
+            }
+            if let value = try? container.decode(Double.self) {
+                return .double(value)
+            }
+            if let value = try? container.decode(String.self) {
+                return .string(value)
+            }
+            let value = try container.decode(Path.self)
+            return .path(value)
         }
-        let value = try container.decode(Path.self, forKey: .value)
-        return .path(value)
+        guard let type = ValueType(rawValue: rawType) else {
+            throw DecodingError.valueNotFound(ValueType.self, .init(codingPath: [], debugDescription: "Unknown value type: \(rawType)", underlyingError: nil))
+        }
+
+        switch type {
+            case .null: return .null
+            case .data:
+                let value = try container.decode(Data.self)
+                return .data(value)
+            case .integer:
+                let value = try container.decode(Int.self)
+                return .integer(value)
+            case .double:
+                let value = try container.decode(Double.self)
+                return .double(value)
+            case .string:
+                let value = try container.decode(String.self)
+                return .string(value)
+            case .path:
+                let value: Path
+                do {
+                    value = try container.decode(Path.self)
+                } catch {
+                    let single = try container.decode(String.self)
+                    value = [single]
+                }
+                return .path(value)
+            case .list:
+                let value = try container.decode(ListElement.self)
+                return .list(value.values)
+            case .map:
+                let value = try container.decode(MapElement.self)
+                return .map(value.values)
+        }
+    }
+}
+
+private struct ListElement {
+
+    let values: [Value]
+}
+
+extension ListElement: Codable {
+
+    init(from decoder: any Decoder) throws {
+        var container = try decoder.unkeyedContainer()
+        var values: [Value] = []
+        while !container.isAtEnd {
+            let rawType = try container.decode(String.self)
+            let value = try Value.decode(from: &container, rawType: rawType)
+            values.append(value)
+        }
+        self.values = values
+    }
+
+    func encode(to encoder: any Encoder) throws {
+        var container = encoder.unkeyedContainer()
+        for value in values {
+            try value.encode(in: &container)
+        }
+    }
+}
+
+private struct MapElement {
+
+    let values: [String: Value]
+}
+
+extension MapElement: Codable {
+
+    init(from decoder: any Decoder) throws {
+        var container = try decoder.unkeyedContainer()
+        var values: [String: Value] = [:]
+        while !container.isAtEnd {
+            let key = try container.decode(String.self)
+            let rawType = try container.decode(String.self)
+            let value = try Value.decode(from: &container, rawType: rawType)
+            values[key] = value
+        }
+        self.values = values
+    }
+
+    func encode(to encoder: any Encoder) throws {
+        var container = encoder.unkeyedContainer()
+        for (key, value) in values {
+            try container.encode(key)
+            try value.encode(in: &container)
+        }
     }
 }

@@ -21,6 +21,12 @@ public enum ValueType: String, Sendable {
 
     /// A path value, represented as `[String]`
     case path
+
+    /// A list of values
+    case list
+
+    /// Values associated with string keys
+    case map
 }
 
 extension ValueType: CustomStringConvertible {

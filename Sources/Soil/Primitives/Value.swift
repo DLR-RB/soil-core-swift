@@ -47,6 +47,16 @@ public enum Value: Sendable {
      */
     case path(Path)
 
+    /**
+     A list of values.
+     */
+    case list([Value])
+
+    /**
+     Values associated with string keys
+     */
+    case map([String: Value])
+
     /// The integer value, if present
     public var integerValue: Int? {
         if case let .integer(value) = self { return value }
@@ -77,6 +87,18 @@ public enum Value: Sendable {
         return nil
     }
 
+    /// The list, if present
+    public var listValue: [Value]? {
+        if case let .list(value) = self { return value }
+        return nil
+    }
+
+    /// The map, if present
+    public var mapValue: [String: Value]? {
+        if case let .map(value) = self { return value }
+        return nil
+    }
+
     /// The primitive type of the contained value
     public var type: ValueType {
         switch self {
@@ -86,6 +108,8 @@ public enum Value: Sendable {
         case .double: .double
         case .string: .string
         case .path: .path
+        case .list: .list
+        case .map: .map
         }
     }
 }
@@ -105,6 +129,8 @@ extension Value: CustomStringConvertible {
         case .string(let value): "'\(value)'"
         case .data(let value): value.hex + " (Data)"
         case .path(let value): value.map { "'\($0)'" }.joined(separator: ", ")
+        case .list(let value): value.map { $0.description }.joined(separator: ", ")
+        case .map(let value): value.map { "\($0.key) = \($0.value)" }.joined(separator: ", ")
         }
     }
 }

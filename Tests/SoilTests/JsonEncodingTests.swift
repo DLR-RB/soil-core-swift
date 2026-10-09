@@ -313,6 +313,26 @@ struct JsonEncodingTests {
         ])
     }
 
+    @Test("Lists")
+    func testList() throws {
+        try assertRoundTrip(
+            .value(.list([.integer(123), .double(3.14), .string("abc")]), for: ["a"])
+        )
+    }
+
+    @Test("Maps")
+    func testMap() throws {
+        try assertRoundTrip(
+            .value(.map(
+                [
+                    "x" : .integer(123),
+                    "y" : .double(3.14),
+                    "z" : .string("abc")
+                ]
+            ), for: ["a"])
+        )
+    }
+
     // MARK: Standard messages
 
     @Test("All fields set")
