@@ -1,4 +1,4 @@
-
+import Foundation
 
 /// A value with a timestamp
 public struct Sample: Sendable {
@@ -46,6 +46,19 @@ public struct Sample: Sendable {
 
 extension Sample: Equatable {
 
+    /**
+     Compare two samples, allowing for a small difference in their timestamps.
+
+     This is useful when comparing samples that passed through a lossy encoding,
+     e.g. timestamps converted to floating point seconds since 1970.
+     - Parameter other: The sample to compare to
+     - Parameter timeTolerance: The maximum allowed difference between the timestamps (in seconds)
+     - Returns: `true`, if the values are equal and the timestamps are within the tolerance (or both `nil`)
+     */
+    public func isEqual(to other: Sample, timeTolerance: TimeInterval) -> Bool {
+        value == other.value &&
+        timestamp.isEqual(to: other.timestamp, tolerance: timeTolerance)
+    }
 }
 
 extension Sample: Comparable {

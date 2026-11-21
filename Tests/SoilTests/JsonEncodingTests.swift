@@ -13,7 +13,7 @@ struct JsonEncodingTests {
         do {
             let decoded = try encoder.decode(data)
 
-            #expect(decoded == message)
+            #expect(decoded.isEqual(to: message, timeTolerance: testTimeTolerance))
         } catch {
             print(String(data: data, encoding: .utf8) ?? "Invalid encoding")
             throw error
@@ -288,7 +288,7 @@ struct JsonEncodingTests {
             let data = try codec.encode(message)
             let decoded = try codec.decode(data)
 
-            #expect(decoded == message)
+            #expect(decoded.isEqual(to: message, timeTolerance: testTimeTolerance))
         }
     }
 
@@ -410,7 +410,7 @@ struct JsonEncodingTests {
         let encoder = JsonEncoding()
         let decoded = try encoder.decode(encoded)
 
-        #expect(decoded == message)
+        #expect(decoded.isEqual(to: message, timeTolerance: testTimeTolerance))
 
         try assertRoundTrip(message)
     }
