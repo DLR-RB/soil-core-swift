@@ -1,3 +1,4 @@
+import Foundation
 
 /**
  A message to transmit between components.
@@ -270,26 +271,30 @@ extension Message {
 
 extension Message: Equatable {
 
-    public static func == (_ lhs: Message, _ rhs: Message) -> Bool {
-        lhs.type == rhs.type &&
-        lhs.path == rhs.path &&
-        lhs.count == rhs.count &&
-        lhs.depth == rhs.depth &&
-        lhs.id == rhs.id &&
-        compare(lhs.time, to: rhs.time) &&
-        compare(lhs.end, to: rhs.end) &&
-        lhs.data.isEqual(to: rhs.data)
-    }
-}
+    /**
+     Compare two messages, allowing for a small difference in all timestamps.
 
-private func compare(_ date: Timestamp?, to other: Timestamp?) -> Bool {
-    guard let date else {
-        return other == nil
+     This is useful when comparing messages that passed through a lossy encoding,
+     e.g. timestamps converted to floating point seconds since 1970.
+     - Parameter other: The message to compare to
+     - Parameter timeTolerance: The maximum allowed difference between timestamps (in seconds)
+     - Returns: `true`, if all properties are equal and all timestamps (including those of samples) are within the tolerance
+     */
+    public func isEqual(to other: Message, timeTolerance: TimeInterval) -> Bool {
+        type == other.type &&
+        path == other.path &&
+        count == other.count &&
+        depth == other.depth &&
+        id == other.id &&
+        time.isEqual(to: other.time, tolerance: timeTolerance) &&
+        end.isEqual(to: other.end, tolerance: timeTolerance) &&
+        data.isEqual(to: other.data, timeTolerance: timeTolerance)
     }
-    guard let other else {
-        return false
+
+    /// Compare two messages, requiring all timestamps to match exactly
+    public static func == (_ lhs: Message, _ rhs: Message) -> Bool {
+        lhs.isEqual(to: rhs, timeTolerance: 0)
     }
-    return date.distance(to: other) < 0.001
 }
 
 // MARK: Description
