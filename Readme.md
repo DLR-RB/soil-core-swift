@@ -208,6 +208,11 @@ Transport is layered. A raw `Connection` carries bytes, which can be:
 
 The lower-level `DecodedConnection(wrapping:encoding:)` convenience combines both steps.
 
+Received messages may come from systems with a wider number range.
+When decoding, integer values outside of the range of `Int` are clamped to `Int.min` or `Int.max`,
+and doubles that are too large become infinity.
+Conversions within Swift (e.g. with `ValueConvertible`) never clamp, and fail instead.
+
 ## Development
 
 ```sh

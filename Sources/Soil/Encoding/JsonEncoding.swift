@@ -2,6 +2,11 @@ import Foundation
 
 /**
  An encoding that represents messages as JSON objects
+
+ Numbers in received messages that are outside of the supported range are not rejected,
+ since other systems may support a wider range:
+ Integer values are clamped to `Int.min` or `Int.max`, and doubles that are too large become infinity.
+ NaN and infinity are encoded as the strings `"nan"`, `"inf"` and `"-inf"`, together with the `double` type.
  */
 public final class JsonEncoding: Sendable {
 
