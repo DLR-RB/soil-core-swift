@@ -129,7 +129,6 @@ struct JsonWireFormatTests {
         #expect(try value(#"{"value": 9223372036854775807, "type": "integer"}"#) == .integer(.max))
         #expect(try value(#"{"value": -9223372036854775808, "type": "integer"}"#) == .integer(.min))
         #expect(try value(#"{"value": 3.0, "type": "integer"}"#) == .integer(3))
-        #expect(throws: DecodingError.self) { try decode(#"{"value": 9223372036854775808, "type": "integer"}"#) }
         #expect(throws: DecodingError.self) { try decode(#"{"value": 3.5, "type": "integer"}"#) }
     }
 
@@ -175,9 +174,183 @@ struct JsonWireFormatTests {
         #expect(throws: DecodingError.self) { try decode(json) }
     }
 
-    @Test("Non-finite doubles are rejected")
-    func nonFinite() {
-        let message = Message(type: .data, path: ["a"], data: ImmutableSampleTree(value: .double(.nan)))
-        #expect(throws: EncodingError.self) { try JsonEncoding().encode(message) }
+    // MARK: Special doubles
+
+    private static let encodings: [any MessageEncoding] = [JsonEncoding(), CompactJsonEncoding()]
+
+    private func roundTrip(_ value: Value, encoding: any MessageEncoding) throws -> Value? {
+        let message = Message(type: .data, path: ["a"], data: ImmutableSampleTree(value: value))
+        return try encoding.decode(encoding.encode(message)).data.samples.first?.value
+    }
+
+    /// Check that a value is a double with the same bit pattern (sign of zero, NaN), or the same value
+    private func isSame(_ value: Value?, _ expected: Double) -> Bool {
+        guard case .double(let double) = value else {
+            return false
+        }
+        return expected.isNaN ? double.isNaN : double.bitPattern == expected.bitPattern
+    }
+
+    @Test("Non-finite doubles", arguments: [Double.nan, -.nan, .signalingNaN, .infinity, -.infinity])
+    func nonFinite(_ double: Double) throws {
+        for encoding in Self.encodings {
+            #expect(isSame(try roundTrip(.double(double), encoding: encoding), double))
+            // In lists and maps
+            let list = try roundTrip(.list([.double(double), .string("nan")]), encoding: encoding)?.listValue
+            #expect(isSame(list?.first, double))
+            #expect(list?.last == .string("nan"))
+            let map = try roundTrip(.map(["x": .double(double)]), encoding: encoding)?.mapValue
+            #expect(isSame(map?["x"], double))
+        }
+    }
+
+    @Test("Non-finite doubles in multiple samples")
+    func nonFiniteSamples() throws {
+        let message = Message(type: .data, path: ["a"], data: ImmutableSampleTree(samples: [
+            Sample(value: .double(.infinity), timestamp: Self.time),
+            Sample(value: .double(-.infinity), timestamp: Self.time.addingTimeInterval(1)),
+        ]))
+        for encoding in Self.encodings {
+            #expect(try encoding.decode(encoding.encode(message)) == message)
+        }
+    }
+
+    @Test("Wire format of non-finite doubles")
+    func nonFiniteWireFormat() throws {
+        let nan = Message(type: .data, path: ["a"], data: ImmutableSampleTree(value: .double(.nan)))
+        let infinity = Message(type: .data, path: ["a"], data: ImmutableSampleTree(value: .list([.double(-.infinity)])))
+        let cases: [(any MessageEncoding, Message, String)] = [
+            (JsonEncoding(), nan, #"{"path":["a"],"type":"double","value":"nan"}"#),
+            (CompactJsonEncoding(), nan, #"{"p":["a"],"h":2,"v":"nan"}"#),
+            (JsonEncoding(), infinity, #"{"path":["a"],"type": "list","value":["double","-inf"]}"#),
+            (CompactJsonEncoding(), infinity, #"{"p":["a"],"h":6,"v":[2,"-inf"]}"#),
+        ]
+        for (encoding, message, expected) in cases {
+            let object = try JSONSerialization.jsonObject(with: encoding.encode(message)) as? NSDictionary
+            let expectedObject = try JSONSerialization.jsonObject(with: Data(expected.utf8)) as? NSDictionary
+            #expect(object != nil)
+            #expect(object == expectedObject)
+        }
+    }
+
+    @Test("Decoding of non-finite doubles")
+    func nonFiniteDecoding() throws {
+        #expect(isSame(try value(#"{"type": "double", "value": "inf"}"#), .infinity))
+        #expect(isSame(try value(#"{"value": "-inf", "type": "double"}"#), -.infinity))
+        #expect(isSame(try value(#"{"value": ["double", "nan"], "type": "list"}"#)?.listValue?.first, .nan))
+        // Without type, the strings are not special
+        #expect(try value(#"{"value": "nan"}"#) == .string("nan"))
+        #expect(try value(#"{"value": ["string", "inf"], "type": "list"}"#) == .list([.string("inf")]))
+        // Only the exact names are accepted
+        for name in ["NaN", "Infinity", "+inf", "-nan", "", "1.5"] {
+            #expect(throws: DecodingError.self) { try decode(#"{"type": "double", "value": "\#(name)"}"#) }
+        }
+    }
+
+    @Test("Finite special doubles", arguments: [
+        -0.0, 0.0, .leastNonzeroMagnitude, -.leastNonzeroMagnitude, .leastNormalMagnitude,
+        .greatestFiniteMagnitude, -.greatestFiniteMagnitude, 1e20, 0.1 + 0.2, 2,
+    ])
+    func finiteSpecial(_ double: Double) throws {
+        for encoding in Self.encodings {
+            #expect(isSame(try roundTrip(.double(double), encoding: encoding), double))
+        }
+        // Finite values are encoded as JSON numbers without type
+        let message = Message(type: .data, path: [], data: ImmutableSampleTree(value: .double(double)))
+        let object = try JSONSerialization.jsonObject(with: JsonEncoding().encode(message)) as? NSDictionary
+        #expect(object?["type"] == nil)
+        #expect(object?["value"] is NSNumber)
+    }
+
+    @Test("Underflow decodes to zero")
+    func underflow() throws {
+        #expect(isSame(try value(#"{"value": 1e-400}"#), 0))
+        #expect(isSame(try value(#"{"value": -1e-400}"#), -0.0))
+    }
+
+    // MARK: Out of range numbers
+
+    @Test("Doubles too large are converted to infinity", arguments: [
+        ("1e400", Double.infinity),
+        ("-1e400", -Double.infinity),
+        ("1.8e308", .infinity),
+        ("123456789e999999999999", .infinity),
+        ("1.7976931348623157e308", .greatestFiniteMagnitude),
+        ("-1.7976931348623157e308", -.greatestFiniteMagnitude),
+    ])
+    func doubleOverflow(_ number: String, _ expected: Double) throws {
+        // Without type, typed, and in lists and maps
+        #expect(isSame(try value(#"{"value": \#(number)}"#), expected))
+        #expect(isSame(try value(#"{"type": "double", "value": \#(number)}"#), expected))
+        #expect(isSame(try value(#"{"value": ["double", \#(number)], "type": "list"}"#)?.listValue?.first, expected))
+        #expect(isSame(try value(#"{"type": "map", "value": ["x", "double", \#(number)]}"#)?.mapValue?["x"], expected))
+        let compact = try CompactJsonEncoding().decode(Data(#"{"h": 2, "v": \#(number)}"#.utf8))
+        #expect(isSame(compact.data.samples.first?.value, expected))
+    }
+
+    @Test("Integers too large are clamped", arguments: [
+        ("9223372036854775808", Int.max),
+        ("-9223372036854775809", Int.min),
+        ("99999999999999999999999999999999", .max),
+        ("-99999999999999999999999999999999", .min),
+        ("9.3e18", .max),
+        ("-9.3e18", .min),
+        ("9223372036854775807.0", .max), // Rounds to 2^63 as a double
+        ("1e30", .max),
+        ("-1e30", .min),
+        ("1e400", .max),
+        ("-1e400", .min),
+        ("9223372036854775807", .max),
+        ("-9223372036854775808", .min),
+        ("4.5e15", 4_500_000_000_000_000),
+    ])
+    func integerOverflow(_ number: String, _ expected: Int) throws {
+        #expect(try value(#"{"type": "integer", "value": \#(number)}"#) == .integer(expected))
+        #expect(try value(#"{"value": ["integer", \#(number)], "type": "list"}"#) == .list([.integer(expected)]))
+        #expect(try value(#"{"type": "map", "value": ["x", "integer", \#(number)]}"#) == .map(["x": .integer(expected)]))
+        let compact = try CompactJsonEncoding().decode(Data(#"{"h": 1, "v": \#(number)}"#.utf8))
+        #expect(compact.data.samples.first?.value == .integer(expected))
+    }
+
+    @Test("Integers with fractions are rejected", arguments: ["3.5", "-0.1", "1e-5"])
+    func integerFraction(_ number: String) {
+        #expect(throws: DecodingError.self) { try decode(#"{"type": "integer", "value": \#(number)}"#) }
+    }
+
+    @Test("Out of range numbers in message fields are rejected", arguments: [
+        #"{"count": 9223372036854775808}"#,
+        #"{"depth": -9223372036854775809}"#,
+        #"{"id": 1e30}"#,
+        #"{"time": 1e400}"#,
+        #"{"end": -1e400}"#,
+        #"{"value": 1, "time": 1e400}"#,
+        #"{"samples": [{"value": 1, "time": 1e400}, {"value": 2, "time": 1}]}"#,
+    ])
+    func messageFieldOverflow(_ json: String) {
+        #expect(throws: DecodingError.self) { try decode(json) }
+    }
+
+    @Test("Out of range type identifiers are rejected", arguments: [
+        #"{"m": 9223372036854775808}"#,
+        #"{"h": 1e400, "v": 1}"#,
+        #"{"v": [99999999999999999999, 1]}"#,
+    ])
+    func compactTagOverflow(_ json: String) {
+        #expect(throws: DecodingError.self) { try CompactJsonEncoding().decode(Data(json.utf8)) }
+    }
+
+    @Test("Non-finite timestamps are rejected", arguments: [Double.nan, .infinity, -.infinity])
+    func nonFiniteTimestamps(_ interval: Double) {
+        let date = Timestamp(timeIntervalSince1970: interval)
+        let messages = [
+            Message(type: .data, path: ["a"], data: ImmutableSampleTree(value: .integer(1), timestamp: date)),
+            Message(type: .request, path: ["a"], time: date),
+            Message(type: .request, path: ["a"], end: date),
+        ]
+        for encoding in Self.encodings {
+            for message in messages {
+                #expect(throws: EncodingError.self) { try encoding.encode(message) }
+            }
+        }
     }
 }
