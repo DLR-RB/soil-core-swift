@@ -136,4 +136,14 @@ extension Provider {
     public func currentTree(for path: Path = [], depth: Int? = nil) async -> any SampleTree {
         await tree(for: path, from: nil, to: .current(), depth: depth, limitPerNode: 1)
     }
+
+    /**
+     Get the current values of a path and all sub-paths, converted to a specific type.
+     - Parameter path: The requested path
+     - Parameter type: The type to convert the tree to
+     - Returns: The converted tree, or `nil`, if the tree can't be converted to the type
+     */
+    public func currentTree<T: SampleTreeConvertible>(for path: Path = [], as type: T.Type = T.self) async -> T? {
+        T(sampleTree: await currentTree(for: path))
+    }
 }

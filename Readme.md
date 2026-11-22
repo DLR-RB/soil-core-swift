@@ -109,6 +109,34 @@ let current = await mode.value() // Mode?
 
 Literals can be used wherever a `Value` is expected, e.g. `storage.accept(123, for: ["my", "value"])`.
 
+### Storing Swift types as trees
+
+While `ValueConvertible` types are stored as a single value, types conforming to `SampleTreeConvertible`
+are spread over a tree, so that other components can read and subscribe to individual parts.
+`Codable` types only need to declare the conformance: keyed properties become child nodes,
+and all other values (including lists) are stored at their node.
+`ValueConvertible` types are stored as a single value at the root node.
+
+```swift
+struct Robot: Codable, SampleTreeConvertible {
+    var name: String       // Stored at ["robot", "name"]
+    var position: Position // Stored at ["robot", "position", "x"] and ["robot", "position", "y"]
+}
+
+try storage.accept(tree: Robot(name: "R2", position: .init(x: 1, y: 2)), for: ["robot"])
+let robot = await storage.currentTree(for: ["robot"], as: Robot.self)
+
+// Updates to individual nodes are reflected in the converted value
+storage.accept(5.0, for: ["robot", "position", "y"])
+
+// Tree nodes only accept and return trees of a single type
+let node = storage.treeNode(at: ["robot"], as: Robot.self)
+try node.set(Robot(name: "C3PO", position: .init(x: 0, y: 0)))
+let current = await node.value() // Robot?
+```
+
+Trees can also be sent directly using `Message.tree(_:for:)`.
+
 ### Connecting two components over a network
 
 The core library lets you expose a local component over a connection and use a remote
