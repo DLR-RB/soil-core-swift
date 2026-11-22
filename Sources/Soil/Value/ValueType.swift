@@ -2,7 +2,7 @@
 /**
  An enum indicating the primitive value types
  */
-public enum ValueType: String, Sendable {
+public enum ValueType: String, Sendable, Codable {
 
     /// The absence of a value, represented as ``nil``
     case null

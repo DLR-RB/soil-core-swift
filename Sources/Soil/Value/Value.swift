@@ -191,3 +191,48 @@ extension Value: ExpressibleByDictionaryLiteral {
         self = .map(Dictionary(elements, uniquingKeysWith: { $1 }))
     }
 }
+
+// MARK: Codable
+
+extension Value: Codable {
+
+    /**
+     Decode a value from its tagged representation.
+
+     The value is expected as an unkeyed container with the ``ValueType``, followed by the contained value (omitted for `.null`).
+     */
+    public init(from decoder: any Decoder) throws {
+        var container = try decoder.unkeyedContainer()
+        let type = try container.decode(ValueType.self)
+        switch type {
+        case .null: self = .null
+        case .integer: self = .integer(try container.decode(Int.self))
+        case .double: self = .double(try container.decode(Double.self))
+        case .string: self = .string(try container.decode(String.self))
+        case .data: self = .data(try container.decode(Data.self))
+        case .path: self = .path(try container.decode(Path.self))
+        case .list: self = .list(try container.decode([Value].self))
+        case .map: self = .map(try container.decode([String: Value].self))
+        }
+    }
+
+    /**
+     Encode the value in a tagged representation, as an unkeyed container of the type and the contained value.
+
+     The tag preserves the exact type, so that e.g. `.data` and `.string`, or `.path` and `.list` remain distinguishable.
+     */
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.unkeyedContainer()
+        try container.encode(type)
+        switch self {
+        case .null: break
+        case .integer(let value): try container.encode(value)
+        case .double(let value): try container.encode(value)
+        case .string(let value): try container.encode(value)
+        case .data(let value): try container.encode(value)
+        case .path(let value): try container.encode(value)
+        case .list(let value): try container.encode(value)
+        case .map(let value): try container.encode(value)
+        }
+    }
+}

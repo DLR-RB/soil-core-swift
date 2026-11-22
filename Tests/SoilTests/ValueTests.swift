@@ -161,6 +161,31 @@ struct ValueTests {
         #expect(try JSONDecoder().decode(Link.self, from: json) == Link(target: ["a", "b"]))
     }
 
+    @Test("Value is Codable")
+    func valueCodable() throws {
+        let value: Value = .map([
+            "null": .null,
+            "int": .integer(3),
+            "double": .double(1.5),
+            "string": .string("a"),
+            "data": .data(Data([1, 2])),
+            "path": .path(["a", "b"]),
+            "list": .list([.string("a"), .string("b")]),
+        ])
+        // Other coders use a tagged representation which preserves the type
+        let json = try JSONEncoder().encode(value)
+        #expect(try JSONDecoder().decode(Value.self, from: json) == value)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .sortedKeys
+        #expect(String(decoding: try encoder.encode(Value.integer(3)), as: UTF8.self) == #"["integer",3]"#)
+        #expect(String(decoding: try encoder.encode(Value.null), as: UTF8.self) == #"["null"]"#)
+        #expect(String(decoding: try encoder.encode(Value.list([.string("a")])), as: UTF8.self) == #"["list",[["string","a"]]]"#)
+        // Values inside `Codable` types are stored directly by the SOIL coders
+        #expect(try ValueEncoder().encode(value) == value)
+        #expect(try ValueDecoder().decode(Value.self, from: value) == value)
+        #expect(try ValueEncoder().encode(["a": value]) == .map(["a": value]))
+    }
+
     @Test("Literals")
     func literals() {
         #expect(Value(nilLiteral: ()) == .null)

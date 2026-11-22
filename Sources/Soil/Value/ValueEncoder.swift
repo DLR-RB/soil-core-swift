@@ -34,6 +34,7 @@ extension Data: DirectValueConvertible { }
 extension UUID: DirectValueConvertible { }
 extension URL: DirectValueConvertible { }
 extension Path: DirectValueConvertible { }
+extension Value: DirectValueConvertible { }
 
 // MARK: - Encoding tree
 
