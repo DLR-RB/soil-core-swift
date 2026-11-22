@@ -220,19 +220,39 @@ extension JsonCoding {
      Write a value into the current object.
 
      The value is encoded either as a number, nil, a string, or a list.
-     If the string represents data, the number represents an integer,
+     If the string represents data or a non-finite double, the number represents an integer,
      or the list represents a map, then the value type is added to disambiguate.
     */
     private static func write(_ value: Value, to writer: inout JsonWriter, first: inout Bool) throws {
         let type = value.type
-        switch type {
+        switch value {
             case .data, .integer, .map:
+                writeKey(.type, to: &writer, first: &first)
+                Format.tag(for: type).write(to: &writer)
+            case .double(let double) where !double.isFinite:
                 writeKey(.type, to: &writer, first: &first)
                 Format.tag(for: type).write(to: &writer)
             default: break
         }
         writeKey(.value, to: &writer, first: &first)
         try writeContent(of: value, to: &writer)
+    }
+
+    /**
+     Write a double value.
+
+     JSON numbers can't represent NaN and infinity, so these are written as the strings `"nan"`, `"inf"` and `"-inf"`.
+     The value must then be preceded by its type, so that it can be distinguished from a string.
+     All NaN values (signaling, negative, or with payload) are written as `"nan"`.
+     */
+    private static func write(_ value: Double, to writer: inout JsonWriter) throws {
+        if value.isNaN {
+            writer.write("nan")
+        } else if value.isInfinite {
+            writer.write(value < 0 ? "-inf" : "inf")
+        } else {
+            try writer.write(value)
+        }
     }
 
     /// Write a value preceded by its type, as used in lists and maps
@@ -246,7 +266,7 @@ extension JsonCoding {
         switch value {
             case .null: writer.writeNull()
             case .integer(let value): writer.write(value)
-            case .double(let value): try writer.write(value)
+            case .double(let value): try write(value, to: &writer)
             case .string(let value): writer.write(value)
             case .data(let value): writer.write(value)
             case .list(let values):
@@ -431,6 +451,9 @@ extension JsonCoding {
 
     /**
      Read a value.
+
+     Doubles outside of the representable range are converted to infinity,
+     and integers outside of the range of `Int` are clamped to `Int.min` or `Int.max`.
      - Parameter type: The type of the value, if specified. Otherwise the type is inferred from the JSON.
      */
     private static func readValue(from reader: inout JsonReader, type: Format.Tag?) throws -> Value {
@@ -440,7 +463,7 @@ extension JsonCoding {
                 case .null:
                     try reader.readNull()
                     return .null
-                case .number: return .double(try reader.readDouble())
+                case .number: return .double(try reader.readDouble(allowingOverflow: true))
                 case .string: return .string(try reader.readString())
                 case .array: return .list(try readList(from: &reader))
                 case .bool, .object: throw reader.error("Invalid value")
@@ -451,11 +474,28 @@ extension JsonCoding {
                 try reader.skipValue()
                 return .null
             case .data: return .data(try reader.readData())
-            case .integer: return .integer(try reader.readInt())
-            case .double: return .double(try reader.readDouble())
+            case .integer: return .integer(try reader.readInt(clamping: true))
+            case .double: return .double(try readDouble(from: &reader))
             case .string: return .string(try reader.readString())
             case .list: return .list(try readList(from: &reader))
             case .map: return .map(try readMap(from: &reader))
+        }
+    }
+
+    /**
+     Read a double value, which is either a number, or a string for NaN and infinity.
+
+     Numbers outside of the range of `Double` are converted to infinity.
+     */
+    private static func readDouble(from reader: inout JsonReader) throws -> Double {
+        guard try reader.peekKind() == .string else {
+            return try reader.readDouble(allowingOverflow: true)
+        }
+        switch try reader.readString() {
+            case "nan": return .nan
+            case "inf": return .infinity
+            case "-inf": return -.infinity
+            case let string: throw reader.error("Invalid double '\(string)'")
         }
     }
 

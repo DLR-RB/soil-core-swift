@@ -202,25 +202,42 @@ struct JsonReader {
         return (start..<offset, isInteger)
     }
 
-    mutating func readDouble() throws -> Double {
+    /**
+     Read a floating point number.
+     - Parameter allowingOverflow: Convert numbers outside of the range of `Double` to infinity, instead of throwing an error
+     */
+    mutating func readDouble(allowingOverflow: Bool = false) throws -> Double {
         let (range, _) = try scanNumber()
         let string = String(decoding: UnsafeRawBufferPointer(rebasing: bytes[range]), as: UTF8.self)
-        guard let value = Double(string), value.isFinite else {
+        guard let value = Double(string) else {
             throw error("Invalid number '\(string)'")
+        }
+        guard value.isFinite || allowingOverflow else {
+            throw error("Number out of range '\(string)'")
         }
         return value
     }
 
-    /// Read an integer. Numbers with a fraction or exponent are accepted, if they represent an exact integer.
-    mutating func readInt() throws -> Int {
+    /**
+     Read an integer.
+
+     Numbers with a fraction or exponent are accepted, if they represent an integer.
+     - Parameter clamping: Clamp numbers outside of the range of `Int` to `Int.min` or `Int.max`, instead of throwing an error
+     */
+    mutating func readInt(clamping: Bool = false) throws -> Int {
         let start = offset
         let (range, isInteger) = try scanNumber()
         guard isInteger else {
             offset = start
-            guard let value = Int(exactly: try readDouble()) else {
+            let double = try readDouble(allowingOverflow: clamping)
+            if let value = Int(exactly: double) {
+                return value
+            }
+            // Infinity counts as integral, since it results from a number too large for a double
+            guard clamping, double.rounded(.towardZero) == double else {
                 throw error("Number is not an integer")
             }
-            return value
+            return double < 0 ? .min : .max
         }
         var index = range.lowerBound
         let isNegative = bytes[index] == .minus
@@ -235,7 +252,10 @@ struct JsonReader {
                 ? multiplied.subtractingReportingOverflow(digit)
                 : multiplied.addingReportingOverflow(digit)
             guard !overflow1, !overflow2 else {
-                throw error("Integer out of range")
+                guard clamping else {
+                    throw error("Integer out of range")
+                }
+                return isNegative ? .min : .max
             }
             value = added
             index += 1
