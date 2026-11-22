@@ -354,12 +354,6 @@ extension Array: ValueConvertible where Element: ValueConvertible {
                 result.append(element)
             }
             self = result
-        case .path(let path):
-            // Allow paths to be read as string arrays
-            guard let result = path as? [Element] else {
-                return nil
-            }
-            self = result
         default:
             return nil
         }

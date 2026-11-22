@@ -109,7 +109,7 @@ struct InMemoryStorageTests {
             let cTree = ImmutableSampleTree(value: .string("hello"), timestamp: now)
             let fTree = ImmutableSampleTree(value: .double(3.14), timestamp: now)
             let bTree = ImmutableSampleTree(children: ["c" : cTree, "f" : fTree])
-            let eTree = ImmutableSampleTree(value: .path(["z", "x"]), timestamp: now)
+            let eTree = ImmutableSampleTree(value: .list(["z", "x"]), timestamp: now)
             let dTree = ImmutableSampleTree(children: ["e" : eTree])
             let aTree = ImmutableSampleTree(value: .integer(123), timestamp: now, children: [
                 "d" : dTree
@@ -135,7 +135,7 @@ struct InMemoryStorageTests {
 
             let e = try #require(d.children["e"])
             let eSample = try #require(e.newestSample)
-            #expect(eSample.value == .path(["z", "x"]))
+            #expect(eSample.value == .list(["z", "x"]))
             #expect(eSample.isVeryClose(to: now))
             #expect(e.children.isEmpty)
 
@@ -164,7 +164,7 @@ struct InMemoryStorageTests {
         let now = Timestamp.current()
         await storage.accept(.integer(123), for: ["a"], at: now).wait()
         await storage.accept(.string("hello"), for: ["b", "c"], at: now).wait()
-        await storage.accept(.path(["z", "x"]), for: ["a", "d", "e"], at: now).wait()
+        await storage.accept(.list(["z", "x"]), for: ["a", "d", "e"], at: now).wait()
         await storage.accept(.double(3.14), for: ["b", "f"], at: now).wait()
 
         do {
@@ -184,7 +184,7 @@ struct InMemoryStorageTests {
 
             let e = try #require(d.children["e"])
             let eSample = try #require(e.newestSample)
-            #expect(eSample.value == .path(["z", "x"]))
+            #expect(eSample.value == .list(["z", "x"]))
             #expect(eSample.isVeryClose(to: now))
             #expect(e.children.isEmpty)
 
@@ -213,7 +213,7 @@ struct InMemoryStorageTests {
         let now = Timestamp.current()
         await storage.accept(.integer(123), for: ["a"], at: now).wait()
         await storage.accept(.string("hello"), for: ["b", "c"], at: now).wait()
-        await storage.accept(.path(["z", "x"]), for: ["a", "d", "e"], at: now).wait()
+        await storage.accept(.list(["z", "x"]), for: ["a", "d", "e"], at: now).wait()
         await storage.accept(.double(3.14), for: ["b", "f"], at: now).wait()
 
         do {
@@ -278,8 +278,8 @@ struct InMemoryStorageTests {
             await storage.accept(.string("hello"), for: ["b", "c"], at: now).wait()
             await storage.accept(.integer(234), for: ["a"], at: old).wait()
             await storage.accept(.double(42.1), for: ["b", "f"], at: old).wait()
-            await storage.accept(.path(["z", "x"]), for: ["a", "d", "e"], at: now).wait()
-            await storage.accept(.path(["y", "w"]), for: ["a", "d", "e"], at: old).wait()
+            await storage.accept(.list(["z", "x"]), for: ["a", "d", "e"], at: now).wait()
+            await storage.accept(.list(["y", "w"]), for: ["a", "d", "e"], at: old).wait()
             await storage.accept(.double(3.14), for: ["b", "f"], at: now).wait()
         }
 
@@ -301,7 +301,7 @@ struct InMemoryStorageTests {
 
             let e = try #require(d.children["e"])
             let eSample = try #require(e.newestSample)
-            #expect(eSample.value == .path(["z", "x"]))
+            #expect(eSample.value == .list(["z", "x"]))
             #expect(eSample.isVeryClose(to: now))
             #expect(e.children.isEmpty)
 
@@ -339,7 +339,7 @@ struct InMemoryStorageTests {
 
             let e = try #require(d.children["e"])
             let eSample = try #require(e.newestSample)
-            #expect(eSample.value == .path(["y", "w"]))
+            #expect(eSample.value == .list(["y", "w"]))
             #expect(eSample.isVeryClose(to: old))
             #expect(e.children.isEmpty)
 
@@ -376,8 +376,8 @@ struct InMemoryStorageTests {
             await storage.accept(.string("hello"), for: ["b", "c"], at: now).wait()
             await storage.accept(.integer(234), for: ["a"], at: old).wait()
             await storage.accept(.double(42.1), for: ["b", "f"], at: old).wait()
-            await storage.accept(.path(["z", "x"]), for: ["a", "d", "e"], at: now).wait()
-            await storage.accept(.path(["y", "w"]), for: ["a", "d", "e"], at: old).wait()
+            await storage.accept(.list(["z", "x"]), for: ["a", "d", "e"], at: now).wait()
+            await storage.accept(.list(["y", "w"]), for: ["a", "d", "e"], at: old).wait()
             await storage.accept(.double(3.14), for: ["b", "f"], at: now).wait()
         }
 
@@ -416,7 +416,7 @@ struct InMemoryStorageTests {
 
             let e = try #require(d.children["e"])
             let eSample = try #require(e.newestSample)
-            #expect(eSample.value == .path(["y", "w"]))
+            #expect(eSample.value == .list(["y", "w"]))
             #expect(eSample.isVeryClose(to: old))
             #expect(e.children.isEmpty)
         }
@@ -424,7 +424,7 @@ struct InMemoryStorageTests {
         do {
             let e = await storage.tree(for: ["a", "d", "e"], beforeOrAt: queryTime, depth: 1)
             let eSample = try #require(e.newestSample)
-            #expect(eSample.value == .path(["y", "w"]))
+            #expect(eSample.value == .list(["y", "w"]))
             #expect(eSample.isVeryClose(to: old))
             #expect(e.children.isEmpty)
         }

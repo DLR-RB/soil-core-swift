@@ -62,7 +62,7 @@ struct ValueTests {
         try roundTrip(["a": 1], expected: .map(["a": .integer(1)]))
         try roundTrip(Int?.none, expected: .null)
         try roundTrip(Int?.some(3), expected: .integer(3))
-        #expect([String](soilValue: .path(["a", "b"])) == ["a", "b"])
+        #expect([String](soilValue: .list(["a", "b"])) == ["a", "b"])
         #expect(try Set([3]).soilValue == .list([.integer(3)]))
         // Invalid values are not treated as `nil`
         #expect(Int?(soilValue: .string("a")) == nil)
@@ -168,7 +168,7 @@ struct ValueTests {
         #expect(await node.value(as: Bool.self) == true)
 
         await node.set(["a", "b"]).wait()
-        #expect(await node.value() == .path(["a", "b"]))
+        #expect(await node.value() == .list(["a", "b"]))
 
         let typed = node.valueChild(named: "priority", as: Priority.self)
         #expect(typed.path == ["node", "priority"])

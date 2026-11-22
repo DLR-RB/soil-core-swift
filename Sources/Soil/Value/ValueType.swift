@@ -19,9 +19,6 @@ public enum ValueType: String, Sendable {
     /// A textual value, represented as ``String``
     case string
 
-    /// A path value, represented as `[String]`
-    case path
-
     /// A list of values
     case list
 

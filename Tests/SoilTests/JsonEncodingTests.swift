@@ -97,12 +97,6 @@ struct JsonEncodingTests {
         try assertRoundTrip(message)
     }
 
-    @Test("Value.path")
-    func valuePath() throws {
-        let message = Message.value(.path(["inner", "leaf"]), for: ["outer"])
-        try assertRoundTrip(message)
-    }
-
     // MARK: Path Edge Cases
 
     @Test("Empty path")
@@ -350,7 +344,7 @@ struct JsonEncodingTests {
                     "child" : ImmutableSampleTree(sample: Sample(value: .string("333"), timeIntervalSince1970: 444)),
                     "other" : ImmutableSampleTree(samples: [
                         Sample(value: .data(Data(repeating: 42, count: 3)), timeIntervalSince1970: 555),
-                        Sample(value: .path(["link", "there"]), timeIntervalSince1970: 666),
+                        Sample(value: .list(["link", "there"]), timeIntervalSince1970: 666),
                         Sample(value: .null, timeIntervalSince1970: 777)
                     ])
                     ]
@@ -388,7 +382,7 @@ struct JsonEncodingTests {
                             "time": 555.0
                         },
                         {
-                            "value": ["link", "there"],
+                            "value": ["string", "link", "string", "there"],
                             "time": 666.0
                         },
                         {

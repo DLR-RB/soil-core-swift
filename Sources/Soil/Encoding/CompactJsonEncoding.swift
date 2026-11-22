@@ -90,9 +90,8 @@ private extension ValueType {
             case .double: 2
             case .string: 3
             case .data: 4
-            case .path: 5
-            case .list: 6
-            case .map: 7
+            case .list: 5
+            case .map: 6
         }
     }
 
@@ -103,9 +102,8 @@ private extension ValueType {
             case 2: self = .double
             case 3: self = .string
             case 4: self = .data
-            case 5: self = .path
-            case 6: self = .list
-            case 7: self = .map
+            case 5: self = .list
+            case 6: self = .map
             default: return nil
         }
     }
@@ -313,14 +311,14 @@ private extension Value {
     /**
      Encode a value to a container.
 
-     The value is encoded either as a number, nil, or a string.
-     If the string represents data or the number represents an integer,
-     then the value type is added to disambiguate.
+     The value is encoded either as a number, nil, a string, or a list.
+     If the string represents data, the number represents an integer,
+     or the list represents a map, then the value type is added to disambiguate.
     */
     func encode(in container: inout KeyedEncodingContainer<JsonMessage.CodingKeys>) throws {
         let type = self.type
         switch type {
-            case .data, .integer, .list, .map: try container.encode(type.intValue, forKey: .type)
+            case .data, .integer, .map: try container.encode(type.intValue, forKey: .type)
             default: break
         }
         switch self {
@@ -329,7 +327,6 @@ private extension Value {
             case .double(let value): try container.encode(value, forKey: .value)
             case .string(let value): try container.encode(value, forKey: .value)
             case .data(let value): try container.encode(value, forKey: .value)
-            case .path(let value): try container.encode(value, forKey: .value)
             case .list(let value): try container.encode(ListElement(values: value), forKey: .value)
             case .map(let value): try container.encode(MapElement(values: value), forKey: .value)
         }
@@ -343,7 +340,6 @@ private extension Value {
             case .double(let value): try container.encode(value)
             case .string(let value): try container.encode(value)
             case .data(let value): try container.encode(value)
-            case .path(let value): try container.encode(value)
             case .list(let value): try container.encode(ListElement(values: value))
             case .map(let value): try container.encode(MapElement(values: value))
         }
@@ -361,8 +357,8 @@ private extension Value {
             if let value = try? container.decode(String.self, forKey: .value) {
                 return .string(value)
             }
-            let value = try container.decode(Path.self, forKey: .value)
-            return .path(value)
+            let value = try container.decode(ListElement.self, forKey: .value)
+            return .list(value.values)
         }
         guard let type = ValueType(intValue: rawType) else {
             throw DecodingError.valueNotFound(ValueType.self, .init(codingPath: [], debugDescription: "Unknown value type: \(rawType)", underlyingError: nil))
@@ -381,15 +377,6 @@ private extension Value {
             case .string:
                 let value = try container.decode(String.self, forKey: .value)
                 return .string(value)
-            case .path:
-                let value: Path
-                do {
-                    value = try container.decode(Path.self, forKey: .value)
-                } catch {
-                    let single = try container.decode(String.self, forKey: .value)
-                    value = [single]
-                }
-                return .path(value)
             case .list:
                 let value = try container.decode(ListElement.self, forKey: .value)
                 return .list(value.values)
@@ -412,8 +399,8 @@ private extension Value {
             if let value = try? container.decode(String.self) {
                 return .string(value)
             }
-            let value = try container.decode(Path.self)
-            return .path(value)
+            let value = try container.decode(ListElement.self)
+            return .list(value.values)
         }
         guard let type = ValueType(intValue: rawType) else {
             throw DecodingError.valueNotFound(ValueType.self, .init(codingPath: [], debugDescription: "Unknown value type: \(rawType)", underlyingError: nil))
@@ -433,15 +420,6 @@ private extension Value {
             case .string:
                 let value = try container.decode(String.self)
                 return .string(value)
-            case .path:
-                let value: Path
-                do {
-                    value = try container.decode(Path.self)
-                } catch {
-                    let single = try container.decode(String.self)
-                    value = [single]
-                }
-                return .path(value)
             case .list:
                 let value = try container.decode(ListElement.self)
                 return .list(value.values)

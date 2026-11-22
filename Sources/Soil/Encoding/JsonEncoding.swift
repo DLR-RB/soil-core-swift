@@ -257,14 +257,14 @@ private extension Value {
     /**
      Encode a value to a container.
 
-     The value is encoded either as a number, nil, or a string.
-     If the string represents data or the number represents an integer,
-     then the value type is added to disambiguate.
+     The value is encoded either as a number, nil, a string, or a list.
+     If the string represents data, the number represents an integer,
+     or the list represents a map, then the value type is added to disambiguate.
     */
     func encode(in container: inout KeyedEncodingContainer<JsonMessage.CodingKeys>) throws {
         let type = self.type
         switch type {
-            case .data, .integer, .map, .list: try container.encode(type.rawValue, forKey: .type)
+            case .data, .integer, .map: try container.encode(type.rawValue, forKey: .type)
             default: break
         }
         switch self {
@@ -273,7 +273,6 @@ private extension Value {
             case .double(let value): try container.encode(value, forKey: .value)
             case .string(let value): try container.encode(value, forKey: .value)
             case .data(let value): try container.encode(value, forKey: .value)
-            case .path(let value): try container.encode(value, forKey: .value)
             case .list(let value): try container.encode(ListElement(values: value), forKey: .value)
             case .map(let value): try container.encode(MapElement(values: value), forKey: .value)
         }
@@ -287,7 +286,6 @@ private extension Value {
             case .double(let value): try container.encode(value)
             case .string(let value): try container.encode(value)
             case .data(let value): try container.encode(value)
-            case .path(let value): try container.encode(value)
             case .list(let value): try container.encode(ListElement(values: value))
             case .map(let value): try container.encode(MapElement(values: value))
         }
@@ -305,8 +303,8 @@ private extension Value {
             if let value = try? container.decode(String.self, forKey: .value) {
                 return .string(value)
             }
-            let value = try container.decode(Path.self, forKey: .value)
-            return .path(value)
+            let value = try container.decode(ListElement.self, forKey: .value)
+            return .list(value.values)
         }
 
         guard let type = ValueType(rawValue: rawType) else {
@@ -327,15 +325,6 @@ private extension Value {
             case .string:
                 let value = try container.decode(String.self, forKey: .value)
                 return .string(value)
-            case .path:
-                let value: Path
-                do {
-                    value = try container.decode(Path.self, forKey: .value)
-                } catch {
-                    let single = try container.decode(String.self, forKey: .value)
-                    value = [single]
-                }
-                return .path(value)
             case .list:
                 let value = try container.decode(ListElement.self, forKey: .value)
                 return .list(value.values)
@@ -357,8 +346,8 @@ private extension Value {
             if let value = try? container.decode(String.self) {
                 return .string(value)
             }
-            let value = try container.decode(Path.self)
-            return .path(value)
+            let value = try container.decode(ListElement.self)
+            return .list(value.values)
         }
         guard let type = ValueType(rawValue: rawType) else {
             throw DecodingError.valueNotFound(ValueType.self, .init(codingPath: [], debugDescription: "Unknown value type: \(rawType)", underlyingError: nil))
@@ -378,15 +367,6 @@ private extension Value {
             case .string:
                 let value = try container.decode(String.self)
                 return .string(value)
-            case .path:
-                let value: Path
-                do {
-                    value = try container.decode(Path.self)
-                } catch {
-                    let single = try container.decode(String.self)
-                    value = [single]
-                }
-                return .path(value)
             case .list:
                 let value = try container.decode(ListElement.self)
                 return .list(value.values)

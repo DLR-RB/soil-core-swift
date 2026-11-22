@@ -135,18 +135,6 @@ extension StorageNode {
     }
 
     /**
-     Set the node to a path value.
-
-     - Note: Since `Path` is an array of strings, it would otherwise be stored as a `.list`.
-     - Parameter value: The new path to set for this node
-     - Returns: A request to wait for completion
-     */
-    @discardableResult
-    public func set(_ value: Path) -> any Request {
-        storage.accept(.path(value), for: path)
-    }
-
-    /**
      Set the node to a value, after converting it to a SOIL value.
      - Parameter value: The new value to set for this node
      - Returns: A request to wait for completion
