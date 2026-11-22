@@ -1,10 +1,10 @@
 /**
  A node in the data tree that contains values of a specific type.
 
- Create typed nodes using ``Storage/node(at:as:)`` or ``StorageNode/typed(as:)``:
+ Create typed nodes using ``Storage/valueNode(at:as:)`` or ``StorageNode/valueNode(as:)``:
 
  ```swift
- let temperature = storage.node(at: ["sensor", "temperature"], as: Double.self)
+ let temperature = storage.valueNode(at: ["sensor", "temperature"], as: Double.self)
  try temperature.set(21.5)
  let current = await temperature.value() // Double?
  ```

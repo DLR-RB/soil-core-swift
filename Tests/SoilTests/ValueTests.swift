@@ -170,7 +170,7 @@ struct ValueTests {
         await node.set(["a", "b"]).wait()
         #expect(await node.value() == .path(["a", "b"]))
 
-        let typed = node.child(named: "priority", as: Priority.self)
+        let typed = node.valueChild(named: "priority", as: Priority.self)
         #expect(typed.path == ["node", "priority"])
         try await typed.set(.high).wait()
         #expect(await typed.value() == .high)
