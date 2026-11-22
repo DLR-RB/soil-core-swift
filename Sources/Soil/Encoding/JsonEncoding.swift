@@ -5,20 +5,9 @@ import Foundation
  */
 public final class JsonEncoding: Sendable {
 
-    /// The encoder used to encode messages to binary data
-    private let encoder: JSONEncoder
+    /// Create a JSON encoding layer.
+    public init() {
 
-    /// The decoder used to decode messages from binary data
-    private let decoder: JSONDecoder
-
-    /**
-     Create a JSON encoding layer.
-     - Parameter encoder: The encoder used to encode messages
-     - Parameter decoder: The decoder used to decode messages
-     */
-    public init(encoder: JSONEncoder = .init(), decoder: JSONDecoder = .init()) {
-        self.encoder = encoder
-        self.decoder = decoder
     }
 }
 
@@ -31,8 +20,7 @@ extension JsonEncoding: MessageEncoding {
      - Throws: An error, if the message could not be encoded
      */
     public func encode(_ message: Message) throws -> Data {
-        // Wrap the message in a JSON message to use the custom encoding
-        try encoder.encode(JsonCoding<StandardJsonFormat>.JsonMessage(message: message))
+        try JsonCoding<StandardJsonFormat>.encode(message)
     }
 
     /**
@@ -42,8 +30,7 @@ extension JsonEncoding: MessageEncoding {
      - Throws: An error, if the message could not be decoded
      */
     public func decode(_ data: Data) throws -> Message {
-        // Decode the wrapper to use the custom format
-        try decoder.decode(JsonCoding<StandardJsonFormat>.JsonMessage.self, from: data).message
+        try JsonCoding<StandardJsonFormat>.decode(data)
     }
 }
 
@@ -52,18 +39,12 @@ extension JsonEncoding: MessageEncoding {
  */
 enum StandardJsonFormat: JsonFormat {
 
-    enum Keys: String, JsonCodingKeys {
-        case message
-        case path
-        case value
-        case type
-        case samples
-        case count
-        case depth
-        case time
-        case end
-        case id
-        case children
+    static func key(for field: JsonField) -> String {
+        field.rawValue
+    }
+
+    static func field(for key: String) -> JsonField? {
+        JsonField(rawValue: key)
     }
 
     static func tag(for type: MessageType) -> String {

@@ -1,22 +1,54 @@
 import Foundation
 
 /**
- The keys used to encode messages in a JSON format.
+ The fields used in JSON messages.
 
- Conforming types are usually enums with a `String` raw value for each case.
+ The raw values are the keys used in the standard JSON format.
  */
-protocol JsonCodingKeys: CodingKey {
-    static var message: Self { get }
-    static var path: Self { get }
-    static var value: Self { get }
-    static var type: Self { get }
-    static var samples: Self { get }
-    static var count: Self { get }
-    static var depth: Self { get }
-    static var time: Self { get }
-    static var end: Self { get }
-    static var id: Self { get }
-    static var children: Self { get }
+enum JsonField: String, CaseIterable {
+    case message
+    case path
+    case value
+    case type
+    case samples
+    case count
+    case depth
+    case time
+    case end
+    case id
+    case children
+}
+
+/**
+ A type used to represent message and value types in JSON.
+ */
+protocol JsonTag: CustomStringConvertible {
+
+    func write(to writer: inout JsonWriter)
+
+    static func read(from reader: inout JsonReader) throws -> Self
+}
+
+extension Int: JsonTag {
+
+    func write(to writer: inout JsonWriter) {
+        writer.write(self)
+    }
+
+    static func read(from reader: inout JsonReader) throws -> Int {
+        try reader.readInt()
+    }
+}
+
+extension String: JsonTag {
+
+    func write(to writer: inout JsonWriter) {
+        writer.write(self)
+    }
+
+    static func read(from reader: inout JsonReader) throws -> String {
+        try reader.readString()
+    }
 }
 
 /**
@@ -26,11 +58,14 @@ protocol JsonCodingKeys: CodingKey {
  */
 protocol JsonFormat {
 
-    /// The keys used for the fields of the JSON objects
-    associatedtype Keys: JsonCodingKeys
-
     /// The representation of message and value types
-    associatedtype Tag: Codable
+    associatedtype Tag: JsonTag
+
+    /// The key used for a field
+    static func key(for field: JsonField) -> String
+
+    /// The field identified by a key, if the key is known
+    static func field(for key: String) -> JsonField?
 
     static func tag(for type: MessageType) -> Tag
 
@@ -41,232 +76,101 @@ protocol JsonFormat {
     static func valueType(from tag: Tag) -> ValueType?
 }
 
+extension JsonFormat {
+
+    static func field(for key: String) -> JsonField? {
+        JsonField.allCases.first { self.key(for: $0) == key }
+    }
+}
+
 /**
  The shared implementation of the JSON message encodings, parameterized by the concrete format.
  */
 enum JsonCoding<Format: JsonFormat> {
 
-    typealias Keys = Format.Keys
-
-    /**
-     A wrapper to create a custom encoding and decoding for JSON
-     */
-    struct JsonMessage {
-
-        let message: Message
+    static func encode(_ message: Message) throws -> Data {
+        var writer = JsonWriter()
+        try write(message, to: &writer)
+        return writer.data
     }
 
-    struct JsonSampleTree: SampleTree, Sendable, Decodable {
-
-        /// The samples at this tree node
-        let samples: [Sample]
-
-        /// The child nodes of the tree, indexed by their path component.
-        let _children: [PathComponent : JsonSampleTree]
-
-        var children: [PathComponent : any SampleTree] {
-            _children
+    static func decode(_ data: Data) throws -> Message {
+        try data.withUnsafeBytes { bytes in
+            var reader = JsonReader(bytes: bytes)
+            let message = try readMessage(from: &reader)
+            try reader.expectEnd()
+            return message
         }
-
-        init(samples: [Sample] = [], children: [PathComponent : any SampleTree] = [:]) {
-            self.samples = samples
-            self._children = children.mapValues { JsonSampleTree(samples: $0.samples, children: $0.children) }
-        }
-
-        init(from container: KeyedDecodingContainer<Keys>) throws {
-            let samples = try container.decodeIfPresent([JsonSample].self, forKey: .samples)?.map { $0.sample } ?? []
-            if container.contains(.value) {
-                let value = try JsonCoding.decodeValue(from: container)
-                let time = try container.decodeIfPresent(Double.self, forKey: .time).map { Timestamp(timeIntervalSince1970: $0) }
-                self.samples = (samples + [.init(value: value, timestamp: time)]).sorted()
-            } else {
-                self.samples = samples.sorted()
-            }
-
-            self._children = try container.decodeIfPresent([PathComponent : JsonSampleTree].self, forKey: .children) ?? [:]
-        }
-
-        init(from decoder: any Decoder) throws {
-            let container = try decoder.container(keyedBy: Keys.self)
-            try self.init(from: container)
-        }
-    }
-
-    /**
-     Wrapper to use a custom encoding for samples in JSON messages
-     */
-    struct JsonSample {
-
-        /// The wrapped sample
-        let sample: Sample
-    }
-
-    struct ListElement {
-
-        let values: [Value]
-    }
-
-    struct MapElement {
-
-        let values: [String: Value]
     }
 }
 
-extension JsonCoding.JsonMessage: Encodable {
+// MARK: Encoding
 
-    func encode(to encoder: any Encoder) throws {
-        // Encode the message in a single top-level container
-        var container = encoder.container(keyedBy: Format.Keys.self)
+extension JsonCoding {
+
+    private static func writeKey(_ field: JsonField, to writer: inout JsonWriter, first: inout Bool) {
+        writer.writeKey(Format.key(for: field), first: &first)
+    }
+
+    private static func write(_ message: Message, to writer: inout JsonWriter) throws {
+        // Encode the message in a single top-level object
+        writer.beginObject()
+        var first = true
         // Only encode message type if not a data message
         if message.type != .data {
-            try container.encode(Format.tag(for: message.type), forKey: .message)
+            writeKey(.message, to: &writer, first: &first)
+            Format.tag(for: message.type).write(to: &writer)
         }
         // If the path is absent, then it defaults to an empty path
         if !message.path.isEmpty {
-            try container.encode(message.path, forKey: .path)
+            writeKey(.path, to: &writer, first: &first)
+            write(message.path, to: &writer)
         }
-        // Encode data to the top-level container
+        // Encode data to the top-level object
 
         // There is a possibly invalid message where the `time` is set in addition to data being present
         // We ensure that the timestamp is not written into the message if any samples are provided
         // so that decoding does not fail
-        try JsonCoding.encode(message.data, to: &container, canUseRootContainer: message.time == nil)
+        try write(message.data, to: &writer, first: &first, canUseRootContainer: message.time == nil)
 
-        try container.encodeIfPresent(message.count, forKey: .count)
-        try container.encodeIfPresent(message.depth, forKey: .depth)
-        try container.encodeIfPresent(message.time?.timeIntervalSince1970, forKey: .time)
-        try container.encodeIfPresent(message.end?.timeIntervalSince1970, forKey: .end)
-        try container.encodeIfPresent(message.id, forKey: .id)
-    }
-}
-
-extension JsonCoding.JsonMessage: Decodable {
-
-    init(from decoder: any Decoder) throws {
-        let container = try decoder.container(keyedBy: Format.Keys.self)
-        let type: MessageType
-        if let rawType = try container.decodeIfPresent(Format.Tag.self, forKey: .message) {
-            guard let t = Format.messageType(from: rawType) else {
-                throw DecodingError.typeMismatch(MessageType.self, .init(codingPath: [], debugDescription: "Unknown message type: \(rawType)"))
-            }
-            type = t
-        } else {
-            type = .data
+        if let count = message.count {
+            writeKey(.count, to: &writer, first: &first)
+            writer.write(count)
         }
-        let path = try container.decodeIfPresent(Path.self, forKey: .path) ?? []
-        let count = try container.decodeIfPresent(Int.self, forKey: .count)
-        let depth = try container.decodeIfPresent(Int.self, forKey: .depth)
-        let time: Timestamp?
-        if !container.contains(.value) {
-            time = try container.decodeIfPresent(Double.self, forKey: .time).map { Timestamp(timeIntervalSince1970: $0) }
-        } else {
-            // If a value is present, then the timestamp is decoded as part of the sample
-            time = nil
+        if let depth = message.depth {
+            writeKey(.depth, to: &writer, first: &first)
+            writer.write(depth)
         }
-        let end = try container.decodeIfPresent(Double.self, forKey: .end).map { Timestamp(timeIntervalSince1970: $0) }
-        let id = try container.decodeIfPresent(Int.self, forKey: .id)
-        let data = try JsonCoding.JsonSampleTree(from: container)
-
-        self.message = Message(
-            type: type,
-            path: path,
-            time: time,
-            data: data,
-            count: count,
-            depth:depth,
-            end: end,
-            id: id)
-    }
-}
-
-extension JsonCoding.JsonSample: Encodable {
-
-    func encode(to encoder: any Encoder) throws {
-        var container = encoder.container(keyedBy: Format.Keys.self)
-        try JsonCoding.encode(sample.value, in: &container)
-        try container.encodeIfPresent(sample.timestamp?.timeIntervalSince1970, forKey: .time)
-    }
-}
-
-extension JsonCoding.JsonSample: Decodable {
-
-    init(from decoder: any Decoder) throws {
-        let container = try decoder.container(keyedBy: Format.Keys.self)
-        let value = try JsonCoding.decodeValue(from: container)
-        let time = try container.decode(Double.self, forKey: .time)
-        self.sample = .init(value: value, timestamp: .init(timeIntervalSince1970: time))
-    }
-}
-
-extension JsonCoding.ListElement: Codable {
-
-    init(from decoder: any Decoder) throws {
-        var container = try decoder.unkeyedContainer()
-        var values: [Value] = []
-        while !container.isAtEnd {
-            let rawType = try container.decode(Format.Tag.self)
-            let value = try JsonCoding.decodeValue(from: &container, rawType: rawType)
-            values.append(value)
+        if let time = message.time {
+            writeKey(.time, to: &writer, first: &first)
+            try writer.write(time.timeIntervalSince1970)
         }
-        self.values = values
-    }
-
-    func encode(to encoder: any Encoder) throws {
-        var container = encoder.unkeyedContainer()
-        for value in values {
-            try JsonCoding.encode(value, in: &container)
+        if let end = message.end {
+            writeKey(.end, to: &writer, first: &first)
+            try writer.write(end.timeIntervalSince1970)
         }
-    }
-}
-
-extension JsonCoding.MapElement: Codable {
-
-    init(from decoder: any Decoder) throws {
-        var container = try decoder.unkeyedContainer()
-        var values: [String: Value] = [:]
-        while !container.isAtEnd {
-            let key = try container.decode(String.self)
-            let rawType = try container.decode(Format.Tag.self)
-            let value = try JsonCoding.decodeValue(from: &container, rawType: rawType)
-            values[key] = value
+        if let id = message.id {
+            writeKey(.id, to: &writer, first: &first)
+            writer.write(id)
         }
-        self.values = values
+        writer.endObject()
     }
 
-    func encode(to encoder: any Encoder) throws {
-        var container = encoder.unkeyedContainer()
-        for (key, value) in values {
-            try container.encode(key)
-            try JsonCoding.encode(value, in: &container)
+    /// Write a path as an array of strings
+    private static func write(_ path: Path, to writer: inout JsonWriter) {
+        writer.beginArray()
+        for (index, component) in path.enumerated() {
+            if index > 0 { writer.writeComma() }
+            writer.write(component)
         }
+        writer.endArray()
     }
-}
-
-private struct StringKey: CodingKey {
-
-    let stringValue: String
-
-    init(stringValue: String) {
-        self.stringValue = stringValue
-    }
-
-    var intValue: Int? {
-        Int(stringValue)
-    }
-
-    init?(intValue: Int) {
-        self.stringValue = "\(intValue)"
-    }
-}
-
-// MARK: Sample trees
-
-extension JsonCoding {
 
     /**
-    - Parameter canUseRootContainer: Indicates if a single sample can be encoded directly in the provided container
+     Write the fields of a sample tree into the current object.
+     - Parameter canUseRootContainer: Indicates if a single sample can be encoded directly in the current object
      */
-    static func encode(_ tree: any SampleTree, to container: inout KeyedEncodingContainer<Keys>, canUseRootContainer: Bool = true) throws {
+    private static func write(_ tree: any SampleTree, to writer: inout JsonWriter, first: inout Bool, canUseRootContainer: Bool = true) throws {
         let samples = tree.samples
         switch samples.count {
             case 0: break
@@ -276,11 +180,18 @@ extension JsonCoding {
                     // because the `time` field is already used
                     fallthrough
                 }
-                let sample = samples[0]
-                try encode(sample.value, in: &container)
-                try container.encodeIfPresent(sample.timestamp?.timeIntervalSince1970, forKey: .time)
+                try write(samples[0], to: &writer, first: &first)
             default:
-                try container.encode(samples.map(JsonSample.init), forKey: .samples)
+                writeKey(.samples, to: &writer, first: &first)
+                writer.beginArray()
+                for (index, sample) in samples.enumerated() {
+                    if index > 0 { writer.writeComma() }
+                    writer.beginObject()
+                    var sampleFirst = true
+                    try write(sample, to: &writer, first: &sampleFirst)
+                    writer.endObject()
+                }
+                writer.endArray()
         }
 
         let children = tree.children
@@ -288,137 +199,304 @@ extension JsonCoding {
             return
         }
 
-        var childrenContainer = container.nestedContainer(keyedBy: StringKey.self, forKey: .children)
+        writeKey(.children, to: &writer, first: &first)
+        writer.beginObject()
+        var childrenFirst = true
         for (name, child) in children {
-            var childContainer = childrenContainer.nestedContainer(keyedBy: Keys.self, forKey: StringKey(stringValue: name))
-            try encode(child, to: &childContainer)
+            writer.writeKey(name, first: &childrenFirst)
+            writer.beginObject()
+            var childFirst = true
+            try write(child, to: &writer, first: &childFirst)
+            writer.endObject()
+        }
+        writer.endObject()
+    }
+
+    /// Write the value and timestamp of a sample into the current object
+    private static func write(_ sample: Sample, to writer: inout JsonWriter, first: inout Bool) throws {
+        try write(sample.value, to: &writer, first: &first)
+        if let timestamp = sample.timestamp {
+            writeKey(.time, to: &writer, first: &first)
+            try writer.write(timestamp.timeIntervalSince1970)
         }
     }
-}
-
-// MARK: Values
-
-extension JsonCoding {
 
     /**
-     Encode a value to a container.
+     Write a value into the current object.
 
      The value is encoded either as a number, nil, a string, or a list.
      If the string represents data, the number represents an integer,
      or the list represents a map, then the value type is added to disambiguate.
     */
-    static func encode(_ value: Value, in container: inout KeyedEncodingContainer<Keys>) throws {
+    private static func write(_ value: Value, to writer: inout JsonWriter, first: inout Bool) throws {
         let type = value.type
         switch type {
-        case .data, .integer, .list, .map: try container.encode(Format.tag(for: type), forKey: .type)
+        case .data, .integer, .list, .map:
+                writeKey(.type, to: &writer, first: &first)
+                Format.tag(for: type).write(to: &writer)
             default: break
         }
+        writeKey(.value, to: &writer, first: &first)
+        try writeContent(of: value, to: &writer)
+    }
+
+    /// Write a value preceded by its type, as used in lists and maps
+    private static func writeTagged(_ value: Value, to writer: inout JsonWriter) throws {
+        Format.tag(for: value.type).write(to: &writer)
+        writer.writeComma()
+        try writeContent(of: value, to: &writer)
+    }
+
+    private static func writeContent(of value: Value, to writer: inout JsonWriter) throws {
         switch value {
-            case .null: try container.encodeNil(forKey: .value)
-            case .integer(let value): try container.encode(value, forKey: .value)
-            case .double(let value): try container.encode(value, forKey: .value)
-            case .string(let value): try container.encode(value, forKey: .value)
-            case .data(let value): try container.encode(value, forKey: .value)
-            case .path(let value): try container.encode(value, forKey: .value)
-            case .list(let value): try container.encode(ListElement(values: value), forKey: .value)
-            case .map(let value): try container.encode(MapElement(values: value), forKey: .value)
+            case .null: writer.writeNull()
+            case .integer(let value): writer.write(value)
+            case .double(let value): try writer.write(value)
+            case .string(let value): writer.write(value)
+            case .path(let value): write(value, to: &writer)
+            case .data(let value): writer.write(value)
+            case .list(let values):
+                writer.beginArray()
+                for (index, element) in values.enumerated() {
+                    if index > 0 { writer.writeComma() }
+                    try writeTagged(element, to: &writer)
+                }
+                writer.endArray()
+            case .map(let values):
+                writer.beginArray()
+                var first = true
+                for (key, element) in values {
+                    if first { first = false } else { writer.writeComma() }
+                    writer.write(key)
+                    writer.writeComma()
+                    try writeTagged(element, to: &writer)
+                }
+                writer.endArray()
+        }
+    }
+}
+
+// MARK: Decoding
+
+extension JsonCoding {
+
+    /**
+     The fields of a JSON object.
+
+     Messages, tree nodes and samples all use the same fields,
+     and unused fields are ignored.
+     */
+    private struct Fields {
+        var message: Format.Tag?
+        var path: Path?
+        var value: Value?
+        /// The offset of the value, in case it needs to be read again after the type is known
+        var valueOffset: Int?
+        /// Indicate that the value was read (or skipped) before the type was known
+        var valueIsUntyped = false
+        var type: Format.Tag?
+        var samples: [Sample] = []
+        var children: [PathComponent : any SampleTree] = [:]
+        var count: Int?
+        var depth: Int?
+        var time: Double?
+        var end: Double?
+        var id: Int?
+
+        var hasValue: Bool {
+            valueOffset != nil
         }
     }
 
-    static func encode(_ value: Value, in container: inout UnkeyedEncodingContainer) throws {
-        try container.encode(Format.tag(for: value.type))
-        switch value {
-            case .null: try container.encodeNil()
-            case .integer(let value): try container.encode(value)
-            case .double(let value): try container.encode(value)
-            case .string(let value): try container.encode(value)
-            case .data(let value): try container.encode(value)
-            case .path(let value): try container.encode(value)
-            case .list(let value): try container.encode(ListElement(values: value))
-            case .map(let value): try container.encode(MapElement(values: value))
+    private static func readMessage(from reader: inout JsonReader) throws -> Message {
+        let fields = try readFields(from: &reader)
+        let type: MessageType
+        if let rawType = fields.message {
+            guard let t = Format.messageType(from: rawType) else {
+                throw reader.error("Unknown message type: \(rawType)")
+            }
+            type = t
+        } else {
+            type = .data
         }
+        return Message(
+            type: type,
+            path: fields.path ?? [],
+            // If a value is present, then the timestamp is decoded as part of the sample
+            time: fields.hasValue ? nil : fields.time.map(Timestamp.init(timeIntervalSince1970:)),
+            data: tree(from: fields),
+            count: fields.count,
+            depth: fields.depth,
+            end: fields.end.map(Timestamp.init(timeIntervalSince1970:)),
+            id: fields.id)
     }
 
-    static func decodeValue(from container: KeyedDecodingContainer<Keys>) throws -> Value {
-        guard let rawType = try container.decodeIfPresent(Format.Tag.self, forKey: .type) else {
-            // No type information, so try to detect it
-            if try container.decodeNil(forKey: .value) {
-                return .null
-            }
-            if let value = try? container.decode(Double.self, forKey: .value) {
-                return .double(value)
-            }
-            if let value = try? container.decode(String.self, forKey: .value) {
-                return .string(value)
-            }
-            let value = try container.decode(Path.self, forKey: .value)
-            return .path(value)
+    private static func tree(from fields: Fields) -> ImmutableSampleTree {
+        guard let value = fields.value else {
+            return ImmutableSampleTree(samples: fields.samples.sorted(), children: fields.children)
         }
+        let sample = Sample(value: value, timestamp: fields.time.map(Timestamp.init(timeIntervalSince1970:)))
+        return ImmutableSampleTree(samples: (fields.samples + [sample]).sorted(), children: fields.children)
+    }
 
-        switch try valueType(from: rawType) {
-            case .null: return .null
-            case .data:
-                let value = try container.decode(Data.self, forKey: .value)
-                return .data(value)
-            case .integer:
-                let value = try container.decode(Int.self, forKey: .value)
-                return .integer(value)
-            case .double:
-                let value = try container.decode(Double.self, forKey: .value)
-                return .double(value)
-            case .string:
-                let value = try container.decode(String.self, forKey: .value)
-                return .string(value)
-            case .path:
-                let value = try container.decode(Path.self, forKey: .value)
-                return .path(value)
-            case .list:
-                let value = try container.decode(ListElement.self, forKey: .value)
-                return .list(value.values)
-            case .map:
-                let value = try container.decode(MapElement.self, forKey: .value)
-                return .map(value.values)
+    private static func readFields(from reader: inout JsonReader) throws -> Fields {
+        var fields = Fields()
+        try reader.beginObject()
+        var first = true
+        while let key = try reader.nextKey(first: &first) {
+            guard let field = Format.field(for: key) else {
+                try reader.skipValue()
+                continue
+            }
+            switch field {
+                case .message: fields.message = try Format.Tag.read(from: &reader)
+                case .path: fields.path = try readPath(from: &reader)
+                case .type: fields.type = try Format.Tag.read(from: &reader)
+                case .count: fields.count = try reader.readInt()
+                case .depth: fields.depth = try reader.readInt()
+                case .id: fields.id = try reader.readInt()
+                case .time: fields.time = try reader.readDouble()
+                case .end: fields.end = try reader.readDouble()
+                case .samples: fields.samples = try readSamples(from: &reader)
+                case .children: fields.children = try readChildren(from: &reader)
+                case .value:
+                    fields.valueOffset = reader.offset
+                    fields.valueIsUntyped = fields.type == nil
+                    if fields.valueIsUntyped, try reader.peekKind() == .array {
+                        // Could be a path, a list or a map, depending on a type that may follow
+                        fields.value = nil
+                        try reader.skipValue()
+                    } else {
+                        fields.value = try readValue(from: &reader, type: fields.type)
+                    }
+            }
         }
+        try resolveValue(of: &fields, from: &reader)
+        return fields
     }
 
     /**
-     Decode a value from an unkeyed container.
+     Read the value again, if it was read (or skipped) before its type was known.
 
-     Values in unkeyed containers (lists and maps) are always preceded by their type.
+     The encoder always writes the type before the value, so this only happens for JSON from other sources.
      */
-    static func decodeValue(from container: inout UnkeyedDecodingContainer, rawType: Format.Tag) throws -> Value {
-        switch try valueType(from: rawType) {
+    private static func resolveValue(of fields: inout Fields, from reader: inout JsonReader) throws {
+        guard fields.valueIsUntyped, let valueOffset = fields.valueOffset,
+              fields.type != nil || fields.value == nil else {
+            return
+        }
+        let endOffset = reader.offset
+        reader.offset = valueOffset
+        fields.value = try readValue(from: &reader, type: fields.type)
+        reader.offset = endOffset
+    }
+
+    private static func readPath(from reader: inout JsonReader) throws -> Path {
+        var path: Path = []
+        try reader.beginArray()
+        var first = true
+        while try reader.nextElement(first: &first) {
+            path.append(try reader.readString())
+        }
+        return path
+    }
+
+    private static func readSamples(from reader: inout JsonReader) throws -> [Sample] {
+        var samples: [Sample] = []
+        try reader.beginArray()
+        var first = true
+        while try reader.nextElement(first: &first) {
+            let fields = try readFields(from: &reader)
+            guard let value = fields.value else {
+                throw reader.error("Missing value in sample")
+            }
+            guard let time = fields.time else {
+                throw reader.error("Missing time in sample")
+            }
+            samples.append(Sample(value: value, timestamp: .init(timeIntervalSince1970: time)))
+        }
+        return samples
+    }
+
+    private static func readChildren(from reader: inout JsonReader) throws -> [PathComponent : any SampleTree] {
+        var children: [PathComponent : any SampleTree] = [:]
+        try reader.beginObject()
+        var first = true
+        while let name = try reader.nextKey(first: &first) {
+            children[name] = tree(from: try readFields(from: &reader))
+        }
+        return children
+    }
+
+    private static func valueType(from tag: Format.Tag, reader: JsonReader) throws -> ValueType {
+        guard let type = Format.valueType(from: tag) else {
+            throw reader.error("Unknown value type: \(tag)")
+        }
+        return type
+    }
+
+    /**
+     Read a value.
+     - Parameter type: The type of the value, if specified. Otherwise the type is inferred from the JSON.
+     */
+    private static func readValue(from reader: inout JsonReader, type: Format.Tag?) throws -> Value {
+        guard let type else {
+            // No type information, so detect it
+            switch try reader.peekKind() {
+                case .null:
+                    try reader.readNull()
+                    return .null
+                case .number: return .double(try reader.readDouble())
+                case .string: return .string(try reader.readString())
+                // Lists and maps are always written with a type, so an untyped array is a path
+                case .array: return .path(try readPath(from: &reader))
+                case .bool, .object: throw reader.error("Invalid value")
+            }
+        }
+        switch try valueType(from: type, reader: reader) {
             case .null:
-                _ = try container.decodeNil()
+                try reader.skipValue()
                 return .null
-            case .data:
-                let value = try container.decode(Data.self)
-                return .data(value)
-            case .integer:
-                let value = try container.decode(Int.self)
-                return .integer(value)
-            case .double:
-                let value = try container.decode(Double.self)
-                return .double(value)
-            case .string:
-                let value = try container.decode(String.self)
-                return .string(value)
-            case .path:
-                let value = try container.decode(Path.self)
-                return .path(value)
-            case .list:
-                let value = try container.decode(ListElement.self)
-                return .list(value.values)
-            case .map:
-                let value = try container.decode(MapElement.self)
-                return .map(value.values)
+            case .data: return .data(try reader.readData())
+            case .integer: return .integer(try reader.readInt())
+            case .double: return .double(try reader.readDouble())
+            case .string: return .string(try reader.readString())
+            case .path: return .path(try readPath(from: &reader))
+            case .list: return .list(try readList(from: &reader))
+            case .map: return .map(try readMap(from: &reader))
         }
     }
 
-    private static func valueType(from rawType: Format.Tag) throws -> ValueType {
-        guard let type = Format.valueType(from: rawType) else {
-            throw DecodingError.valueNotFound(ValueType.self, .init(codingPath: [], debugDescription: "Unknown value type: \(rawType)", underlyingError: nil))
+    /// Read a value preceded by its type, as used in lists and maps
+    private static func readTaggedValue(from reader: inout JsonReader, first: inout Bool) throws -> Value {
+        let type = try Format.Tag.read(from: &reader)
+        guard try reader.nextElement(first: &first) else {
+            throw reader.error("Missing value after type")
         }
-        return type
+        return try readValue(from: &reader, type: type)
+    }
+
+    private static func readList(from reader: inout JsonReader) throws -> [Value] {
+        var values: [Value] = []
+        try reader.beginArray()
+        var first = true
+        while try reader.nextElement(first: &first) {
+            values.append(try readTaggedValue(from: &reader, first: &first))
+        }
+        return values
+    }
+
+    private static func readMap(from reader: inout JsonReader) throws -> [String: Value] {
+        var values: [String: Value] = [:]
+        try reader.beginArray()
+        var first = true
+        while try reader.nextElement(first: &first) {
+            let key = try reader.readString()
+            guard try reader.nextElement(first: &first) else {
+                throw reader.error("Missing value after map key")
+            }
+            values[key] = try readTaggedValue(from: &reader, first: &first)
+        }
+        return values
     }
 }
