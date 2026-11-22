@@ -146,6 +146,22 @@ extension Message {
     }
 
     /**
+     Create a push message to transmit a value, after converting it to a SOIL value.
+     - Parameter path: The path of the value to transmit.
+     - Parameter value: The value associated with the path.
+     - Parameter timestamp: The timestamp associated with the value. `nil` indicates current time.
+     - Parameter request: The optional request id, if this is a response, or if an acknowledgement is expected.
+     - Parameter totalMessages: The total number of messages in response to the request
+     - Throws: An error, if the value can't be converted to a SOIL value
+     - Note: The message type will be set to `data`
+     */
+    // Disfavored, so that literals use the non-throwing `Value` overload
+    @_disfavoredOverload
+    public static func value(_ value: some ValueConvertible, for path: Path, at timestamp: Timestamp? = nil, inResponseTo request: Int? = nil, withCount totalMessages: Int? = nil) throws -> Self {
+        .value(try value.soilValue, for: path, at: timestamp, inResponseTo: request, withCount: totalMessages)
+    }
+
+    /**
      Create a message with several samples.
      - Parameter path: The path of the value to transmit.
      - Parameter samples: The samples associated with the path.

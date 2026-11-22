@@ -80,6 +80,35 @@ let current = await storage.currentValue(for: ["my", "value"])
 // current == .integer(123)
 ```
 
+### Working with Swift types
+
+Types conforming to `ValueConvertible` can be stored and read directly.
+Conformances exist for common types (integers, `Bool`, `Double`, `String`, `Data`, `Date`, `UUID`, `URL`,
+optionals, arrays, sets and dictionaries), and enums with raw values as well as `Codable` types
+only need to declare the conformance:
+
+```swift
+enum Mode: String, ValueConvertible {
+    case idle, active
+}
+
+struct Position: Codable, ValueConvertible {
+    var x: Double
+    var y: Double
+}
+
+// Converting a value throws if it can't be represented (e.g. `UInt64.max`)
+try storage.accept(Position(x: 1, y: 2), for: ["robot", "position"])
+let position = await storage.currentValue(for: ["robot", "position"], as: Position.self)
+
+// Typed nodes only accept and return values of a single type
+let mode = storage.node(at: ["robot", "mode"], as: Mode.self)
+try mode.set(.active)
+let current = await mode.value() // Mode?
+```
+
+Literals can be used wherever a `Value` is expected, e.g. `storage.accept(123, for: ["my", "value"])`.
+
 ### Connecting two components over a network
 
 The core library lets you expose a local component over a connection and use a remote

@@ -55,6 +55,20 @@ extension Receiver {
     }
 
     /**
+     Save a value for a path, after converting it to a SOIL value.
+     - Parameter value: The value to store.
+     - Parameter path: The path of the value.
+     - Parameter timestamp: The timestamp associated with the value
+     - Throws: An error, if the value can't be converted to a SOIL value
+     */
+    @discardableResult
+    // Disfavored, so that literals use the non-throwing `Value` overload
+    @_disfavoredOverload
+    public func accept(_ value: some ValueConvertible, for path: Path = [], at timestamp: Timestamp? = nil) throws -> any Request {
+        accept(try value.soilValue, for: path, at: timestamp)
+    }
+
+    /**
      Save a timestamped value for a path
      - Parameter sample: The timestamped value to store.
      - Parameter path: The path of the value.
