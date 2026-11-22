@@ -183,7 +183,7 @@ extension StorageNode {
      - Parameter type: The type of the node values
      - Returns: The typed node for the same path
      */
-    public func typed<T: ValueConvertible>(as type: T.Type = T.self) -> ValueStorageNode<T> {
+    public func valueNode<T: ValueConvertible>(as type: T.Type = T.self) -> ValueStorageNode<T> {
         ValueStorageNode(node: self)
     }
 
@@ -193,8 +193,8 @@ extension StorageNode {
      - Parameter type: The type of the node values
      - Returns: The typed node representing the child.
      */
-    public func child<T: ValueConvertible>(named component: String, as type: T.Type = T.self) -> ValueStorageNode<T> {
-        child(named: component).typed(as: type)
+    public func valueChild<T: ValueConvertible>(named component: String, as type: T.Type = T.self) -> ValueStorageNode<T> {
+        child(named: component).valueNode(as: type)
     }
 }
 
@@ -239,8 +239,8 @@ extension Storage {
      - Parameter type: The type of the node values
      - Returns: The typed node for the path
      */
-    public func node<T: ValueConvertible>(at path: Path, as type: T.Type = T.self) -> ValueStorageNode<T> {
-        node(at: path).typed(as: type)
+    public func valueNode<T: ValueConvertible>(at path: Path, as type: T.Type = T.self) -> ValueStorageNode<T> {
+        node(at: path).valueNode(as: type)
     }
 
     /**

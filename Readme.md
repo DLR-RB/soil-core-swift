@@ -102,7 +102,7 @@ try storage.accept(Position(x: 1, y: 2), for: ["robot", "position"])
 let position = await storage.currentValue(for: ["robot", "position"], as: Position.self)
 
 // Typed nodes only accept and return values of a single type
-let mode = storage.node(at: ["robot", "mode"], as: Mode.self)
+let mode = storage.valueNode(at: ["robot", "mode"], as: Mode.self)
 try mode.set(.active)
 let current = await mode.value() // Mode?
 ```
