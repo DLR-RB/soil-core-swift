@@ -183,8 +183,8 @@ extension StorageNode {
      - Parameter type: The type of the node values
      - Returns: The typed node for the same path
      */
-    public func typed<T: ValueConvertible>(as type: T.Type = T.self) -> TypedStorageNode<T> {
-        TypedStorageNode(node: self)
+    public func typed<T: ValueConvertible>(as type: T.Type = T.self) -> ValueStorageNode<T> {
+        ValueStorageNode(node: self)
     }
 
     /**
@@ -193,8 +193,32 @@ extension StorageNode {
      - Parameter type: The type of the node values
      - Returns: The typed node representing the child.
      */
-    public func child<T: ValueConvertible>(named component: String, as type: T.Type = T.self) -> TypedStorageNode<T> {
+    public func child<T: ValueConvertible>(named component: String, as type: T.Type = T.self) -> ValueStorageNode<T> {
         child(named: component).typed(as: type)
+    }
+}
+
+// MARK: Trees
+
+extension StorageNode {
+
+    /**
+     Create a node which only accepts trees of a specific type.
+     - Parameter type: The type of the node trees
+     - Returns: The tree node for the same path
+     */
+    public func treeNode<T: SampleTreeConvertible>(as type: T.Type = T.self) -> TreeStorageNode<T> {
+        TreeStorageNode(node: self)
+    }
+
+    /**
+     Create a tree storage node for a child of this node.
+     - Parameter component: The name of the child.
+     - Parameter type: The type of the node trees
+     - Returns: The tree node representing the child.
+     */
+    public func treeChild<T: SampleTreeConvertible>(named component: String, as type: T.Type = T.self) -> TreeStorageNode<T> {
+        child(named: component).treeNode(as: type)
     }
 }
 
@@ -215,7 +239,17 @@ extension Storage {
      - Parameter type: The type of the node values
      - Returns: The typed node for the path
      */
-    public func node<T: ValueConvertible>(at path: Path, as type: T.Type = T.self) -> TypedStorageNode<T> {
+    public func node<T: ValueConvertible>(at path: Path, as type: T.Type = T.self) -> ValueStorageNode<T> {
         node(at: path).typed(as: type)
+    }
+
+    /**
+     Create a node to access the tree at a path with a specific type.
+     - Parameter path: The path of the node in the tree
+     - Parameter type: The type of the node trees
+     - Returns: The tree node for the path
+     */
+    public func treeNode<T: SampleTreeConvertible>(at path: Path, as type: T.Type = T.self) -> TreeStorageNode<T> {
+        node(at: path).treeNode(as: type)
     }
 }

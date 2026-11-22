@@ -195,6 +195,21 @@ extension Message {
             id: request)
     }
 
+    /**
+     Create a message with a tree, after converting a value to a SOIL tree.
+     - Parameter value: The value to convert to the tree associated with the path.
+     - Parameter path: The path of the root node of the tree.
+     - Parameter timestamp: The timestamp set for all samples of the tree that don't have one. `nil` indicates current time.
+     - Parameter request: The optional id of the request that prompted the message.
+     - Parameter totalMessages: The total number of messages in response to the request
+     - Throws: An error, if the value can't be converted to a SOIL tree
+     - Note: The message type will be set to `data`
+     */
+    public static func tree(_ value: some SampleTreeConvertible, for path: Path, at timestamp: Timestamp? = nil, inResponseTo request: Int? = nil, totalMessages: Int? = nil) throws -> Self {
+        let tree = try value.sampleTree
+        return .tree(timestamp.map { tree.withTimestamp($0) } ?? tree, for: path, inResponseTo: request, totalMessages: totalMessages)
+    }
+
     // MARK: Requests
 
     /**

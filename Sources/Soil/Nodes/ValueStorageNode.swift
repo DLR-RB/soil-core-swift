@@ -9,7 +9,7 @@
  let current = await temperature.value() // Double?
  ```
  */
-public struct TypedStorageNode<T: ValueConvertible>: Sendable {
+public struct ValueStorageNode<T: ValueConvertible>: Sendable {
 
     /// The untyped node
     public let node: StorageNode
@@ -49,7 +49,7 @@ public struct TypedStorageNode<T: ValueConvertible>: Sendable {
     }
 }
 
-extension TypedStorageNode: AnyStorageNode {
+extension ValueStorageNode: AnyStorageNode {
 
     @discardableResult
     public func setNull() -> any Request {

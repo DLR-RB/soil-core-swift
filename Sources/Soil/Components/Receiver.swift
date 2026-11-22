@@ -44,6 +44,19 @@ extension Receiver {
     }
 
     /**
+     Save a value as a tree for a path, after converting it to a SOIL tree.
+     - Parameter value: The value to store.
+     - Parameter path: The path of the root node of the tree.
+     - Parameter timestamp: The timestamp set for all samples of the tree that don't have one
+     - Throws: An error, if the value can't be converted to a SOIL tree
+     */
+    @discardableResult
+    public func accept(tree value: some SampleTreeConvertible, for path: Path = [], at timestamp: Timestamp? = nil) throws -> any Request {
+        let tree = try value.sampleTree
+        return accept(timestamp.map { tree.withTimestamp($0) } ?? tree, for: path)
+    }
+
+    /**
      Save a value for a path.
      - Parameter value: The value to store.
      - Parameter path: The path of the value.
