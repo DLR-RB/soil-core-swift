@@ -137,6 +137,24 @@ let current = await node.value() // Robot?
 
 Trees can also be sent directly using `Message.tree(_:for:)`.
 
+### Encoding values
+
+Values can be converted to binary data with a `ValueEncoding`, e.g. to store them in files or databases.
+The data either includes the value type, or only the content, if the type is stored separately:
+
+```swift
+let encoding = BinaryValueEncoding()
+let data = try encoding.encode(value)
+let decoded = try encoding.decode(data)
+
+let content = try encoding.encodeContent(of: value)
+let restored = try encoding.decodeContent(content, as: value.type)
+```
+
+`BinaryValueEncoding` uses a compact binary format.
+`JSONValueEncoding` and `CompactJSONValueEncoding` represent values in the same way as `JsonEncoding` and `CompactJsonEncoding` do within messages.
+`Value` is also `Codable`, and encoded as `[type, value]`.
+
 ### Connecting two components over a network
 
 The core library lets you expose a local component over a connection and use a remote
