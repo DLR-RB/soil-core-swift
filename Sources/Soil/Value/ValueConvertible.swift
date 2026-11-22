@@ -10,10 +10,10 @@ import Foundation
  | --- | --- |
  | `Int`, `Int8`, ..., `UInt64` | `.integer` (throws if the value doesn't fit into `Int`) |
  | `Bool` | `.integer` (`0` or `1`) |
- | `Double`, `Float` | `.double` |
+ | `Double`, `Float` | `.double` (`Float` fails to convert from values that are too large) |
  | `String` | `.string` |
  | `Data` | `.data` |
- | `Date` | `.double` (seconds since 1970) |
+ | `Date` | `.double` (seconds since 1970, fails to convert from non-finite values) |
  | `UUID`, `URL` | `.string` |
  | `Optional` | `.null` for `nil` |
  | `Array`, `Set` | `.list` |
@@ -37,6 +37,9 @@ import Foundation
 
  Converting to a SOIL value throws if the value can't be represented,
  e.g. for unsigned integers larger than `Int.max`.
+ Converting from a SOIL value fails if the value doesn't fit into the type, e.g. `Int8` from `.integer(1000)`.
+ Values are never clamped or rounded to the nearest representable value during these conversions.
+ Only messages received from other systems are clamped while decoding (see ``JsonEncoding``).
  Conforming types that can always be converted may implement ``soilValue`` without `throws`.
  */
 public protocol ValueConvertible: Sendable {
@@ -217,10 +220,15 @@ extension Bool: ValueConvertible {
 
 extension BinaryFloatingPoint {
 
+    /// Fails, if a finite value is too large for the type
     fileprivate init?(floatingSoilValue soilValue: Value) {
         switch soilValue {
-        case .double(let value): self.init(value)
-        case .integer(let value): self.init(value)
+        case .double(let value):
+            self.init(value)
+            guard isFinite || !value.isFinite else { return nil }
+        case .integer(let value):
+            self.init(value)
+            guard isFinite else { return nil }
         default: return nil
         }
     }
@@ -274,7 +282,9 @@ extension Date: ValueConvertible {
 
     public init?(soilValue: Value) {
         switch soilValue {
-        case .double(let value): self.init(timeIntervalSince1970: value)
+        case .double(let value):
+            guard value.isFinite else { return nil }
+            self.init(timeIntervalSince1970: value)
         case .integer(let value): self.init(timeIntervalSince1970: Double(value))
         default: return nil
         }

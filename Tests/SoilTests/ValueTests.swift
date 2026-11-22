@@ -17,6 +17,11 @@ private struct Counter: Codable, ValueConvertible {
     var count: UInt64
 }
 
+private struct Small: Codable, ValueConvertible {
+    var byte: Int8
+    var ratio: Float
+}
+
 @Suite("Values")
 struct ValueTests {
 
@@ -47,6 +52,47 @@ struct ValueTests {
         #expect(Double(soilValue: .integer(3)) == 3.0)
         #expect(Int(soilValue: .string("3")) == nil)
         try roundTrip(UInt64(5), expected: .integer(5))
+    }
+
+    @Test("Out of range conversions fail instead of clamping")
+    func noClamping() {
+        // Integers
+        #expect(Int8(soilValue: .integer(1000)) == nil)
+        #expect(Int8(soilValue: .integer(-1000)) == nil)
+        #expect(UInt(soilValue: .integer(-1)) == nil)
+        #expect(Int(soilValue: .double(1e30)) == nil)
+        #expect(Int(soilValue: .double(.infinity)) == nil)
+        #expect(Int(soilValue: .double(-.infinity)) == nil)
+        #expect(Int(soilValue: .double(.nan)) == nil)
+        #expect(Int(soilValue: .integer(.max)) == .max)
+        // Floating point
+        #expect(Float(soilValue: .double(1e300)) == nil)
+        #expect(Float(soilValue: .double(-1e300)) == nil)
+        #expect(Float(soilValue: .double(.infinity)) == .infinity)
+        #expect(Float(soilValue: .double(.nan))?.isNaN == true)
+        #expect(Float(soilValue: .double(Double(Float.greatestFiniteMagnitude))) == .greatestFiniteMagnitude)
+        #expect(Float(soilValue: .integer(.max)) == Float(Int.max))
+        #expect(Double(soilValue: .double(.infinity)) == .infinity)
+        // Dates
+        #expect(Date(soilValue: .double(.nan)) == nil)
+        #expect(Date(soilValue: .double(.infinity)) == nil)
+        #expect(Date(soilValue: .integer(.max)) != nil)
+        // Codable types
+        #expect(Small(soilValue: .map(["byte": .integer(1), "ratio": .double(0.5)])) != nil)
+        #expect(Small(soilValue: .map(["byte": .integer(1000), "ratio": .double(0.5)])) == nil)
+        #expect(Small(soilValue: .map(["byte": .integer(1), "ratio": .double(1e300)])) == nil)
+    }
+
+    @Test("Received values are clamped, but converted strictly")
+    func receivedValues() throws {
+        let json = #"{"type": "integer", "value": 99999999999999999999}"#
+        let message = try JsonEncoding().decode(Data(json.utf8))
+        let value = try #require(message.data.samples.first?.value)
+        // Clamped while decoding the message
+        #expect(value == .integer(.max))
+        #expect(Int(soilValue: value) == .max)
+        // Not clamped again when converting to smaller types
+        #expect(Int32(soilValue: value) == nil)
     }
 
     @Test("Unrepresentable values throw")
