@@ -43,7 +43,7 @@ public enum Value: Sendable {
     /**
      A path.
 
-     In Swift, this is represented as `[String]`
+     In Swift, this is represented as ``Path``
      */
     case path(Path)
 
@@ -128,7 +128,7 @@ extension Value: CustomStringConvertible {
         case .double(let value): value.formatted(.number.precision(.fractionLength(1...16)))
         case .string(let value): "'\(value)'"
         case .data(let value): value.hex + " (Data)"
-        case .path(let value): value.map { "'\($0)'" }.joined(separator: ", ")
+        case .path(let value): value.description
         case .list(let value): value.map { $0.description }.joined(separator: ", ")
         case .map(let value): value.map { "\($0.key) = \($0.value)" }.joined(separator: ", ")
         }

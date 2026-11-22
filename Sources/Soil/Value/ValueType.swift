@@ -19,7 +19,7 @@ public enum ValueType: String, Sendable {
     /// A textual value, represented as ``String``
     case string
 
-    /// A path value, represented as `[String]`
+    /// A path value, represented as ``Path``
     case path
 
     /// A list of values

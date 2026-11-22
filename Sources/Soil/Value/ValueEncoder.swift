@@ -4,7 +4,7 @@ import Foundation
  An encoder that converts `Encodable` types into SOIL values.
 
  Keyed containers are encoded as `.map`, unkeyed containers as `.list`, and primitives as their native SOIL value.
- Types with a direct SOIL representation (like `Date`, `Data`, `UUID` and `URL`) use their ``ValueConvertible`` representation.
+ Types with a direct SOIL representation (like `Date`, `Data`, `UUID`, `URL` and `Path`) use their ``ValueConvertible`` representation.
  */
 public struct ValueEncoder {
 
@@ -33,6 +33,7 @@ extension Date: DirectValueConvertible { }
 extension Data: DirectValueConvertible { }
 extension UUID: DirectValueConvertible { }
 extension URL: DirectValueConvertible { }
+extension Path: DirectValueConvertible { }
 
 // MARK: - Encoding tree
 

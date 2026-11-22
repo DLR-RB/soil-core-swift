@@ -8,7 +8,7 @@ struct StorageTests {
     func saveAndGetValues() async {
         let storage = InMemoryStorage()
 
-        let pathA = ["a", "b", "c"]
+        let pathA: Path = ["a", "b", "c"]
         let now = Timestamp.current()
 
         await storage.accept(.integer(123), for: pathA, at: now).wait()

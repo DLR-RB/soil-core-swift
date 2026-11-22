@@ -15,7 +15,7 @@ struct SubscriptionTests {
 
         await observable.setReceiver(receiver).wait()
 
-        let path = ["a", "b"]
+        let path: Path = ["a", "b"]
         let now = Timestamp.current()
         await observable.include(path, depth: 0).wait()
 

@@ -13,6 +13,10 @@ private struct Address: Codable, Equatable, ValueConvertible {
     var moved: Date? = nil
 }
 
+private struct Link: Codable, Equatable, ValueConvertible {
+    var target: Path
+}
+
 private struct Counter: Codable, ValueConvertible {
     var count: UInt64
 }
@@ -108,7 +112,11 @@ struct ValueTests {
         try roundTrip(["a": 1], expected: .map(["a": .integer(1)]))
         try roundTrip(Int?.none, expected: .null)
         try roundTrip(Int?.some(3), expected: .integer(3))
-        #expect([String](soilValue: .path(["a", "b"])) == ["a", "b"])
+        // Paths and string arrays are distinct
+        try roundTrip(["a", "b"] as Path, expected: .path(["a", "b"]))
+        try roundTrip(["a", "b"] as [String], expected: .list([.string("a"), .string("b")]))
+        #expect([String](soilValue: .path(["a", "b"])) == nil)
+        #expect(Path(soilValue: .list([.string("a")])) == nil)
         #expect(try Set([3]).soilValue == .list([.integer(3)]))
         // Invalid values are not treated as `nil`
         #expect(Int?(soilValue: .string("a")) == nil)
@@ -145,6 +153,12 @@ struct ValueTests {
         #expect(try Address(street: "A", city: "B").soilValue.mapValue?["moved"] == nil)
         // Invalid data fails to decode
         #expect(Address(soilValue: .map(["street": .integer(1)])) == nil)
+        // Paths in `Codable` types are stored as `.path`
+        try roundTrip(Link(target: ["a", "b"]), expected: .map(["target": .path(["a", "b"])]))
+        // Other encoders represent paths as arrays of strings
+        let json = try JSONEncoder().encode(Link(target: ["a", "b"]))
+        #expect(String(decoding: json, as: UTF8.self) == #"{"target":["a","b"]}"#)
+        #expect(try JSONDecoder().decode(Link.self, from: json) == Link(target: ["a", "b"]))
     }
 
     @Test("Literals")
@@ -213,7 +227,13 @@ struct ValueTests {
         #expect(await node.value() == .integer(1))
         #expect(await node.value(as: Bool.self) == true)
 
+        // Array literals are values, paths are stored as `.path`
         await node.set(["a", "b"]).wait()
+        #expect(await node.value() == .list([.string("a"), .string("b")]))
+        let path: Path = ["a", "b"]
+        await node.set(path).wait()
+        #expect(await node.value() == .path(["a", "b"]))
+        try await node.valueNode(as: Path.self).set(path).wait()
         #expect(await node.value() == .path(["a", "b"]))
 
         let typed = node.valueChild(named: "priority", as: Priority.self)

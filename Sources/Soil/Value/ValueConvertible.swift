@@ -12,6 +12,7 @@ import Foundation
  | `Bool` | `.integer` (`0` or `1`) |
  | `Double`, `Float` | `.double` (`Float` fails to convert from values that are too large) |
  | `String` | `.string` |
+ | `Path` | `.path` |
  | `Data` | `.data` |
  | `Date` | `.double` (seconds since 1970, fails to convert from non-finite values) |
  | `UUID`, `URL` | `.string` |
@@ -264,6 +265,20 @@ extension String: ValueConvertible {
     }
 }
 
+extension Path: ValueConvertible {
+
+    public init?(soilValue: Value) {
+        guard case .path(let value) = soilValue else {
+            return nil
+        }
+        self = value
+    }
+
+    public var soilValue: Value {
+        .path(self)
+    }
+}
+
 extension Data: ValueConvertible {
 
     public init?(soilValue: Value) {
@@ -362,12 +377,6 @@ extension Array: ValueConvertible where Element: ValueConvertible {
                     return nil
                 }
                 result.append(element)
-            }
-            self = result
-        case .path(let path):
-            // Allow paths to be read as string arrays
-            guard let result = path as? [Element] else {
-                return nil
             }
             self = result
         default:

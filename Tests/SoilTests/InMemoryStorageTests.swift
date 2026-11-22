@@ -10,7 +10,7 @@ struct InMemoryStorageTests {
 
         let value = Value.integer(123)
         let time = Timestamp.current()
-        let path = ["a", "b", "c"]
+        let path: Path = ["a", "b", "c"]
 
         await storage.accept(value, for: path).wait()
 
@@ -27,7 +27,7 @@ struct InMemoryStorageTests {
 
         let value = Value.integer(123)
         let time = Timestamp.current()
-        let path = ["a", "b", "c"]
+        let path: Path = ["a", "b", "c"]
 
         await storage.accept(value, for: path, at: time).wait()
 
@@ -44,7 +44,7 @@ struct InMemoryStorageTests {
 
         let newValue = Value.integer(123)
         let newTime = Timestamp.current().addingTimeInterval(-1)
-        let path = ["a", "b", "c"]
+        let path: Path = ["a", "b", "c"]
 
         let oldValue = Value.integer(234)
         let oldTime = newTime.addingTimeInterval(-10)
