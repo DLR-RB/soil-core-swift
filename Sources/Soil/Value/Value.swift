@@ -134,3 +134,60 @@ extension Value: CustomStringConvertible {
         }
     }
 }
+// MARK: Literals
+
+extension Value: ExpressibleByNilLiteral {
+
+    /// Create a `.null` value from `nil`
+    public init(nilLiteral: ()) {
+        self = .null
+    }
+}
+
+extension Value: ExpressibleByIntegerLiteral {
+
+    /// Create an `.integer` value from an integer literal
+    public init(integerLiteral value: Int) {
+        self = .integer(value)
+    }
+}
+
+extension Value: ExpressibleByFloatLiteral {
+
+    /// Create a `.double` value from a floating point literal
+    public init(floatLiteral value: Double) {
+        self = .double(value)
+    }
+}
+
+extension Value: ExpressibleByBooleanLiteral {
+
+    /// Create an `.integer` value (`0` or `1`) from a boolean literal
+    public init(booleanLiteral value: Bool) {
+        self = .integer(value ? 1 : 0)
+    }
+}
+
+extension Value: ExpressibleByStringLiteral {
+
+    /// Create a `.string` value from a string literal
+    public init(stringLiteral value: String) {
+        self = .string(value)
+    }
+}
+
+extension Value: ExpressibleByArrayLiteral {
+
+    /// Create a `.list` value from an array literal
+    public init(arrayLiteral elements: Value...) {
+        self = .list(elements)
+    }
+}
+
+extension Value: ExpressibleByDictionaryLiteral {
+
+    /// Create a `.map` value from a dictionary literal, where later duplicate keys replace earlier ones
+    public init(dictionaryLiteral elements: (String, Value)...) {
+        self = .map(Dictionary(elements, uniquingKeysWith: { $1 }))
+    }
+}

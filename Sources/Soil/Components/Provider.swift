@@ -90,6 +90,35 @@ extension Provider {
     }
 
     /**
+     Get the current value for a path, converted to a specific type.
+     - Parameter path: The requested path
+     - Parameter type: The type to convert the value to
+     - Returns: The most recent value for the path, if present and convertible to the type
+     */
+    public func currentValue<T: ValueConvertible>(for path: Path = [], as type: T.Type = T.self) async -> T? {
+        await currentSample(for: path)?.value(as: type)
+    }
+
+    /**
+     Provides the values in a given date range for a path, converted to a specific type.
+
+     The sort order and limit are applied as for ``samples(for:from:to:limit:)``.
+     Samples which can't be converted to the type are skipped.
+
+     - Parameter path: The requested path.
+     - Parameter type: The type to convert the values to
+     - Parameter start: The start of the requested interval (exclusive, defaults to `nil`, meaning from beginning of time)
+     - Parameter end: The end of the requested interval (inclusive, defaults to `nil`, meaning to end of time)
+     - Parameter limit: The maximum number of samples to request (defaults to `nil`, e.g. no limit)
+     - Returns: The converted values in the range, with their timestamps
+     */
+    public func values<T: ValueConvertible>(for path: Path = [], as type: T.Type = T.self, from start: Timestamp? = nil, to end: Timestamp? = nil, limit: Int? = nil) async -> [(value: T, timestamp: Timestamp?)] {
+        await samples(for: path, from: start, to: end, limit: limit).compactMap { sample in
+            sample.value(as: type).map { ($0, sample.timestamp) }
+        }
+    }
+
+    /**
      Get the current value for a path.
      - Parameter path: The requested path
      - Returns: The most recent timestamped value for the path, if present

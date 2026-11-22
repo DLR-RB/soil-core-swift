@@ -19,6 +19,27 @@ public struct Sample: Sendable {
         self.timestamp = timestamp
     }
 
+    /**
+     Create a sample, after converting a value to a SOIL value.
+     - Parameter value: The contained value
+     - Parameter timestamp: The timestamp associated with the value.
+     - Throws: An error, if the value can't be converted to a SOIL value
+     */
+    // Disfavored, so that literals use the non-throwing `Value` overload
+    @_disfavoredOverload
+    public init(value: some ValueConvertible, timestamp: Timestamp? = nil) throws {
+        self.init(value: try value.soilValue, timestamp: timestamp)
+    }
+
+    /**
+     Convert the value of the sample to a specific type.
+     - Parameter type: The type to convert the value to
+     - Returns: The converted value, or `nil`, if the value can't be converted
+     */
+    public func value<T: ValueConvertible>(as type: T.Type = T.self) -> T? {
+        T(soilValue: value)
+    }
+
     /// The timestamp of the sample, or the current time
     public var time: Timestamp {
         timestamp ?? .current()
