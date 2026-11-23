@@ -33,15 +33,7 @@ swift test    # run the test suite (recommended before opening a pull request)
 ### Opening a pull request
 
 - Keep the change focused; make one logical change per pull request.
-- Add or update tests to cover the change. The CI runs `swift test`, and tests that don't pass
-  will block the merge.
-- Follow the existing code style. Swift formatting via `swift-format` is used across the SOIL
-  projects, so run it if it's available in your toolchain:
-
-  ```sh
-  swift-format format -i Sources Tests
-  ```
-
+- Add or update tests to cover the change.
 - Update the [`Readme.md`](Readme.md) if the change affects the public API or usage examples.
 - Write a clear, descriptive pull request title and body explaining **what** changed and
   **why**.
