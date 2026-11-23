@@ -80,6 +80,63 @@ let current = await storage.currentValue(for: ["my", "value"])
 // current == .integer(123)
 ```
 
+### Working with Swift types
+
+Types conforming to `ValueConvertible` can be stored and read directly.
+Conformances exist for common types (integers, `Bool`, `Double`, `String`, `Data`, `Date`, `UUID`, `URL`,
+optionals, arrays, sets and dictionaries), and enums with raw values as well as `Codable` types
+only need to declare the conformance:
+
+```swift
+enum Mode: String, ValueConvertible {
+    case idle, active
+}
+
+struct Position: Codable, ValueConvertible {
+    var x: Double
+    var y: Double
+}
+
+// Converting a value throws if it can't be represented (e.g. `UInt64.max`)
+try storage.accept(Position(x: 1, y: 2), for: ["robot", "position"])
+let position = await storage.currentValue(for: ["robot", "position"], as: Position.self)
+
+// Typed nodes only accept and return values of a single type
+let mode = storage.valueNode(at: ["robot", "mode"], as: Mode.self)
+try mode.set(.active)
+let current = await mode.value() // Mode?
+```
+
+Literals can be used wherever a `Value` is expected, e.g. `storage.accept(123, for: ["my", "value"])`.
+
+### Storing Swift types as trees
+
+While `ValueConvertible` types are stored as a single value, types conforming to `SampleTreeConvertible`
+are spread over a tree, so that other components can read and subscribe to individual parts.
+`Codable` types only need to declare the conformance: keyed properties become child nodes,
+and all other values (including lists) are stored at their node.
+`ValueConvertible` types are stored as a single value at the root node.
+
+```swift
+struct Robot: Codable, SampleTreeConvertible {
+    var name: String       // Stored at ["robot", "name"]
+    var position: Position // Stored at ["robot", "position", "x"] and ["robot", "position", "y"]
+}
+
+try storage.accept(tree: Robot(name: "R2", position: .init(x: 1, y: 2)), for: ["robot"])
+let robot = await storage.currentTree(for: ["robot"], as: Robot.self)
+
+// Updates to individual nodes are reflected in the converted value
+storage.accept(5.0, for: ["robot", "position", "y"])
+
+// Tree nodes only accept and return trees of a single type
+let node = storage.treeNode(at: ["robot"], as: Robot.self)
+try node.set(Robot(name: "C3PO", position: .init(x: 0, y: 0)))
+let current = await node.value() // Robot?
+```
+
+Trees can also be sent directly using `Message.tree(_:for:)`.
+
 ### Connecting two components over a network
 
 The core library lets you expose a local component over a connection and use a remote
@@ -150,6 +207,11 @@ Transport is layered. A raw `Connection` carries bytes, which can be:
    (e.g. `JsonEncoding` or `CompactJsonEncoding`).
 
 The lower-level `DecodedConnection(wrapping:encoding:)` convenience combines both steps.
+
+Received messages may come from systems with a wider number range.
+When decoding, integer values outside of the range of `Int` are clamped to `Int.min` or `Int.max`,
+and doubles that are too large become infinity.
+Conversions within Swift (e.g. with `ValueConvertible`) never clamp, and fail instead.
 
 ## Development
 

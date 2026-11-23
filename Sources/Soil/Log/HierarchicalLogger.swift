@@ -22,7 +22,7 @@ public struct HierarchicalLogger: Logger {
     private let logNode: StorageNode
 
     /// The tree node to write the log level
-    private let levelNode: any StringStorageNode
+    private let levelNode: StorageNode
 
     public init(parent: (any Logger)? = nil, node: StorageNode) {
         self.parent = parent
@@ -52,7 +52,7 @@ public struct HierarchicalLogger: Logger {
     public nonisolated func setLevel(_ level: LogLevel?) -> any Request {
         AsyncRequest {
             if let level {
-                await self.levelNode.set(level.description).wait()
+                await self.levelNode.set(.string(level.description)).wait()
             } else {
                 await self.levelNode.setNull().wait()
             }
@@ -66,7 +66,7 @@ public struct HierarchicalLogger: Logger {
      then the level of the parent is used.
      */
     public func logLevel() async -> LogLevel {
-        if let raw = await levelNode.value(),
+        if let raw = await levelNode.value(as: String.self),
            let level = LogLevel.from(raw) {
             return level
         }

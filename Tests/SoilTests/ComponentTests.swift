@@ -16,7 +16,7 @@ struct ComponentTests {
 
         // Send value to bob
         let now = Timestamp.current()
-        let path = ["a", "b"]
+        let path: Path = ["a", "b"]
         await connectedRemote.accept(.integer(123), for: path, at: now).wait()
 
         #expect(await connection.one.sentMessages == 1)
@@ -91,7 +91,7 @@ struct ComponentTests {
 
         await clientConnectionToRemote.setReceiver(clientStorage).wait()
 
-        let path = ["a", "b"]
+        let path: Path = ["a", "b"]
         let now = Timestamp.current()
         await clientConnectionToRemote.include(path, depth: 0).wait()
 
@@ -133,7 +133,7 @@ struct ComponentTests {
         await localConnectionToRemote.setReceiver(localStorage).wait()
 
         // Subscribe to the target path
-        let path = ["a", "b"]
+        let path: Path = ["a", "b"]
         let now = Timestamp.current()
         await localConnectionToRemote.include(path, depth: 0).wait()
 
@@ -184,7 +184,7 @@ struct ComponentTests {
         await localConnectionToRemote.setReceiver(localStorage).wait()
 
         // Subscribe to the target path
-        let path = ["a", "b"]
+        let path: Path = ["a", "b"]
         let now = Timestamp.current()
         await localConnectionToRemote.include(path, depth: 0).wait()
 

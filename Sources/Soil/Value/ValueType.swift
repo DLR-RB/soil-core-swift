@@ -2,7 +2,7 @@
 /**
  An enum indicating the primitive value types
  */
-public enum ValueType: String, Sendable {
+public enum ValueType: String, Sendable, Codable {
 
     /// The absence of a value, represented as ``nil``
     case null
@@ -19,7 +19,7 @@ public enum ValueType: String, Sendable {
     /// A textual value, represented as ``String``
     case string
 
-    /// A path value, represented as `[String]`
+    /// A path value, represented as ``Path``
     case path
 
     /// A list of values

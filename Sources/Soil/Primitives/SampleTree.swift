@@ -37,6 +37,19 @@ extension SampleTree {
     }
 
     /**
+     Create a tree with a value at the root, after converting it to a SOIL value.
+     - Parameter value: The value at the root.
+     - Parameter timestamp: The optional timestamp associated with the value.
+     - Parameter children: The child nodes of the tree, indexed by their path component.
+     - Throws: An error, if the value can't be converted to a SOIL value
+     */
+    // Disfavored, so that literals use the non-throwing `Value` overload
+    @_disfavoredOverload
+    public init(value: some ValueConvertible, timestamp: Timestamp? = nil, children: [PathComponent : any SampleTree] = [:]) throws {
+        self.init(samples: [try .init(value: value, timestamp: timestamp)], children: children)
+    }
+
+    /**
      Create a tree with a sample at the root.
      - Parameter sample: The sample at the root.
      - Parameter children: The child nodes of the tree, indexed by their path component.
@@ -103,6 +116,17 @@ extension SampleTree {
      */
     public var currentValue: Value? {
         currentSample?.value
+    }
+
+    /**
+     The current value at this node, converted to a specific type.
+
+     The value is selected as for ``currentValue``.
+     - Parameter type: The type to convert the value to
+     - Returns: The converted value, or `nil`, if no value exists or it can't be converted
+     */
+    public func currentValue<T: ValueConvertible>(as type: T.Type = T.self) -> T? {
+        currentSample?.value(as: type)
     }
 
     /// Count the number of nodes in this tree that contain samples

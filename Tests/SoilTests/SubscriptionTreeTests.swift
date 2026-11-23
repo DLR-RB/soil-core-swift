@@ -8,7 +8,7 @@ struct SubscriptionTreeTests {
     @Test("Exact path")
     func subscribeToExactPath() throws {
         let tree = SubscriptionTree()
-        let path = ["a", "b", "c"]
+        let path: Path = ["a", "b", "c"]
 
         #expect(!tree.hasSubscriptionRulesInTree)
         #expect(tree.isEmpty)
@@ -25,7 +25,7 @@ struct SubscriptionTreeTests {
     func subscribeToAncestorPath() throws {
         let tree = SubscriptionTree()
 
-        let path = ["a", "b", "c"]
+        let path: Path = ["a", "b", "c"]
 
         #expect(!tree.hasSubscriptionRulesInTree)
         #expect(tree.isEmpty)
@@ -41,7 +41,7 @@ struct SubscriptionTreeTests {
     @Test("Ancestor path (no depth)")
     func subscribeToAncestorPathNoDepth() throws {
         let tree = SubscriptionTree()
-        let path = ["a", "b", "c"]
+        let path: Path = ["a", "b", "c"]
 
         #expect(!tree.hasSubscriptionRulesInTree)
         #expect(tree.isEmpty)
@@ -57,7 +57,7 @@ struct SubscriptionTreeTests {
     @Test("Exclude exact path")
     func excludeExactPath() throws {
         let tree = SubscriptionTree()
-        let path = ["a", "b", "c"]
+        let path: Path = ["a", "b", "c"]
 
         #expect(!tree.hasSubscriptionRulesInTree)
         #expect(tree.isEmpty)
@@ -79,7 +79,7 @@ struct SubscriptionTreeTests {
     @Test("Exclude ancestor path")
     func excludeAncestorPath() throws {
         let tree = SubscriptionTree()
-        let path = ["a", "b", "c"]
+        let path: Path = ["a", "b", "c"]
 
         tree.include(["a"], depth: nil)
 
@@ -97,7 +97,7 @@ struct SubscriptionTreeTests {
     @Test("Exclude irrelevant ancestor path")
     func excludeIrrelevantAncestorPath() throws {
         let tree = SubscriptionTree()
-        let path = ["a", "b", "c"]
+        let path: Path = ["a", "b", "c"]
 
         tree.include([], depth: nil)
 
@@ -115,7 +115,7 @@ struct SubscriptionTreeTests {
     @Test("Override exclusion")
     func testOverrideExclusion() throws {
         let tree = SubscriptionTree()
-        let path = ["a", "b", "c"]
+        let path: Path = ["a", "b", "c"]
 
         tree.include([], depth: nil)
 
@@ -139,7 +139,7 @@ struct SubscriptionTreeTests {
     @Test("Remove all rules")
     func testRemoveAllRules() throws {
         let tree = SubscriptionTree()
-        let path = ["a", "b"]
+        let path: Path = ["a", "b"]
 
         tree.include(path, depth: nil)
 
@@ -157,7 +157,7 @@ struct SubscriptionTreeTests {
     @Test("Delete subscription rules")
     func testRemoveSubscriptionRules() throws {
         let tree = SubscriptionTree()
-        let path = ["a", "b"]
+        let path: Path = ["a", "b"]
 
         tree.include(path, depth: nil)
 
@@ -175,8 +175,8 @@ struct SubscriptionTreeTests {
     @Test("Multiple rules for path")
     func multipleRulesForPath() {
         let tree = SubscriptionTree()
-        let subPath = ["a"]
-        let path = ["a", "b"]
+        let subPath: Path = ["a"]
+        let path: Path = ["a", "b"]
 
         // Create multiple rules for path "a"
         tree.include(subPath, depth: nil)

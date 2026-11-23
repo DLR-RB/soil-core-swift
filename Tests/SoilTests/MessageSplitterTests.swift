@@ -105,7 +105,7 @@ struct MessageSplitterTests {
         let combiner = await RemoteTransmitter(receiver: receiver, connection: receivingConnection, batchTimeout: 1.5)
 
         // Send the samples of A
-        let path = ["xyz"]
+        let path: Path = ["xyz"]
         let treeA = ImmutableSampleTree(samples: tree.samples)
         await splitter.send(message: .tree(treeA, for: path, inResponseTo: 123, totalMessages: 3)).wait()
 
@@ -149,7 +149,7 @@ struct MessageSplitterTests {
         let receiver = TestReceiver()
         let combiner = await RemoteTransmitter(receiver: receiver, connection: receivingConnection, batchTimeout: 1.5)
 
-        let path = ["xyz"]
+        let path: Path = ["xyz"]
         await splitter.send(message: .tree(tree, for: path)).wait()
 
         let count = await receiver.getCount()

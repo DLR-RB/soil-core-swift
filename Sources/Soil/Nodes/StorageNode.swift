@@ -120,117 +120,137 @@ extension StorageNode: AnyStorageNode {
     }
 }
 
-extension StorageNode: StringStorageNode {
+// MARK: Values
+
+extension StorageNode {
 
     /**
-     Set the node to a value.
+     Set the node to a SOIL value.
      - Parameter value: The new value to set for this node
      - Returns: A request to wait for completion
      */
     @discardableResult
-    public func set(_ value: String) -> any Request {
-        storage.accept(.string(value), for: path)
+    public func set(_ value: Value) -> any Request {
+        storage.accept(value, for: path)
     }
 
     /**
-     Get the current value of the node.
+     Set the node to a path value.
 
-     - Returns: The current value, or `nil`, of no value exists,
-       or the current value is not a string
-     */
-    public func value() async -> String? {
-        await storage.currentValue(for: path)?.stringValue
-    }
-}
-
-extension StorageNode: IntStorageNode {
-
-    /**
-     Set the node to a value.
-     - Parameter value: The new value to set for this node
+     - Parameter value: The new path to set for this node
      - Returns: A request to wait for completion
      */
     @discardableResult
-    public func set(_ value: Int) -> any Request {
-        storage.accept(.integer(value), for: path)
-    }
-
-    /**
-     Get the current value of the node.
-
-     - Returns: The current value, or `nil`, of no value exists,
-       or the current value is not an integer
-     */
-    public func value() async -> Int? {
-        await storage.currentValue(for: path)?.integerValue
-    }
-}
-
-extension StorageNode: DoubleStorageNode {
-
-    /**
-     Set the node to a value.
-     - Parameter value: The new value to set for this node
-     - Returns: A request to wait for completion
-     */
-    @discardableResult
-    public func set(_ value: Double) -> any Request {
-        storage.accept(.double(value), for: path)
-    }
-
-    /**
-     Get the current value of the node.
-
-     - Returns: The current value, or `nil`, of no value exists,
-       or the current value is not an double
-     */
-    public func value() async -> Double? {
-        await storage.currentValue(for: path)?.doubleValue
-    }
-}
-
-extension StorageNode: DataStorageNode {
-
-    /**
-     Set the node to a value.
-     - Parameter value: The new value to set for this node
-     - Returns: A request to wait for completion
-     */
-    @discardableResult
-    public func set(_ value: Data) -> any Request {
-        storage.accept(.data(value), for: path)
-    }
-
-    /**
-     Get the current value of the node.
-
-     - Returns: The current value, or `nil`, of no value exists,
-       or the current value is not binary data
-     */
-    public func value() async -> Data? {
-        await storage.currentValue(for: path)?.dataValue
-    }
-}
-
-extension StorageNode: PathStorageNode {
-
-    /**
-     Set the node to a value.
-     - Parameter value: The new value to set for this node
-     - Returns: A request to wait for completion
-     */
-    @discardableResult
+    // Disfavored, so that array literals use the `Value` overload, but preferred over the generic overload
+    @_disfavoredOverload
     public func set(_ value: Path) -> any Request {
         storage.accept(.path(value), for: path)
     }
 
     /**
+     Set the node to a value, after converting it to a SOIL value.
+     - Parameter value: The new value to set for this node
+     - Returns: A request to wait for completion
+     - Throws: An error, if the value can't be converted to a SOIL value
+     */
+    @discardableResult
+    // Disfavored, so that literals use the non-throwing `Value` overload
+    @_disfavoredOverload
+    public func set(_ value: some ValueConvertible) throws -> any Request {
+        storage.accept(try value.soilValue, for: path)
+    }
+
+    /**
      Get the current value of the node.
 
-     - Returns: The current value, or `nil`, of no value exists,
-       or the current value is not a path
+     - Returns: The current value, or `nil`, if no value exists
      */
-    public func value() async -> Path? {
-        await storage.currentValue(for: path)?.pathValue
+    public func value() async -> Value? {
+        await storage.currentValue(for: path)
+    }
+
+    /**
+     Get the current value of the node, converted to a specific type.
+     - Parameter type: The type to convert the value to
+     - Returns: The current value, or `nil`, if no value exists,
+       or the current value can't be converted to the type
+     */
+    public func value<T: ValueConvertible>(as type: T.Type = T.self) async -> T? {
+        await storage.currentValue(for: path, as: type)
+    }
+
+    /**
+     Create a node which only accepts values of a specific type.
+     - Parameter type: The type of the node values
+     - Returns: The typed node for the same path
+     */
+    public func valueNode<T: ValueConvertible>(as type: T.Type = T.self) -> ValueStorageNode<T> {
+        ValueStorageNode(node: self)
+    }
+
+    /**
+     Create a typed storage node for a child of this node.
+     - Parameter component: The name of the child.
+     - Parameter type: The type of the node values
+     - Returns: The typed node representing the child.
+     */
+    public func valueChild<T: ValueConvertible>(named component: String, as type: T.Type = T.self) -> ValueStorageNode<T> {
+        child(named: component).valueNode(as: type)
+    }
+}
+
+// MARK: Trees
+
+extension StorageNode {
+
+    /**
+     Create a node which only accepts trees of a specific type.
+     - Parameter type: The type of the node trees
+     - Returns: The tree node for the same path
+     */
+    public func treeNode<T: SampleTreeConvertible>(as type: T.Type = T.self) -> TreeStorageNode<T> {
+        TreeStorageNode(node: self)
+    }
+
+    /**
+     Create a tree storage node for a child of this node.
+     - Parameter component: The name of the child.
+     - Parameter type: The type of the node trees
+     - Returns: The tree node representing the child.
+     */
+    public func treeChild<T: SampleTreeConvertible>(named component: String, as type: T.Type = T.self) -> TreeStorageNode<T> {
+        child(named: component).treeNode(as: type)
+    }
+}
+
+extension Storage {
+
+    /**
+     Create a node to access the data at a path.
+     - Parameter path: The path of the node in the tree
+     - Returns: The node for the path
+     */
+    public func node(at path: Path) -> StorageNode {
+        StorageNode(storage: self, path: path)
+    }
+
+    /**
+     Create a node to access the data at a path with a specific type.
+     - Parameter path: The path of the node in the tree
+     - Parameter type: The type of the node values
+     - Returns: The typed node for the path
+     */
+    public func valueNode<T: ValueConvertible>(at path: Path, as type: T.Type = T.self) -> ValueStorageNode<T> {
+        node(at: path).valueNode(as: type)
+    }
+
+    /**
+     Create a node to access the tree at a path with a specific type.
+     - Parameter path: The path of the node in the tree
+     - Parameter type: The type of the node trees
+     - Returns: The tree node for the path
+     */
+    public func treeNode<T: SampleTreeConvertible>(at path: Path, as type: T.Type = T.self) -> TreeStorageNode<T> {
+        node(at: path).treeNode(as: type)
     }
 }

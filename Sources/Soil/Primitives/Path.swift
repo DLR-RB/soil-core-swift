@@ -1,9 +1,73 @@
-
 /// A SOIL path component (a string), to construct paths
 public typealias PathComponent = String
 
-/// A SOIL path (an array of strings) identifying a state, input or output
-public typealias Path = [PathComponent]
+/**
+ A SOIL path (a sequence of strings) identifying a state, input or output.
+
+ Paths behave like arrays of components, and can be created from array literals:
+
+ ```swift
+ let path: Path = ["room", "light"]
+ let child = path + ["brightness"]
+ ```
+
+ Since `Path` is a distinct type, it is converted to a `.path` value,
+ while `[String]` is converted to a `.list` value.
+ */
+public struct Path: Sendable, Hashable {
+
+    /// The components of the path
+    public var components: [PathComponent]
+
+    /// Create a path from components
+    public init(_ components: [PathComponent]) {
+        self.components = components
+    }
+
+    /// Create a path from a sequence of components
+    public init<S: Sequence>(_ components: S) where S.Element == PathComponent {
+        self.components = Array(components)
+    }
+}
+
+extension Path: ExpressibleByArrayLiteral {
+
+    /// Create a path from an array literal of components
+    public init(arrayLiteral elements: PathComponent...) {
+        self.components = elements
+    }
+}
+
+extension Path: RandomAccessCollection, MutableCollection, RangeReplaceableCollection {
+
+    public typealias SubSequence = ArraySlice<PathComponent>
+
+    public init() {
+        self.components = []
+    }
+
+    public var startIndex: Int { components.startIndex }
+
+    public var endIndex: Int { components.endIndex }
+
+    public subscript(position: Int) -> PathComponent {
+        get { components[position] }
+        set { components[position] = newValue }
+    }
+
+    public subscript(bounds: Range<Int>) -> ArraySlice<PathComponent> {
+        get { components[bounds] }
+        set { components[bounds] = newValue }
+    }
+
+    public mutating func replaceSubrange<C: Collection>(_ subrange: Range<Int>, with newElements: C) where C.Element == PathComponent {
+        components.replaceSubrange(subrange, with: newElements)
+    }
+
+    public mutating func reserveCapacity(_ minimumCapacity: Int) {
+        components.reserveCapacity(minimumCapacity)
+    }
+}
 
 extension Path {
 
@@ -13,14 +77,7 @@ extension Path {
      - Returns: `true`, if this path starts with the prefix path
      */
     public func hasPrefix(_ prefix: Path) -> Bool {
-        // A prefix can only match if the path is at least as the prefix
-        guard self.count >= prefix.count else { return false }
-        for index in 0..<prefix.count {
-            if self[index] != prefix[index] {
-                return false
-            }
-        }
-        return true
+        starts(with: prefix)
     }
 
     /**
@@ -33,7 +90,7 @@ extension Path {
         guard hasPrefix(prefix) else {
             return self
         }
-        return Array(self[prefix.count...])
+        return Path(self[prefix.count...])
     }
 
     /**
@@ -61,13 +118,13 @@ extension Path {
      */
     public func extractCommonPrefix(with other: Path) -> (prefix: Path, remainder: Path, otherRemainer: Path) {
         let prefix = commonPrefix(with: other)
-        let remainder = Array(dropFirst(prefix.count))
-        let otherRemainder = Array(other.dropFirst(prefix.count))
+        let remainder = Path(dropFirst(prefix.count))
+        let otherRemainder = Path(other.dropFirst(prefix.count))
         return (prefix, remainder, otherRemainder)
     }
 }
 
-extension Path: @retroactive Comparable {
+extension Path: Comparable {
 
     /**
      Sort paths by comparing their components.
@@ -81,12 +138,28 @@ extension Path: @retroactive Comparable {
      ["a", "b"] < ["a", "b", "c"] // true
      ```
      */
-    public static func < (lhs: [Element], rhs: [Element]) -> Bool {
-        let minCount = Swift.min(lhs.count, rhs.count)
-        for i in 0..<minCount {
-            if lhs[i] < rhs[i] { return true }
-            if lhs[i] > rhs[i] { return false }
-        }
-        return lhs.count < rhs.count
+    public static func < (lhs: Path, rhs: Path) -> Bool {
+        lhs.components.lexicographicallyPrecedes(rhs.components)
+    }
+}
+
+extension Path: CustomStringConvertible {
+
+    /// The components of the path, separated by `/`
+    public var description: String {
+        "/" + components.joined(separator: "/")
+    }
+}
+
+extension Path: Codable {
+
+    /// Decode a path from an array of strings
+    public init(from decoder: any Decoder) throws {
+        self.components = try [PathComponent](from: decoder)
+    }
+
+    /// Encode a path as an array of strings
+    public func encode(to encoder: any Encoder) throws {
+        try components.encode(to: encoder)
     }
 }
