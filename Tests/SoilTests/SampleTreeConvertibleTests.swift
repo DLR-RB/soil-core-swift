@@ -28,7 +28,8 @@ struct SampleTreeConvertibleTests {
     @Test("Values are stored at the root")
     func values() throws {
         let tree = try Mode.active.sampleTree
-        #expect(tree.isEqual(to: ImmutableSampleTree(value: "active")))
+        let expected = ImmutableSampleTree(value: "active")
+        #expect(tree.isEqual(to: expected))
         #expect(Mode(sampleTree: tree) == .active)
         #expect(Mode(sampleTree: ImmutableSampleTree(value: "other")) == nil)
         #expect(Mode(sampleTree: ImmutableSampleTree()) == nil)
