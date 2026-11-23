@@ -34,9 +34,9 @@ public actor HostedObservable {
         switch request.type {
             case .subscriptionInclusion:
                 observable.include(request.path, depth: request.depth)
-            case .subscriptionDeletion:
+            case .subscriptionExclusion:
                 observable.exclude(request.path, depth: request.depth)
-            case.subscriptionExclusion:
+            case.subscriptionDeletion:
                 observable.deleteRules(at: request.path, depth: request.depth)
             default:
                 break // Non-subscription requests handled elsewhere

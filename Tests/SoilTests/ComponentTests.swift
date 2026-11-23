@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-import Soil
+@testable import Soil
 
 @Suite("Component")
 struct ComponentTests {
@@ -28,7 +28,7 @@ struct ComponentTests {
             let sample = await connectedClient.currentSample(for: path)
             let existingSample = try #require(sample)
             #expect(existingSample.value == .integer(123))
-            #expect(existingSample.isVeryClose(to: now))
+            #expect(existingSample.timestamp.isEqual(to: now, tolerance: testTimeTolerance))
         }
 
         // Get value again from alice's side
@@ -36,7 +36,7 @@ struct ComponentTests {
             let sample = await connectedRemote.currentSample(for: path)
             let existingSample = try #require(sample)
             #expect(existingSample.value == .integer(123))
-            #expect(existingSample.isVeryClose(to: now))
+            #expect(existingSample.timestamp.isEqual(to: now, tolerance: testTimeTolerance))
         }
 
         // Two more messages expected
@@ -112,7 +112,7 @@ struct ComponentTests {
             let optional = await clientStorage.currentSample(for: path)
             let sample = try #require(optional)
             #expect(sample.value == .integer(123))
-            #expect(sample.isVeryClose(to: now))
+            #expect(sample.timestamp.isEqual(to: now, tolerance: testTimeTolerance))
         }
 
         await remoteConnectionToClient.connection.close()
@@ -161,7 +161,7 @@ struct ComponentTests {
             let optional = await localStorage.currentSample(for: path)
             let sample = try #require(optional)
             #expect(sample.value == .integer(123))
-            #expect(sample.isVeryClose(to: now))
+            #expect(sample.timestamp.isEqual(to: now, tolerance: testTimeTolerance))
         }
 
         await remoteConnectionToLocal.connection.close()
@@ -229,7 +229,7 @@ struct ComponentTests {
             let optional = await localStorage.currentSample(for: path)
             let sample = try #require(optional)
             #expect(sample.value == .integer(123))
-            #expect(sample.isVeryClose(to: now))
+            #expect(sample.timestamp.isEqual(to: now, tolerance: testTimeTolerance))
         }
     }
 }

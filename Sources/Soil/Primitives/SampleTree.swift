@@ -1,3 +1,4 @@
+import Foundation
 
 /**
  A path tree containing samples
@@ -139,8 +140,16 @@ extension SampleTree {
         children.values.reduce(samples.count) { $0 + $1.totalNumberOfSamples }
     }
 
-    public func isEqual(to other: any SampleTree) -> Bool {
-        guard samples == other.samples else {
+    /**
+     Compare two trees for equality.
+     - Parameter other: The tree to compare to
+     - Parameter timeTolerance: The maximum allowed difference between sample timestamps (in seconds)
+     */
+    public func isEqual(to other: any SampleTree, timeTolerance: TimeInterval = 0) -> Bool {
+        let samples = samples
+        let otherSamples = other.samples
+        guard samples.count == otherSamples.count,
+              zip(samples, otherSamples).allSatisfy({ $0.isEqual(to: $1, timeTolerance: timeTolerance) }) else {
             return false
         }
         let one = children
@@ -152,7 +161,7 @@ extension SampleTree {
             guard let child2 = two[name] else {
                 return false
             }
-            guard child.isEqual(to: child2) else {
+            guard child.isEqual(to: child2, timeTolerance: timeTolerance) else {
                 return false
             }
         }
