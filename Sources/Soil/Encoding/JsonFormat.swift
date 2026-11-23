@@ -104,6 +104,65 @@ enum JsonCoding<Format: JsonFormat> {
     }
 }
 
+// MARK: Values
+
+/**
+ The encoding of single values, as used by ``JSONValueEncoding`` and ``CompactJSONValueEncoding``.
+
+ The representation is the same as for values within messages.
+ */
+extension JsonCoding {
+
+    /// Encode a value as an array of its type and content, e.g. `["integer",5]`
+    static func encodeTagged(_ value: Value) throws -> Data {
+        var writer = JsonWriter()
+        writer.beginArray()
+        try writeTagged(value, to: &writer)
+        writer.endArray()
+        return writer.data
+    }
+
+    /// Decode a value encoded with ``encodeTagged(_:)``
+    static func decodeTagged(_ data: Data) throws -> Value {
+        try read(data) { reader in
+            try reader.beginArray()
+            var first = true
+            guard try reader.nextElement(first: &first) else {
+                throw reader.error("Missing value type")
+            }
+            let value = try readTaggedValue(from: &reader, first: &first)
+            guard try !reader.nextElement(first: &first) else {
+                throw reader.error("Unexpected element after value")
+            }
+            return value
+        }
+    }
+
+    /// Encode the content of a value without its type
+    static func encodeContent(of value: Value) throws -> Data {
+        var writer = JsonWriter()
+        try writeContent(of: value, to: &writer)
+        return writer.data
+    }
+
+    /// Decode a value encoded with ``encodeContent(of:)``
+    static func decodeContent(_ data: Data, as type: ValueType) throws -> Value {
+        try read(data) { reader in
+            try readValue(from: &reader, type: Format.tag(for: type))
+        }
+    }
+
+    /// Read a value, and ensure that all data is used
+    private static func read(_ data: Data, using body: (inout JsonReader) throws -> Value) throws -> Value {
+        try data.withUnsafeBytes { bytes in
+            var reader = JsonReader(bytes: bytes)
+            let value = try body(&reader)
+            try reader.expectEnd()
+            return value
+        }
+    }
+}
+
 // MARK: Encoding
 
 extension JsonCoding {
@@ -285,11 +344,12 @@ extension JsonCoding {
             case .map(let values):
                 writer.beginArray()
                 var first = true
-                for (key, element) in values {
+                // Sort keys for a deterministic encoding
+                for key in values.keys.sorted() {
                     if first { first = false } else { writer.writeComma() }
                     writer.write(key)
                     writer.writeComma()
-                    try writeTagged(element, to: &writer)
+                    try writeTagged(values[key]!, to: &writer)
                 }
                 writer.endArray()
         }
