@@ -1,5 +1,5 @@
 import Testing
-import Soil
+@testable import Soil
 
 @Suite("Storage")
 struct StorageTests {
@@ -42,17 +42,17 @@ struct StorageTests {
             let c = try #require(b.children["c"])
             let cSample = try #require(c.newestSample)
             #expect(cSample.value == .integer(123))
-            #expect(cSample.isVeryClose(to: now))
+            #expect(cSample.timestamp.isEqual(to: now, tolerance: testTimeTolerance))
             #expect(c.children.count == 0)
             let d = try #require(b.children["d"])
             let dSample = try #require(d.newestSample)
             #expect(dSample.value == .double(3.14))
-            #expect(dSample.isVeryClose(to: now))
+            #expect(dSample.timestamp.isEqual(to: now, tolerance: testTimeTolerance))
             #expect(d.children.count == 0)
             let e = try #require(tree.children["e"])
             let eSample = try #require(e.newestSample)
             #expect(eSample.value == .string("some"))
-            #expect(eSample.isVeryClose(to: now))
+            #expect(eSample.timestamp.isEqual(to: now, tolerance: testTimeTolerance))
             #expect(e.children.count == 0)
         }
     }
@@ -83,19 +83,19 @@ struct StorageTests {
             let cSample = try #require(c.newestSample)
             #expect(c.samples.count == 1)
             #expect(cSample.value == .integer(123))
-            #expect(cSample.isVeryClose(to: now))
+            #expect(cSample.timestamp.isEqual(to: now, tolerance: testTimeTolerance))
             #expect(c.children.count == 0)
             let d = try #require(b.children["d"])
             let dSample = try #require(d.newestSample)
             #expect(d.samples.count == 1)
             #expect(dSample.value == .double(3.14))
-            #expect(dSample.isVeryClose(to: now))
+            #expect(dSample.timestamp.isEqual(to: now, tolerance: testTimeTolerance))
             #expect(d.children.count == 0)
             let e = try #require(tree.children["e"])
             let eSample = try #require(e.newestSample)
             #expect(e.samples.count == 1)
             #expect(eSample.value == .string("some"))
-            #expect(eSample.isVeryClose(to: now))
+            #expect(eSample.timestamp.isEqual(to: now, tolerance: testTimeTolerance))
             #expect(e.children.count == 0)
         }
 
@@ -110,7 +110,7 @@ struct StorageTests {
             #expect(e.samples.count == 1)
             let eSample = try #require(e.newestSample)
             #expect(eSample.value == .string("some"))
-            #expect(eSample.isVeryClose(to: now))
+            #expect(eSample.timestamp.isEqual(to: now, tolerance: testTimeTolerance))
             #expect(e.children.count == 0)
         }
 
@@ -230,7 +230,7 @@ struct StorageTests {
             let original = samples[index]
             let origTime = try #require(original.timestamp)
             #expect(retrieved.value == original.value)
-            #expect(retrieved.isVeryClose(to: origTime))
+            #expect(retrieved.timestamp.isEqual(to: origTime, tolerance: testTimeTolerance))
         }
     }
 }
