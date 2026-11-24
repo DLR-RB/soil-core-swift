@@ -37,7 +37,7 @@ final class SubscriptionTree {
 
     /// The total number of rules for all nodes in this tree
     var totalNumberOfRules: Int {
-        return children.values.reduce(numberOfRules) { $0 + $1.numberOfRules }
+        return children.values.reduce(numberOfRules) { $0 + $1.totalNumberOfRules }
     }
 
     /** Indicate if there is any rule registered for the subscription */
@@ -198,9 +198,10 @@ final class SubscriptionTree {
      - Returns: The reduced tree, if any inclusion rules match.
      */
     func reduce(_ tree: any SampleTree, for path: Path) -> (any SampleTree)? {
-        let nodes = allNodes(for: path)
+        var nodes = allNodes(for: path)
         // Note: The path nodes always include at least the root node
-        return nodes.last!.reduce(tree, parents: nodes)
+        let node = nodes.removeLast()
+        return node.reduce(tree, parents: nodes)
     }
 
     /**
@@ -236,9 +237,13 @@ final class SubscriptionTree {
         let childParents =  parents + [self]
         let reduced: [String : any SampleTree] = tree.children.reduce(into: [:]) { (dict, child) in
             guard let subscriptionRuleChild = children[child.key] else {
-                // No rules for child, so use only the ones of the current node
-                if childrenAreSubscribed {
+                // No rules for child, so use only the ones of the current node and its parents.
+                // An unlimited inclusion covers the whole sub-tree, otherwise the depth limits
+                // must be applied further down, using an empty node without rules.
+                if childrenAreSubscribed && includesFullSubtree(parentNodes: parents) {
                     dict[child.key] = child.value
+                } else {
+                    dict[child.key] = SubscriptionTree().reduce(child.value, parents: childParents)
                 }
                 return
             }
@@ -274,6 +279,24 @@ final class SubscriptionTree {
             return false
         }
         return parent.isSubscribed(parentNodes: parentNodes.dropLast(), depth: depth + 1)
+    }
+
+    /**
+     Check if the rules applicable below this node include all levels without limit.
+
+     This is the case if the first node (starting at this node, moving towards the root)
+     with any rules has an unlimited inclusion, but no exclusions.
+     - Parameter parentNodes: The nodes above this node in the subscription tree.
+     - Returns: `true`, if all nodes below this one are included by the rules
+     */
+    private func includesFullSubtree(parentNodes: [SubscriptionTree]) -> Bool {
+        if hasRules {
+            return exclusions.isEmpty && inclusions.contains(nil)
+        }
+        guard let parent = parentNodes.last else {
+            return false
+        }
+        return parent.includesFullSubtree(parentNodes: parentNodes.dropLast())
     }
 
     /**
