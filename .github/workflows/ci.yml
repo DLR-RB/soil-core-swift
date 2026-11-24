@@ -30,7 +30,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        swift: ["6.1", "6.2"]
+        swift: ["6.2"]
     steps:
       - uses: actions/checkout@v4
       - name: Swift version
@@ -46,7 +46,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        swift: ["6.3"]
+        swift: ["6.2"]
     steps:
       - uses: actions/checkout@v4
       - uses: compnerd/gha-setup-swift@main

@@ -1,4 +1,4 @@
-// swift-tools-version: 6.1
+// swift-tools-version: 6.2
 import PackageDescription
 
 let package = Package(
@@ -17,11 +17,19 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "Soil"
+            name: "Soil",
+            swiftSettings: [
+                .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
+                .enableUpcomingFeature("InferIsolatedConformances")
+            ]
         ),
         .testTarget(
             name: "SoilTests",
-            dependencies: ["Soil"]
+            dependencies: ["Soil"],
+            swiftSettings: [
+                .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
+                .enableUpcomingFeature("InferIsolatedConformances")
+            ]
         ),
     ]
 )
