@@ -1,10 +1,9 @@
 import Foundation
 import Soil
 import Testing
-@testable import SoilModel
 
 @Suite("In-memory synchronous storage")
-struct StorageTests {
+struct InMemorySynchronousStorageTests {
 
     private let base = Date(timeIntervalSince1970: 1000)
 
@@ -30,7 +29,7 @@ struct StorageTests {
         return (model, reference)
     }
 
-    @Test("Same results as Soil.InMemoryStorage", arguments: [
+    @Test("Same results as InMemoryStorage", arguments: [
         (nil, nil, nil, nil),
         (nil, nil, nil, 2),
         (nil, 3.0, 0, 1),

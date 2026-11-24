@@ -1,5 +1,4 @@
 import Foundation
-import Soil
 
 /**
  A simple synchronous storage that keeps all samples in memory.

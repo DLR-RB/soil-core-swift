@@ -1,5 +1,4 @@
 import Foundation
-import Soil
 
 /**
  A SOIL storage that provides synchronous access to its data.
