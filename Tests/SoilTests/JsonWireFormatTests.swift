@@ -76,8 +76,6 @@ struct JsonWireFormatTests {
             Message(type: .data, path: ["a"], data: ImmutableSampleTree(value: .data(Data()))),
             Message(type: .data, path: ["a"], data: ImmutableSampleTree(value: .list([]))),
             Message(type: .data, path: ["a"], data: ImmutableSampleTree(value: .map([:]))),
-            // Time set together with a single sample
-            Message(type: .data, path: ["a"], time: Self.time, data: ImmutableSampleTree(value: .integer(1), timestamp: Self.time)),
         ] + JsonEncodingBenchmarkTests.messages
         for encoding in [JsonEncoding() as any MessageEncoding, CompactJsonEncoding()] {
             for message in messages {
@@ -147,7 +145,6 @@ struct JsonWireFormatTests {
         #"{"value": }"#,
         #"{"value": 1,}"#,
         #"{"value": 1} x"#,
-        #"{"value": true}"#,
         #"{"value": {}}"#,
         #"{"value": "unterminated}"#,
         #"{"value": "\ud83d"}"#,
@@ -157,7 +154,11 @@ struct JsonWireFormatTests {
         #"{"value": .5}"#,
         #"{"value": 1, "type": "unknown"}"#,
         #"{"message": "unknown"}"#,
-        #"{"samples": [{"value": 1}]}"#,
+        #"{"type": null}"#,
+        #"{"type": "integer"}"#,
+        #"{"samples": [{"type": "string"}]}"#,
+        #"{"value": true, "type": "double"}"#,
+        #"{"path": {}}"#,
         #"{"path": [1]}"#,
         #"{"value": ["integer"], "type": "list"}"#,
         #"{"value": ["integer", 1]}"#,
@@ -172,6 +173,131 @@ struct JsonWireFormatTests {
         let depth = 100_000
         let json = #"{"value": "# + String(repeating: #"["list","#, count: depth) + "null" + String(repeating: "]", count: depth) + "}"
         #expect(throws: DecodingError.self) { try decode(json) }
+    }
+
+    // MARK: Samples and timestamps
+
+    @Test("Samples without timestamps")
+    func samplesWithoutTimestamps() throws {
+        let message = Message(type: .data, path: ["a"], data: ImmutableSampleTree(samples: [
+            Sample(value: .integer(1), timestamp: Self.time),
+            Sample(value: .integer(2)),
+            Sample(value: .null),
+        ], children: [
+            "b": ImmutableSampleTree(samples: [Sample(value: .string("x")), Sample(value: .double(1.5))]),
+        ]))
+        for encoding in Self.encodings {
+            #expect(try encoding.decode(encoding.encode(message)) == message)
+        }
+        // Missing timestamps are not replaced with the current time
+        let decoded = try decode(#"{"samples": [{"value": 1}, {"value": 2, "time": 3}], "value": 4}"#)
+        #expect(decoded == Message(type: .data, path: [], data: ImmutableSampleTree(samples: [
+            Sample(value: .double(2), timeIntervalSince1970: 3),
+            Sample(value: .double(1)),
+            Sample(value: .double(4)),
+        ])))
+    }
+
+    @Test("Top-level time only applies to the top-level value")
+    func topLevelTime() throws {
+        let decoded = try decode(#"{"time": 5, "value": 1, "samples": [{"value": 2}]}"#)
+        #expect(decoded.time == nil)
+        #expect(decoded.data.samples == [Sample(value: .double(1), timeIntervalSince1970: 5), Sample(value: .double(2))])
+    }
+
+    @Test("Timestamp of data messages")
+    func dataMessageTime() throws {
+        let other = Self.time.addingTimeInterval(1)
+        let messages = [
+            Message.acknowledge(1, to: ["a"], timestamp: Self.time),
+            Message(type: .data, path: ["a"], time: Self.time, data: ImmutableSampleTree(value: .integer(1), timestamp: other)),
+            Message(type: .data, path: ["a"], time: Self.time, data: ImmutableSampleTree(value: .integer(1))),
+            Message(type: .data, path: ["a"], time: Self.time, data: ImmutableSampleTree(samples: [
+                Sample(value: .integer(1), timestamp: other),
+                Sample(value: .integer(2)),
+            ], children: [
+                "b": ImmutableSampleTree(value: .integer(3), timestamp: other),
+            ])),
+        ]
+        for encoding in Self.encodings {
+            for message in messages {
+                #expect(try encoding.decode(encoding.encode(message)) == message)
+            }
+        }
+        // The single sample is moved to the samples, so that the time can be used for the message
+        let encoded = try JSONSerialization.jsonObject(with: JsonEncoding().encode(messages[1])) as? NSDictionary
+        #expect(encoded?["value"] == nil)
+        #expect((encoded?["samples"] as? NSArray)?.count == 1)
+        #expect(encoded?["time"] as? Double == Self.time.timeIntervalSince1970)
+    }
+
+    @Test("Null samples")
+    func nullSamples() throws {
+        let time = Timestamp(timeIntervalSince1970: 5)
+        #expect(try decode(#"{"value": null}"#).data.samples == [Sample(value: .null)])
+        #expect(try decode(#"{"type": "null"}"#).data.samples == [Sample(value: .null)])
+        #expect(try decode(#"{"type": "null", "value": null, "time": 5}"#).data.samples == [Sample(value: .null, timestamp: time)])
+        #expect(try decode(#"{"samples": [{"value": null, "time": 5}, {"type": "null"}]}"#).data.samples == [Sample(value: .null, timestamp: time), Sample(value: .null)])
+        // A time without value or type is the timestamp of the message, or ignored in nodes and samples
+        #expect(try decode(#"{"time": 5}"#) == Message(type: .data, path: [], time: time))
+        #expect(try decode(#"{"time": 5, "value": 1}"#).time == nil)
+        #expect(try decode(#"{"children": {"x": {"time": 5}}}"#).data.children["x"]?.samples.isEmpty == true)
+        #expect(try decode(#"{"samples": [{"time": 5}, {}, {"value": 1}]}"#).data.samples == [Sample(value: .double(1))])
+        // Nodes without value and type have no samples
+        #expect(try decode(#"{"children": {"x": {}}}"#).data.children["x"]?.samples.isEmpty == true)
+        #expect(try decode(#"{"path": ["a"]}"#).data.samples.isEmpty)
+    }
+
+    // MARK: Message types
+
+    @Test("Data is ignored in other messages")
+    func dataInOtherMessages() throws {
+        let expected = Message(type: .request, path: ["a"], time: .init(timeIntervalSince1970: 3), id: 1)
+        // Message type before and after the data fields
+        #expect(try decode(#"{"message": "read", "path": ["a"], "id": 1, "time": 3, "value": 1, "type": "integer", "samples": [{"value": 2}], "children": {"b": {"value": 3}}}"#) == expected)
+        #expect(try decode(#"{"path": ["a"], "id": 1, "time": 3, "value": 1, "type": "integer", "samples": [{"value": 2}], "children": {"b": {"value": 3}}, "message": "read"}"#) == expected)
+        // Data is not encoded
+        let message = Message(type: .request, path: ["a"], time: .init(timeIntervalSince1970: 3), data: ImmutableSampleTree(value: .integer(1)), id: 1)
+        for encoding in Self.encodings {
+            #expect(try encoding.decode(encoding.encode(message)) == expected)
+        }
+    }
+
+    @Test("Negative and large count and depth are clamped")
+    func clampedCountAndDepth() throws {
+        let message = try decode(#"{"message": "read", "count": -5, "depth": -9223372036854775809}"#)
+        #expect(message.count == 0)
+        #expect(message.depth == 0)
+        let large = try decode(#"{"message": "read", "count": 9223372036854775808, "depth": 1e30}"#)
+        #expect(large.count == .max)
+        #expect(large.depth == .max)
+    }
+
+    // MARK: Values
+
+    @Test("Single component paths as strings")
+    func singleComponentPaths() throws {
+        #expect(try decode(#"{"path": "a"}"#).path == ["a"])
+        #expect(try value(#"{"value": "a", "type": "path"}"#) == .path(["a"]))
+        #expect(try value(#"{"type": "path", "value": "a"}"#) == .path(["a"]))
+        #expect(try value(#"{"type": "list", "value": ["path", "a", "path", ["b", "c"]]}"#) == .list([.path(["a"]), .path(["b", "c"])]))
+        // Without type, a string is a string
+        #expect(try value(#"{"value": "a"}"#) == .string("a"))
+    }
+
+    @Test("Booleans are decoded as integers")
+    func booleans() throws {
+        #expect(try value(#"{"value": true}"#) == .integer(1))
+        #expect(try value(#"{"value": false}"#) == .integer(0))
+        #expect(try value(#"{"value": true, "type": "integer"}"#) == .integer(1))
+        #expect(try value(#"{"type": "list", "value": ["integer", false, "integer", true]}"#) == .list([.integer(0), .integer(1)]))
+        let compact = try CompactJsonEncoding().decode(Data(#"{"v": true}"#.utf8))
+        #expect(compact.data.samples.first?.value == .integer(1))
+    }
+
+    @Test("Duplicate map keys use the last value")
+    func duplicateMapKeys() throws {
+        #expect(try value(#"{"type": "map", "value": ["k", "integer", 1, "a", "null", null, "k", "string", "x"]}"#) == .map(["k": .string("x"), "a": .null]))
     }
 
     // MARK: Special doubles
@@ -318,8 +444,6 @@ struct JsonWireFormatTests {
     }
 
     @Test("Out of range numbers in message fields are rejected", arguments: [
-        #"{"count": 9223372036854775808}"#,
-        #"{"depth": -9223372036854775809}"#,
         #"{"id": 1e30}"#,
         #"{"time": 1e400}"#,
         #"{"end": -1e400}"#,

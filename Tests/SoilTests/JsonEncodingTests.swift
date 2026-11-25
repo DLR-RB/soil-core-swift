@@ -20,6 +20,13 @@ struct JsonEncodingTests {
         }
     }
 
+    /// Round-trip assertion helper for messages containing fields that are not encoded
+    private func assertRoundTrip(_ message: Message, expected: Message) throws {
+        let encoder = JsonEncoding()
+        let decoded = try encoder.decode(encoder.encode(message))
+        #expect(decoded.isEqual(to: expected, timeTolerance: testTimeTolerance))
+    }
+
     private func assertRoundTrip(_ messages: [Message]) throws {
         for value in messages {
             try assertRoundTrip(value)
@@ -221,8 +228,18 @@ struct JsonEncodingTests {
             end: Date(timeIntervalSince1970:1_700_000_100),
             id: 12345
         )
+        // Data is not encoded for messages other than data messages
+        let expected = Message(
+            type: .subscriptionInclusion,
+            path: ["full","message"],
+            time: Date(timeIntervalSince1970:1_700_000_000),
+            count: 2,
+            depth: 1,
+            end: Date(timeIntervalSince1970:1_700_000_100),
+            id: 12345
+        )
 
-        try assertRoundTrip(message)
+        try assertRoundTrip(message, expected: expected)
     }
 
     // MARK: Edge Values
@@ -253,8 +270,17 @@ struct JsonEncodingTests {
             depth: -5,
             id: -999
         )
+        // Negative count and depth are decoded as zero
+        let expected = Message(
+            type: .data,
+            path: ["negative"],
+            data: tree,
+            count: 0,
+            depth: 0,
+            id: -999
+        )
 
-        try assertRoundTrip(message)
+        try assertRoundTrip(message, expected: expected)
     }
 
     @Test("High precision double")
@@ -288,7 +314,8 @@ struct JsonEncodingTests {
             let data = try codec.encode(message)
             let decoded = try codec.decode(data)
 
-            #expect(decoded.isEqual(to: message, timeTolerance: testTimeTolerance))
+            // Data is not encoded for messages other than data messages
+            #expect(decoded == Message(type: message.type, path: message.path))
         }
     }
 
