@@ -50,13 +50,14 @@ public actor HostedStorage {
         // Schedule the insert
         let request = storage.accept(message.data, for: message.path)
 
+        // Always wait for the insert to complete, even if no acknowledgement is needed,
+        // so that subsequent messages (e.g. reads) can't overtake the insertion.
+        await request.wait()
+
         // Check if the request expects a response
         guard let id = message.id else {
             return
         }
-        // Wait for the insert to complete and send an acknowledgement
-        // TODO: Dispatch to the background to not block other requests from being processed?
-        await request.wait()
         send(.acknowledge(id, to: message.path))
     }
 
@@ -117,13 +118,14 @@ public actor HostedStorage {
         // Schedule the deletion
         let request = storage.delete(path: message.path, from: message.time, to: message.end, depth: message.depth)
 
+        // Always wait for the delete to complete, even if no acknowledgement is needed,
+        // so that subsequent messages (e.g. reads) can't overtake the deletion.
+        await request.wait()
+
         // Check if the request expects a response
         guard let requestId = message.id else {
             return
         }
-        // Wait for the delete to complete
-        // TODO: Dispatch to the background to not block other requests from being processed?
-        await request.wait()
         send(.acknowledge(requestId, to: message.path))
     }
 }
