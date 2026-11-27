@@ -151,7 +151,7 @@ let content = try encoding.encodeContent(of: value)
 let restored = try encoding.decodeContent(content, as: value.type)
 ```
 
-`BinaryValueEncoding` uses a compact binary format.
+`BinaryValueEncoding` uses a compact binary format, which is the same as for values within messages of `BinaryMessageEncoding`.
 `JSONValueEncoding` and `CompactJSONValueEncoding` represent values in the same way as `JsonEncoding` and `CompactJsonEncoding` do within messages.
 `Value` is also `Codable`, and encoded as `[type, value]`.
 

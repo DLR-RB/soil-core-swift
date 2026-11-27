@@ -66,11 +66,18 @@ struct ValueEncodingTests {
         #expect(try encoding.encodeContent(of: .string("x")) == Data([1, 0x78]))
         #expect(try encoding.encodeContent(of: .path(["a", "bc"])) == Data([2, 1, 0x61, 2, 0x62, 0x63]))
         #expect(try encoding.encodeContent(of: .list([.integer(-1), .string("x"), .path([]), .null])) == Data([4, 1, 1, 3, 1, 0x78, 5, 0, 0]))
-        #expect(try encoding.encodeContent(of: .map(["b": .integer(300), "a": .double(1)])) == Data([2, 1, 0x61, 2, 0, 0, 0, 0, 0, 0, 0xF0, 0x3F, 1, 0x62, 1, 0xD8, 0x04]))
+        #expect(try encoding.encodeContent(of: .map(["b": .integer(300), "a": .double(1)])) == Data([2, 1, 0x61, 2, 0x3F, 0xF0, 0, 0, 0, 0, 0, 0, 1, 0x62, 1, 0xD8, 0x04]))
         // Tagged values are the type code followed by the content
         #expect(try encoding.encode(.null) == Data([0]))
         #expect(try encoding.encode(.integer(-1)) == Data([1, 1]))
         #expect(try encoding.encode(.path(["a", "bc"])) == Data([5, 2, 1, 0x61, 2, 0x62, 0x63]))
+        // Examples from the specification
+        #expect(try encoding.encodeContent(of: .integer(123)) == Data([0xF6, 0x01]))
+        #expect(try encoding.encodeContent(of: .double(3.14)) == Data([0x40, 0x09, 0x1E, 0xB8, 0x51, 0xEB, 0x85, 0x1F]))
+        // The 9th byte of a varint contains the 8 most significant bits
+        #expect(try encoding.encodeContent(of: .integer(.max)) == Data([0xFE] + Array(repeating: 0xFF, count: 8)))
+        #expect(try encoding.encodeContent(of: .integer(.min)) == Data(repeating: 0xFF, count: 9))
+        #expect(try encoding.decodeContent(Data(repeating: 0xFF, count: 9), as: .integer) == .integer(.min))
     }
 
     @Test("Binary decoding errors", arguments: [
@@ -79,7 +86,9 @@ struct ValueEncodingTests {
         (Data([1, 1, 0]), nil),           // Trailing bytes
         (Data([3, 5, 0x61]), nil),        // String too short
         (Data([6, 2, 1, 1]), nil),        // List too short
-        (Data([0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01]), .integer),  // Varint too long
+        (Data([0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01]), .integer),  // Varint has at most 9 bytes
+        (Data([0x80]), .integer),         // Varint too short
+        (Data(Array(repeating: [6, 1], count: 600).flatMap { $0 } + [0]), nil), // Nested too deeply
         (Data([0, 0, 0]), .double),       // Double too short
         (Data([0]), .null),               // Content for null
     ] as [(Data, ValueType?)])
