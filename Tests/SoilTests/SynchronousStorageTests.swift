@@ -47,18 +47,40 @@ struct InMemorySynchronousStorageTests {
     }
 
     @Test("Delete intervals", arguments: [
-        (nil, nil),
-        (nil, 3.0),
-        (2.0, nil),
-        (1.0, 4.0),
-        (4.0, 1.0),
-    ] as [(Double?, Double?)])
-    func delete(start: Double?, end: Double?) async {
+        (nil, nil, 0),
+        (nil, 3.0, 0),
+        (2.0, nil, 0),
+        (1.0, 4.0, 0),
+        (4.0, 1.0, 0),
+        (nil, nil, 1),
+        (nil, 3.0, 1),
+        (1.0, 4.0, nil),
+    ] as [(Double?, Double?, Int?)])
+    func delete(start: Double?, end: Double?, depth: Int?) async {
         let (model, reference) = await makeStorages()
-        model.delete(path: ["root"], from: start.map(time), to: end.map(time), depth: 0)
-        await reference.delete(path: ["root"], from: start.map(time), to: end.map(time), depth: 0).wait()
-        let expected = await reference.samples(for: ["root"])
-        #expect(await model.samples(for: ["root"]) == expected)
+        model.delete(path: ["root"], from: start.map(time), to: end.map(time), depth: depth)
+        await reference.delete(path: ["root"], from: start.map(time), to: end.map(time), depth: depth).wait()
+        // Compare the full tree, so that deletions below the path are also checked
+        let expected = await reference.tree(for: [], from: nil, to: nil, depth: nil, limitPerNode: nil)
+        let result = model.tree(for: [], from: nil, to: nil, depth: nil, limitPerNode: nil)
+        #expect(result.isEqual(to: expected), "\(result)\n!=\n\(expected)")
+    }
+
+    @Test("Delete removes empty nodes")
+    func deleteRemovesEmptyNodes() async {
+        let (_, reference) = await makeStorages()
+        await reference.delete(path: ["root"], from: nil, to: nil, depth: nil).wait()
+        let tree = await reference.tree(for: ["root"], from: nil, to: nil, depth: nil, limitPerNode: nil)
+        #expect(tree.children.isEmpty)
+    }
+
+    @Test("Delete with depth 0 keeps child samples")
+    func deleteKeepsChildren() async {
+        let (_, reference) = await makeStorages()
+        await reference.delete(path: ["root"], from: nil, to: nil, depth: 0).wait()
+        #expect(await reference.samples(for: ["root"]).isEmpty)
+        #expect(await reference.samples(for: ["root", "a"]).count == 2)
+        #expect(await reference.samples(for: ["root", "a", "b"]).count == 1)
     }
 
     @Test("Delete sub-tree")

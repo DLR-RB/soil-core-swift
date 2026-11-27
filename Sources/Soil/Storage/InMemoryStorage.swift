@@ -241,11 +241,23 @@ private extension MutableSampleTree {
         // Delete samples at this node
         deleteSamples(from: start, to: end)
 
+        // Stop if the maximum depth is reached
+        if let depth, depth <= 0 {
+            return
+        }
+
         // Recurse to delete child samples
         let newDepth = depth?.subtracting(1)
         for child in children.values {
             child.delete(from: start, to: end, depth: newDepth)
         }
+        // Remove empty sub-trees, so that deleted instances disappear from the tree
+        children = children.filter { !$0.value.isEmpty }
+    }
+
+    /// Indicate if the node has no samples and no children
+    private var isEmpty: Bool {
+        samples.isEmpty && children.isEmpty
     }
 
     /**
