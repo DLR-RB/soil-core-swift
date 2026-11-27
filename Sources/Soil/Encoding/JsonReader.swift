@@ -163,6 +163,15 @@ struct JsonReader {
         try readLiteral([.n, .u, .l, .l])
     }
 
+    mutating func readBool() throws -> Bool {
+        if try peek() == .t {
+            try readLiteral([.t, .r, .u, .e])
+            return true
+        }
+        try readLiteral([.f, .a, .l, .s, .e])
+        return false
+    }
+
     private mutating func readLiteral(_ literal: [UInt8]) throws {
         skipWhitespace()
         guard offset + literal.count <= bytes.count else {
@@ -380,7 +389,7 @@ struct JsonReader {
             case .null:
                 try readNull()
             case .bool:
-                try readLiteral(bytes[offset] == .t ? [.t, .r, .u, .e] : [.f, .a, .l, .s, .e])
+                _ = try readBool()
             case .number:
                 _ = try scanNumber()
             case .string:

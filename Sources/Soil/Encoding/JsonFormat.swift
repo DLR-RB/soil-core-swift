@@ -17,6 +17,14 @@ enum JsonField: String, CaseIterable {
     case end
     case id
     case children
+
+    /// Indicate that the field contains data, which is only used in data messages
+    var isData: Bool {
+        switch self {
+            case .value, .type, .samples, .children: true
+            default: false
+        }
+    }
 }
 
 /**
@@ -185,12 +193,16 @@ extension JsonCoding {
             writeKey(.path, to: &writer, first: &first)
             write(message.path, to: &writer)
         }
-        // Encode data to the top-level object
-
-        // There is a possibly invalid message where the `time` is set in addition to data being present
-        // We ensure that the timestamp is not written into the message if any samples are provided
-        // so that decoding does not fail
-        try write(message.data, to: &writer, first: &first, canUseRootContainer: message.time == nil)
+        // Only data messages contain data.
+        // The top-level `time` belongs to a top-level value, if present.
+        // If the message has a timestamp, then the samples are written to the `samples` field instead.
+        if message.type == .data {
+            try write(message.data, to: &writer, first: &first, canUseRootContainer: message.time == nil)
+        }
+        if let time = message.time {
+            writeKey(.time, to: &writer, first: &first)
+            try writer.write(time.timeIntervalSince1970)
+        }
 
         if let count = message.count {
             writeKey(.count, to: &writer, first: &first)
@@ -199,10 +211,6 @@ extension JsonCoding {
         if let depth = message.depth {
             writeKey(.depth, to: &writer, first: &first)
             writer.write(depth)
-        }
-        if let time = message.time {
-            writeKey(.time, to: &writer, first: &first)
-            try writer.write(time.timeIntervalSince1970)
         }
         if let end = message.end {
             writeKey(.end, to: &writer, first: &first)
@@ -236,7 +244,7 @@ extension JsonCoding {
             case 1:
                 guard canUseRootContainer else {
                     // Encode the single sample within the `samples` field,
-                    // because the `time` field is already used
+                    // because the `time` field is used for the message timestamp
                     fallthrough
                 }
                 try write(samples[0], to: &writer, first: &first)
@@ -360,14 +368,32 @@ extension JsonCoding {
 
 extension JsonCoding {
 
+    /// The kind of JSON object being decoded, which determines the relevant fields
+    private enum Context {
+        /// The top-level object of a message
+        case message
+        /// A node in the `children` of a data message
+        case node
+        /// An element of a `samples` array
+        case sample
+
+        func isRelevant(_ field: JsonField) -> Bool {
+            switch self {
+                case .message: true
+                case .node: field.isData || field == .time
+                case .sample: field == .value || field == .type || field == .time
+            }
+        }
+    }
+
     /**
      The fields of a JSON object.
 
      Messages, tree nodes and samples all use the same fields,
-     and unused fields are ignored.
+     and fields not relevant in the context are ignored.
      */
     private struct Fields {
-        var message: Format.Tag?
+        var messageType: MessageType?
         var path: Path?
         var value: Value?
         /// The offset of the value, in case it needs to be read again after the type is known
@@ -383,57 +409,77 @@ extension JsonCoding {
         var end: Double?
         var id: Int?
 
-        var hasValue: Bool {
-            valueOffset != nil
+        /// Indicate that the object contains a sample, which is the case if a value or type is present.
+        /// Otherwise the time is the timestamp of a message, or ignored for nodes.
+        var hasSample: Bool {
+            valueOffset != nil || type != nil
         }
     }
 
     private static func readMessage(from reader: inout JsonReader) throws -> Message {
-        let fields = try readFields(from: &reader)
-        let type: MessageType
-        if let rawType = fields.message {
-            guard let t = Format.messageType(from: rawType) else {
-                throw reader.error("Unknown message type: \(rawType)")
-            }
-            type = t
-        } else {
-            type = .data
-        }
+        let fields = try readFields(from: &reader, context: .message)
+        let type = fields.messageType ?? .data
+        let isData = type == .data
         return Message(
             type: type,
             path: fields.path ?? [],
-            // If a value is present, then the timestamp is decoded as part of the sample
-            time: fields.hasValue ? nil : fields.time.map(Timestamp.init(timeIntervalSince1970:)),
-            data: tree(from: fields),
+            // In data messages, the `time` belongs to the top-level sample, if present
+            time: isData && fields.hasSample ? nil : fields.time.map(Timestamp.init(timeIntervalSince1970:)),
+            data: isData ? try tree(from: fields, reader: reader) : ImmutableSampleTree.empty,
             count: fields.count,
             depth: fields.depth,
             end: fields.end.map(Timestamp.init(timeIntervalSince1970:)),
             id: fields.id)
     }
 
-    private static func tree(from fields: Fields) -> ImmutableSampleTree {
-        guard let value = fields.value else {
+    private static func tree(from fields: Fields, reader: JsonReader) throws -> ImmutableSampleTree {
+        guard fields.hasSample else {
             return ImmutableSampleTree(samples: fields.samples.sorted(), children: fields.children)
         }
-        let sample = Sample(value: value, timestamp: fields.time.map(Timestamp.init(timeIntervalSince1970:)))
+        let sample = try sample(from: fields, reader: reader)
         return ImmutableSampleTree(samples: (fields.samples + [sample]).sorted(), children: fields.children)
     }
 
-    private static func readFields(from reader: inout JsonReader) throws -> Fields {
+    /**
+     Create a sample from the value, type and time of an object.
+
+     A missing value is interpreted as `null`, which is only allowed if the type is missing or also `null`.
+     */
+    private static func sample(from fields: Fields, reader: JsonReader) throws -> Sample {
+        let timestamp = fields.time.map(Timestamp.init(timeIntervalSince1970:))
+        if let value = fields.value {
+            return Sample(value: value, timestamp: timestamp)
+        }
+        if let type = fields.type, try valueType(from: type, reader: reader) != .null {
+            throw reader.error("Missing value for type \(type)")
+        }
+        return Sample(value: .null, timestamp: timestamp)
+    }
+
+    private static func readFields(from reader: inout JsonReader, context: Context) throws -> Fields {
         var fields = Fields()
+        // Set for messages other than data messages, which ignore values, samples and children
+        var ignoresData = false
         try reader.beginObject()
         var first = true
         while let key = try reader.nextKey(first: &first) {
-            guard let field = Format.field(for: key) else {
+            guard let field = Format.field(for: key), context.isRelevant(field), !(ignoresData && field.isData) else {
                 try reader.skipValue()
                 continue
             }
             switch field {
-                case .message: fields.message = try Format.Tag.read(from: &reader)
+                case .message:
+                    let tag = try Format.Tag.read(from: &reader)
+                    guard let type = Format.messageType(from: tag) else {
+                        throw reader.error("Unknown message type: \(tag)")
+                    }
+                    fields.messageType = type
+                    ignoresData = type != .data
                 case .path: fields.path = try readPath(from: &reader)
                 case .type: fields.type = try Format.Tag.read(from: &reader)
-                case .count: fields.count = try reader.readInt()
-                case .depth: fields.depth = try reader.readInt()
+                // Negative values are treated as zero
+                case .count: fields.count = try max(0, reader.readInt(clamping: true))
+                case .depth: fields.depth = try max(0, reader.readInt(clamping: true))
                 case .id: fields.id = try reader.readInt()
                 case .time: fields.time = try reader.readDouble()
                 case .end: fields.end = try reader.readDouble()
@@ -450,6 +496,15 @@ extension JsonCoding {
                         fields.value = try readValue(from: &reader, type: fields.type)
                     }
             }
+        }
+        guard !ignoresData else {
+            // Discard data read before the message type was known
+            fields.value = nil
+            fields.valueOffset = nil
+            fields.type = nil
+            fields.samples = []
+            fields.children = [:]
+            return fields
         }
         try resolveValue(of: &fields, from: &reader)
         return fields
@@ -471,7 +526,11 @@ extension JsonCoding {
         reader.offset = endOffset
     }
 
+    /// Read a path, which is either an array of strings, or a single string for a path with one component
     private static func readPath(from reader: inout JsonReader) throws -> Path {
+        if try reader.peekKind() == .string {
+            return [try reader.readString()]
+        }
         var path: Path = []
         try reader.beginArray()
         var first = true
@@ -486,14 +545,11 @@ extension JsonCoding {
         try reader.beginArray()
         var first = true
         while try reader.nextElement(first: &first) {
-            let fields = try readFields(from: &reader)
-            guard let value = fields.value else {
-                throw reader.error("Missing value in sample")
+            let fields = try readFields(from: &reader, context: .sample)
+            // Entries without value and type are ignored
+            if fields.hasSample {
+                samples.append(try sample(from: fields, reader: reader))
             }
-            guard let time = fields.time else {
-                throw reader.error("Missing time in sample")
-            }
-            samples.append(Sample(value: value, timestamp: .init(timeIntervalSince1970: time)))
         }
         return samples
     }
@@ -503,7 +559,7 @@ extension JsonCoding {
         try reader.beginObject()
         var first = true
         while let name = try reader.nextKey(first: &first) {
-            children[name] = tree(from: try readFields(from: &reader))
+            children[name] = try tree(from: readFields(from: &reader, context: .node), reader: reader)
         }
         return children
     }
@@ -520,6 +576,7 @@ extension JsonCoding {
 
      Doubles outside of the representable range are converted to infinity,
      and integers outside of the range of `Int` are clamped to `Int.min` or `Int.max`.
+     Booleans are converted to the integers `0` and `1`.
      - Parameter type: The type of the value, if specified. Otherwise the type is inferred from the JSON.
      */
     private static func readValue(from reader: inout JsonReader, type: Format.Tag?) throws -> Value {
@@ -533,7 +590,9 @@ extension JsonCoding {
                 case .string: return .string(try reader.readString())
                 // Lists and maps are always written with a type, so an untyped array is a path
                 case .array: return .path(try readPath(from: &reader))
-                case .bool, .object: throw reader.error("Invalid value")
+                // SOIL represents booleans as integers
+                case .bool: return .integer(try reader.readBool() ? 1 : 0)
+                case .object: throw reader.error("Invalid value")
             }
         }
         switch try valueType(from: type, reader: reader) {
@@ -541,7 +600,11 @@ extension JsonCoding {
                 try reader.skipValue()
                 return .null
             case .data: return .data(try reader.readData())
-            case .integer: return .integer(try reader.readInt(clamping: true))
+            case .integer:
+                if try reader.peekKind() == .bool {
+                    return .integer(try reader.readBool() ? 1 : 0)
+                }
+                return .integer(try reader.readInt(clamping: true))
             case .double: return .double(try readDouble(from: &reader))
             case .string: return .string(try reader.readString())
             case .path: return .path(try readPath(from: &reader))
